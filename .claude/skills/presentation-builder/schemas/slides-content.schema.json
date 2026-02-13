@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Slides Content Schema",
+  "description": "各スライドのコンテンツを定義するスキーマ",
+  "type": "object",
+  "required": ["slides"],
+  "properties": {
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "sectionId", "layout", "heading"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "スライドID（例: intro-1, problem-2）"
+          },
+          "sectionId": {
+            "type": "string",
+            "description": "所属セクションID"
+          },
+          "layout": {
+            "type": "string",
+            "enum": ["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote"],
+            "description": "スライドレイアウト"
+          },
+          "heading": {
+            "type": "string",
+            "description": "スライド見出し"
+          },
+          "subtitle": {
+            "type": "string",
+            "description": "サブタイトル（titleレイアウト用）"
+          },
+          "bullets": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "箇条書き項目"
+          },
+          "body": {
+            "type": "string",
+            "description": "本文テキスト（箇条書き以外の場合）"
+          },
+          "notes": {
+            "type": "string",
+            "description": "スピーカーノート"
+          },
+          "visual": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["diagram", "chart", "image", "rich"],
+                "description": "図解タイプ"
+              },
+              "description": {
+                "type": "string",
+                "description": "図解の詳細な説明・生成指示"
+              },
+              "tool": {
+                "type": "string",
+                "enum": ["mermaid", "svg-diagram", "gen-ai-image", "gen-rich-image"],
+                "description": "使用するスキル"
+              }
+            },
+            "required": ["type", "description", "tool"]
+          },
+          "leftColumn": {
+            "type": "object",
+            "properties": {
+              "heading": { "type": "string" },
+              "bullets": { "type": "array", "items": { "type": "string" } }
+            },
+            "description": "左列（comparisonレイアウト用）"
+          },
+          "rightColumn": {
+            "type": "object",
+            "properties": {
+              "heading": { "type": "string" },
+              "bullets": { "type": "array", "items": { "type": "string" } }
+            },
+            "description": "右列（comparisonレイアウト用）"
+          },
+          "quote": {
+            "type": "string",
+            "description": "引用テキスト（quoteレイアウト用）"
+          },
+          "attribution": {
+            "type": "string",
+            "description": "引用元（quoteレイアウト用）"
+          }
+        }
+      }
+    }
+  }
+}

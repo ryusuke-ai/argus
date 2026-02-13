@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QiitaStructure",
+  "description": "Phase 2 出力: Qiita 記事の構成設計",
+  "type": "object",
+  "required": ["version", "hook", "sections", "codeBlocks"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "hook": {
+      "type": "object",
+      "required": ["opening", "benefits"],
+      "properties": {
+        "opening": {
+          "type": "string",
+          "description": "冒頭の導入文（読者を掴むフック）"
+        },
+        "benefits": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "この記事で得られること（箇条書き）"
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["heading", "level", "keyPoints"],
+        "properties": {
+          "heading": {
+            "type": "string",
+            "description": "見出しテキスト"
+          },
+          "level": {
+            "type": "integer",
+            "enum": [2, 3],
+            "description": "見出しレベル (H2=2, H3=3)"
+          },
+          "keyPoints": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "このセクションで伝えたいポイント"
+          },
+          "hasCode": {
+            "type": "boolean",
+            "description": "コードブロックを含むか"
+          },
+          "subsections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["heading", "keyPoints"],
+              "properties": {
+                "heading": { "type": "string" },
+                "keyPoints": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "hasCode": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      },
+      "description": "記事の見出し構成"
+    },
+    "codeBlocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["section", "language", "description"],
+        "properties": {
+          "section": { "type": "string" },
+          "language": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "description": "コードブロックの配置計画"
+    },
+    "estimatedLength": {
+      "type": "integer",
+      "minimum": 5000,
+      "maximum": 15000,
+      "description": "推定文字数"
+    }
+  }
+}

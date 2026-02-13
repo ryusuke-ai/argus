@@ -1,0 +1,6 @@
+FROM cloudflare/cloudflared:latest
+
+# TUNNEL_TOKEN方式: 設定はCloudflareダッシュボードから取得
+# config.yml は不要（トークンにトンネル設定が含まれる）
+
+CMD ["tunnel", "run"]

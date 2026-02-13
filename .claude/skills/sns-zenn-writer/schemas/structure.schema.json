@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZennStructure",
+  "description": "Phase 2 出力: Zenn 記事の構成設計",
+  "type": "object",
+  "required": ["version", "frontmatter", "hook", "sections"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "frontmatter": {
+      "type": "object",
+      "required": ["emoji", "type", "topics"],
+      "properties": {
+        "emoji": { "type": "string" },
+        "type": { "type": "string", "enum": ["tech", "idea"] },
+        "topics": { "type": "array", "minItems": 3, "maxItems": 5, "items": { "type": "string" } }
+      }
+    },
+    "hook": {
+      "type": "object",
+      "required": ["opening", "benefits"],
+      "properties": {
+        "opening": { "type": "string" },
+        "benefits": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["heading", "keyPoints"],
+        "properties": {
+          "heading": { "type": "string" },
+          "keyPoints": { "type": "array", "items": { "type": "string" } },
+          "hasCode": { "type": "boolean" },
+          "subsections": { "type": "array", "items": { "type": "object" } }
+        }
+      }
+    },
+    "estimatedLength": {
+      "type": "integer",
+      "minimum": 3000,
+      "maximum": 10000
+    }
+  }
+}

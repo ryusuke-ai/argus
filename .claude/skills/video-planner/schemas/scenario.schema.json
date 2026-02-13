@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Video Scenario Schema",
+  "description": "動画のシナリオ構成を定義するスキーマ",
+  "type": "object",
+  "required": ["title", "theme", "mode", "sections"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "動画タイトル（「〇分で解説」禁止）"
+    },
+    "theme": {
+      "type": "string",
+      "description": "メインテーマ（1文で）"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["dialogue", "narration"],
+      "description": "動画モード（掛け合い/ナレーション）"
+    },
+    "tone": {
+      "type": "string",
+      "enum": ["news", "tutorial", "deep-dive", "story"],
+      "default": "news",
+      "description": "動画のトーン（news: 発見、tutorial: 理解、deep-dive: 納得、story: 引き込み）"
+    },
+    "targetAudience": {
+      "type": "string",
+      "description": "ターゲット視聴者"
+    },
+    "sections": {
+      "type": "array",
+      "description": "セクション一覧",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "displayTitle", "purpose", "keyPoints"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "セクションID（例: opening, section-1）"
+          },
+          "title": {
+            "type": "string",
+            "description": "内部管理用セクションタイトル（詳細）"
+          },
+          "displayTitle": {
+            "type": "string",
+            "description": "視聴者向け表示タイトル（8-15文字、見出しとして成立する形式）"
+          },
+          "purpose": {
+            "type": "string",
+            "description": "視聴者の感情目標（「興味を引く」ではなく「へー、と思わせる」のように具体的に）"
+          },
+          "keyPoints": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "伝える中身（演出指示・抽象語禁止。具体的な内容を書く）"
+          },
+          "visualIdeas": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "使用する画像・図のアイデア（「図」ではなく「5レーンの役割分担図」のように具体的に）"
+          },
+          "subsections": {
+            "type": "array",
+            "description": "小トピック（画像が変わるタイミング = subsection境界）",
+            "items": {
+              "type": "object",
+              "required": ["id", "topic"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "subsection ID"
+                },
+                "topic": {
+                  "type": "string",
+                  "description": "小トピック名"
+                },
+                "visualIdea": {
+                  "type": "string",
+                  "description": "この小トピックで使う画像アイデア"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

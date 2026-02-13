@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NoteArticle",
+  "description": "note 記事の出力スキーマ",
+  "type": "object",
+  "required": ["type", "title", "body", "tags", "metadata"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "note_article"
+    },
+    "title": {
+      "type": "string",
+      "description": "記事タイトル",
+      "maxLength": 100
+    },
+    "body": {
+      "type": "string",
+      "description": "Markdown 本文"
+    },
+    "eyecatchImage": {
+      "type": "string",
+      "description": "アイキャッチ画像パス"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 10,
+      "description": "タグ（最大10個）"
+    },
+    "isPaid": {
+      "type": "boolean",
+      "default": false,
+      "description": "有料記事かどうか"
+    },
+    "paidBoundary": {
+      "type": ["integer", "null"],
+      "description": "有料部分の開始行（null = 全無料）"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["wordCount", "category", "tone"],
+      "properties": {
+        "wordCount": {
+          "type": "integer",
+          "description": "本文の文字数"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["experience", "insight", "tutorial", "review"],
+          "description": "記事カテゴリ"
+        },
+        "tone": {
+          "type": "string",
+          "enum": ["personal", "professional", "casual"],
+          "default": "personal",
+          "description": "記事のトーン"
+        }
+      }
+    }
+  }
+}

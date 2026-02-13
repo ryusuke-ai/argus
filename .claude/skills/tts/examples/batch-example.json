@@ -1,0 +1,25 @@
+{
+  "segments": [
+    {
+      "speaker": "tsukuyomi",
+      "text": "こんにちは！今日もよろしくお願いします。",
+      "speed": 1.0
+    },
+    {
+      "speaker": "tsukuyomi",
+      "text": "今日は良い天気ですね。",
+      "speed": 1.0
+    },
+    {
+      "speaker": "GINGA",
+      "text": "はじめまして、ギンガと言います。",
+      "speed": 1.1
+    },
+    {
+      "speaker": "GINGA",
+      "text": "よろしくお願いします。",
+      "speed": 1.0
+    }
+  ],
+  "outputDir": "./output"
+}

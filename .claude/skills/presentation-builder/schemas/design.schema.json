@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PresentationDesign",
+  "description": "Phase 3: デザイン設計の出力スキーマ",
+  "type": "object",
+  "required": ["palette", "typography", "slides"],
+  "properties": {
+    "palette": {
+      "type": "object",
+      "description": "プレゼン全体のカラーパレット",
+      "required": ["primary", "secondary", "accent", "highlight", "text", "textLight", "background", "backgroundAlt"],
+      "properties": {
+        "primary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "secondary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "accent": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "highlight": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "text": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "textLight": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "background": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "backgroundAlt": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      }
+    },
+    "typography": {
+      "type": "object",
+      "description": "タイポグラフィ設定",
+      "required": ["headingFont", "bodyFont"],
+      "properties": {
+        "headingFont": { "type": "string" },
+        "bodyFont": { "type": "string" },
+        "headingSize": { "type": "string", "default": "1.5em" },
+        "bodySize": { "type": "string", "default": "0.95em" },
+        "lineHeight": { "type": "number", "default": 1.8 }
+      }
+    },
+    "slides": {
+      "type": "array",
+      "description": "スライドごとのデザイン指示",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["slideId", "layout"],
+        "properties": {
+          "slideId": { "type": "string" },
+          "layout": {
+            "type": "string",
+            "enum": ["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote", "key-number", "timeline", "icon-grid"]
+          },
+          "background": {
+            "type": "string",
+            "enum": ["default", "gradient", "dark", "accent"],
+            "default": "default"
+          },
+          "imageLayout": {
+            "type": ["object", "null"],
+            "properties": {
+              "position": { "type": "string", "enum": ["left", "right", "top", "bottom", "center"] },
+              "size": { "type": "string", "description": "Marp bg サイズ比率（例: 40%）" },
+              "fit": { "type": "string", "enum": ["contain", "cover", "auto"], "default": "contain" }
+            }
+          },
+          "svgSpec": {
+            "type": ["object", "null"],
+            "description": "SVG 生成の構造化仕様",
+            "properties": {
+              "width": { "type": "number", "default": 800 },
+              "height": { "type": "number", "default": 500 },
+              "backgroundColor": { "type": "string" },
+              "colorPalette": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "elements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["type"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["icon-grid", "flowchart", "comparison", "timeline", "bar-chart", "line-chart", "pie-chart", "network", "hierarchy", "custom"]
+                    },
+                    "layout": { "type": "string" },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": { "type": "string" },
+                          "value": {},
+                          "icon": { "type": "string" },
+                          "color": { "type": "string" }
+                        }
+                      }
+                    },
+                    "description": { "type": "string" }
+                  }
+                }
+              },
+              "style": { "type": "string", "enum": ["modern-tech", "minimal", "corporate", "playful"] },
+              "margin": {
+                "type": "object",
+                "properties": {
+                  "top": { "type": "number" },
+                  "right": { "type": "number" },
+                  "bottom": { "type": "number" },
+                  "left": { "type": "number" }
+                }
+              }
+            }
+          },
+          "keyNumber": {
+            "type": ["object", "null"],
+            "description": "key-number レイアウト用の数値データ",
+            "properties": {
+              "value": { "type": "string", "description": "表示する数値（例: 36, 176.5）" },
+              "unit": { "type": "string", "description": "単位（例: PB, EB, 秒）" },
+              "caption": { "type": "string", "description": "補足説明文" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

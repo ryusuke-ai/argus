@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PodcastStrategy",
+  "description": "Phase 1 出力: ポッドキャストエピソードのリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "topic", "category", "keyTopics", "differentiators"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": {
+      "type": "string",
+      "description": "エピソードのテーマ"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["deep_dive", "tutorial", "weekly_roundup", "experience", "tool_review", "behind_the_scenes"]
+    },
+    "keyTopics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "取り上げるサブトピック"
+    },
+    "differentiators": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "既存エピソードとの差別化ポイント"
+    },
+    "relatedEpisodes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "関連する過去エピソード"
+    },
+    "estimatedDuration": {
+      "type": "string",
+      "description": "推定エピソード尺"
+    }
+  }
+}

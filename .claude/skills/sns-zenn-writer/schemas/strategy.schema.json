@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZennStrategy",
+  "description": "Phase 1 出力: Zenn 記事のリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "topic", "articleType", "category", "targetAudience", "competitors", "differentiators", "keywords"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": {
+      "type": "string",
+      "description": "記事のテーマ"
+    },
+    "articleType": {
+      "type": "string",
+      "enum": ["tech", "idea"],
+      "description": "Zenn の記事タイプ"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["tutorial", "first-impression", "comparison", "deep-dive"],
+      "description": "記事カテゴリ"
+    },
+    "targetAudience": {
+      "type": "string",
+      "description": "ターゲット読者層"
+    },
+    "competitors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["title", "url", "strengths", "weaknesses"],
+        "properties": {
+          "title": { "type": "string" },
+          "url": { "type": "string" },
+          "strengths": { "type": "array", "items": { "type": "string" } },
+          "weaknesses": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "differentiators": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

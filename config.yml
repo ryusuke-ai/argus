@@ -1,0 +1,15 @@
+# Cloudflare Tunnel Configuration (UNUSED)
+#
+# This file is NOT used in the current TUNNEL_TOKEN-based setup.
+# When using `cloudflared tunnel run` with TUNNEL_TOKEN env var,
+# all routing configuration is managed via the Cloudflare dashboard.
+#
+# This file is kept as reference for credentials-file based setup.
+
+tunnel: ${TUNNEL_ID}
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: argus.yourdomain.com
+    service: http://argus-app:3150
+  - service: http_status:404

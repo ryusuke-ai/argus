@@ -1,0 +1,51 @@
+module.exports = {
+  apps: [
+    {
+      name: "slack-bot",
+      cwd: "/app/apps/slack-bot",
+      script: "dist/index.js",
+      env: {
+        NODE_ENV: "production",
+        PORT: "3939",
+        CLAUDE_CLI_PATH: "/usr/local/bin/claude",
+      },
+      error_file: "/app/logs/slack-bot-error.log",
+      out_file: "/app/logs/slack-bot-out.log",
+      time: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: "10s",
+    },
+    {
+      name: "dashboard",
+      cwd: "/app/apps/dashboard",
+      script: "node_modules/next/dist/bin/next",
+      args: "start",
+      env: {
+        NODE_ENV: "production",
+        PORT: process.env.PORT || "3150",
+      },
+      error_file: "/app/logs/dashboard-error.log",
+      out_file: "/app/logs/dashboard-out.log",
+      time: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: "10s",
+    },
+    {
+      name: "orchestrator",
+      cwd: "/app/apps/agent-orchestrator",
+      script: "dist/index.js",
+      env: {
+        NODE_ENV: "production",
+        PORT: "3950",
+      },
+      error_file: "/app/logs/orchestrator-error.log",
+      out_file: "/app/logs/orchestrator-out.log",
+      time: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: "10s",
+    },
+  ],
+};

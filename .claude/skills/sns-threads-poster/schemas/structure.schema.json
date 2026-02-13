@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThreadsStructure",
+  "description": "Phase 2 出力: Threads 投稿の構成設計",
+  "type": "object",
+  "required": ["version", "postType", "tone", "structure", "closingQuestion"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "postType": {
+      "type": "string",
+      "enum": ["single", "carousel"]
+    },
+    "tone": {
+      "type": "string",
+      "description": "トーン設計（カジュアル度合い）"
+    },
+    "structure": {
+      "type": "object",
+      "required": ["opening", "body"],
+      "properties": {
+        "opening": {
+          "type": "string",
+          "description": "冒頭の掴み"
+        },
+        "body": {
+          "type": "string",
+          "description": "メインメッセージ"
+        },
+        "imageDirections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "カルーセル画像の指示（carousel の場合）"
+        }
+      }
+    },
+    "closingQuestion": {
+      "type": "string",
+      "description": "締めの質問・問いかけ"
+    }
+  }
+}

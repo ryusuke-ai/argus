@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "YouTubeStructure",
+  "description": "Phase 2 出力: YouTube メタデータの構成設計",
+  "type": "object",
+  "required": ["version", "titleCandidates", "descriptionOutline", "chapters"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "titleCandidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["title", "hookType", "rationale"],
+        "properties": {
+          "title": { "type": "string" },
+          "hookType": { "type": "string", "enum": ["number", "result", "question", "breaking"] },
+          "rationale": { "type": "string" }
+        }
+      }
+    },
+    "descriptionOutline": {
+      "type": "object",
+      "required": ["coreSentence", "valueProp"],
+      "properties": {
+        "coreSentence": { "type": "string" },
+        "valueProp": { "type": "string" }
+      }
+    },
+    "chapters": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["title", "keyPoints"],
+        "properties": {
+          "title": { "type": "string" },
+          "estimatedTime": { "type": "string" },
+          "keyPoints": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "thumbnailText": {
+      "type": "string",
+      "description": "サムネイルテキスト案（3-5語）"
+    }
+  }
+}

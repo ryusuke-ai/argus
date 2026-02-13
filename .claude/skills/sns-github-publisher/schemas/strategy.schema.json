@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GitHubStrategy",
+  "description": "Phase 1 出力: GitHub リポジトリのリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "projectName", "category", "competitors", "topics", "differentiators"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "projectName": {
+      "type": "string",
+      "description": "リポジトリ名"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["tool", "template", "config", "demo", "library", "mcp_server"]
+    },
+    "competitors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "stars", "strengths"],
+        "properties": {
+          "name": { "type": "string" },
+          "url": { "type": "string" },
+          "stars": { "type": "string" },
+          "strengths": { "type": "array", "items": { "type": "string" } },
+          "weaknesses": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "topics": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 10,
+      "items": { "type": "string" },
+      "description": "GitHub Topics"
+    },
+    "differentiators": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "targetUsers": {
+      "type": "string",
+      "description": "ターゲットユーザー"
+    }
+  }
+}

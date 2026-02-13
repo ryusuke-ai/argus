@@ -1,0 +1,52 @@
+{
+  "name": "argus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r --parallel test -- --watch",
+    "build": "pnpm -r build",
+    "dev": "pnpm build && pnpm --parallel --filter './apps/*' dev",
+    "dev:slack": "pnpm --filter @argus/slack-bot dev",
+    "dev:dashboard": "pnpm --filter @argus/dashboard dev",
+    "dev:orchestrator": "pnpm --filter @argus/agent-orchestrator dev",
+    "db:generate": "pnpm --filter @argus/db db:generate",
+    "db:migrate": "pnpm --filter @argus/db db:migrate",
+    "db:push": "pnpm --filter @argus/db db:push",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.0.0"
+  },
+  "packageManager": "pnpm@10.23.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@fal-ai/client": "^1.9.0",
+    "@google/generative-ai": "^0.24.1",
+    "@mermaid-js/mermaid-cli": "^11.12.0",
+    "@remotion/bundler": "^4.0.419",
+    "@remotion/cli": "^4.0.419",
+    "@remotion/renderer": "^4.0.419",
+    "@xmldom/xmldom": "^0.8.11",
+    "dotenv": "^17.2.4",
+    "openai": "^6.18.0",
+    "playwright": "^1.58.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.419",
+    "sharp": "^0.34.5",
+    "zod": "^4.3.6"
+  }
+}

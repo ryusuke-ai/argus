@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QiitaArticle",
+  "description": "Qiita 技術記事の出力スキーマ",
+  "type": "object",
+  "required": ["type", "title", "body", "tags", "metadata"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "qiita_article"
+    },
+    "title": {
+      "type": "string",
+      "description": "記事タイトル（20-36文字、ターゲット明示）",
+      "maxLength": 36
+    },
+    "body": {
+      "type": "string",
+      "description": "Markdown 本文"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "タグ名"
+          },
+          "versions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": []
+          }
+        }
+      },
+      "maxItems": 5,
+      "description": "タグ（最大5個）"
+    },
+    "private": {
+      "type": "boolean",
+      "default": false,
+      "description": "限定公開"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["wordCount", "category", "targetLevel"],
+      "properties": {
+        "wordCount": {
+          "type": "integer",
+          "description": "本文の文字数"
+        },
+        "targetLevel": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"],
+          "description": "ターゲット読者レベル"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["tutorial", "tips", "howto", "comparison"],
+          "description": "記事カテゴリ"
+        }
+      }
+    }
+  }
+}

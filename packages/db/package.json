@@ -1,0 +1,37 @@
+{
+  "name": "@argus/db",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "db:generate": "NODE_OPTIONS='--env-file=../../.env' drizzle-kit generate",
+    "db:migrate": "NODE_OPTIONS='--env-file=../../.env' drizzle-kit migrate",
+    "db:push": "NODE_OPTIONS='--env-file=../../.env' drizzle-kit push"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.0",
+    "vitest": "^4.0.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,30 @@
+けいふぉんと (keifont)
+======================
+
+配布元: すもももじ (https://font.sumomo.ne.jp/font_1.html)
+ライセンス: Apache License 2.0
+
+このフォントは「源ノ角ゴシック」と「M+ OUTLINE FONTS」を元に作成された
+「源真ゴシック」をベースに、さらに変更を加えて作られています。
+
+---
+
+Apache License 2.0 に基づき、以下の条件で使用・再配布が許可されています：
+- 商用利用可
+- 改変可
+- 再配布可
+
+詳細なライセンス条文は以下を参照してください：
+https://www.apache.org/licenses/LICENSE-2.0
+
+---
+
+元となるフォントのライセンス：
+
+■ 源ノ角ゴシック (Source Han Sans)
+Copyright (c) 2014 Adobe Systems Incorporated. All Rights Reserved.
+Licensed under the SIL Open Font License, Version 1.1
+
+■ M+ OUTLINE FONTS
+Licensed under the M+ FONTS LICENSE
+https://mplus-fonts.osdn.jp/about.html

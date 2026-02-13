@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XStrategy",
+  "description": "Phase 1 出力: X 投稿のリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "topic", "category", "postType", "angle"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": {
+      "type": "string",
+      "description": "投稿のテーマ"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["news", "experience", "tips", "code", "summary", "discussion", "youtube_clip"],
+      "description": "投稿カテゴリ"
+    },
+    "postType": {
+      "type": "string",
+      "enum": ["single", "thread"],
+      "description": "投稿タイプ"
+    },
+    "angle": {
+      "type": "string",
+      "description": "投稿の角度・切り口"
+    },
+    "trendContext": {
+      "type": "string",
+      "description": "関連するトレンドの文脈"
+    },
+    "targetEngagement": {
+      "type": "string",
+      "enum": ["reply", "bookmark", "profile_click"],
+      "description": "主に狙うエンゲージメントタイプ"
+    }
+  }
+}

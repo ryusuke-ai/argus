@@ -1,0 +1,171 @@
+{
+  "defaultAspectRatio": "16:9",
+  "supportedAspectRatios": ["1:1", "16:9", "9:16", "4:3", "3:4", "21:9"],
+  "model": "gemini-3-pro-image-preview",
+  "patterns": {
+    "thumbnail": {
+      "name": "サムネイル",
+      "description": "YouTube/ブログのサムネイル、アイキャッチ画像",
+      "defaultMode": "anime-wow",
+      "basePrompt": "【全体設定】YouTubeサムネイル、アスペクト比16:9。超エネルギッシュで高品質な日本製アニメイラストレーションスタイル。視聴者の目を引くクリックベイト風の派手な構図。彩度が高く、ポップアート要素を取り入れた賑やかな画面作り。\n\n【テキスト要素】画面の最も目立つ位置（上部または中央）に、極太でインパクトのあるフォントを使って以下のテキストを配置する。テキスト内容：「{{title}}」。入力されたタイトルの雰囲気に合わせて、テキストの色（グラデーションや蛍光色）、装飾（立体感、縁取り、影）、配置を最適化すること。タイトルが長い場合は、バランスよく改行して配置すること。\n\n【メインキャラクター】画面中央、または少し左右に配置された、最高に可愛いアニメスタイルの女子アイドル。キラキラした瞳でカメラ目線。ポーズは非常にエネルギッシュで躍動感がある（例：タイトルを指差す、両手を広げる、ジャンプするなど）。彼女の衣装と髪型は、入力されたタイトルのテーマやキーワードから連想される要素を盛り込んだ、ステージ衣装風のアレンジにする。\n\n【背景と小道具】タイトルのテーマを抽象的に表現した、賑やかで奥行きのある背景。集中線、ハーフトーンドット、キラキラエフェクトを多用し、視線を中央に集める。キャラクターの周囲には、タイトルに関連する象徴的なアイテム、アイコン、矢印、紙吹雪、漫符などが多数浮遊しており、画面の密度と楽しさを高めている。\n\n【ライティングと雰囲気】フラットなアニメ塗りだが、リッチな質感。全体的に明るくポジティブな光。",
+      "animeOptionalSchema": {
+        "objects": {
+          "type": "array",
+          "description": "登場させたいオブジェクト（例: [\"PC\", \"スマホ\", \"チャット画面\"]）",
+          "example": ["ロボット", "PC", "チャット画面"]
+        },
+        "background": {
+          "type": "string",
+          "description": "背景の具体的な説明（例: \"サイバー空間、グリッド\"）",
+          "example": "サイバー空間、青いグリッド、データの流れ"
+        },
+        "characterStyle": {
+          "type": "string",
+          "description": "キャラクターの衣装・髪型（例: \"白衣の研究者風\"）",
+          "example": "白衣の研究者風、ポニーテール"
+        },
+        "colorTheme": {
+          "type": "string",
+          "description": "色彩テーマ（例: \"青と紫のネオン\"）",
+          "example": "青と紫のネオン、サイバーパンク調"
+        }
+      },
+      "modes": {
+        "anime-wow": {
+          "name": "アニメ・驚き",
+          "description": "アニメ調の驚き・Wow感のあるサムネイル",
+          "optionalParams": ["objects", "background", "characterStyle", "colorTheme"],
+          "promptTemplate": "【全体設定】YouTubeサムネイル、アスペクト比16:9。超エネルギッシュで高品質な日本製アニメイラストレーションスタイル。視聴者の目を引くクリックベイト風の派手な構図。彩度が高く、ポップアート要素を取り入れた賑やかな画面作り。\n\n【レイアウト・構図】画面を左右に分割した構図。左側（画面の40〜50%）にテキスト要素を配置し、右側（画面の50〜60%）にメインキャラクターを大きく配置する。\n\n【テキスト要素】画面左側に、極太でインパクトのあるフォントを使って以下のテキストを縦に積み上げるように配置する。テキスト内容：「{{title}}」。テキストの色はグラデーションや蛍光色で、立体感・縁取り・影で装飾。タイトルが長い場合は、バランスよく改行して左側エリア内に収める。\n\n【メインキャラクター】画面右側に大きく配置された、最高に可愛いアニメスタイルの女子アイドル。キラキラした瞳でカメラ目線、『驚き顔』で口を大きく開けた表情。ポーズは両手を頬に当てたり、驚いて後ろにのけぞるような躍動感のあるポーズ。{{#characterStyle}}衣装と髪型：{{characterStyle}}。{{/characterStyle}}{{^characterStyle}}衣装と髪型は、タイトルのテーマから連想される要素を盛り込んだステージ衣装風。{{/characterStyle}}キャラクターは画面右端から少しはみ出すくらい大きく描く。\n\n【背景と小道具】{{#background}}背景：{{background}}。{{/background}}{{^background}}タイトルのテーマを抽象的に表現した、賑やかで奥行きのある背景。{{/background}}集中線、ハーフトーンドット、キラキラエフェクト、ビックリマーク、稲妻エフェクトを多用。{{#objects}}キャラクターの周囲に配置するオブジェクト：{{objects}}。これらを画面内に効果的に配置する。{{/objects}}{{^objects}}キャラクターの周囲には、タイトルに関連する象徴的なアイテム、アイコン、紙吹雪、漫符などが多数浮遊。{{/objects}}\n\n【ライティングと雰囲気】フラットなアニメ塗りだが、リッチな質感。全体的に明るくポジティブな光。{{#colorTheme}}カラーパレット：{{colorTheme}}。{{/colorTheme}}{{^colorTheme}}驚きを強調するような鮮やかなカラーパレット。{{/colorTheme}}"
+        },
+        "anime-impact": {
+          "name": "アニメ・衝撃",
+          "description": "アニメ調の衝撃・インパクト重視のサムネイル",
+          "optionalParams": ["objects", "background", "characterStyle", "colorTheme"],
+          "promptTemplate": "【全体設定】YouTubeサムネイル、アスペクト比16:9。超エネルギッシュで高品質な日本製アニメイラストレーションスタイル。視聴者の目を引くクリックベイト風の派手な構図。彩度が高く、ポップアート要素を取り入れた賑やかな画面作り。\n\n【テキスト要素】画面の最も目立つ位置（上部または中央）に、極太でインパクトのあるフォントを使って以下のテキストを配置する。テキスト内容：「{{title}}」。テキストは赤・黄色・オレンジなど暖色系のグラデーションで、強烈な立体感・太い縁取り・ドロップシャドウで装飾。タイトルが長い場合は、バランスよく改行して配置すること。\n\n【メインキャラクター】画面中央または少し左右に配置された、最高に可愛いアニメスタイルの女子アイドル。キラキラした瞳でカメラ目線、『ドヤ顔』または『自信満々の笑顔』。ポーズはタイトルを指差す、腕を組む、またはパワフルに拳を握るような躍動感のあるポーズ。{{#characterStyle}}衣装と髪型：{{characterStyle}}。{{/characterStyle}}{{^characterStyle}}衣装と髪型は、タイトルのテーマから連想される要素を盛り込んだステージ衣装風。{{/characterStyle}}\n\n【背景と小道具】{{#background}}背景：{{background}}。{{/background}}{{^background}}タイトルのテーマを抽象的に表現した、賑やかで奥行きのある背景。{{/background}}強烈な集中線、爆発エフェクト、炎のような効果、ハーフトーンドットを多用。{{#objects}}キャラクターの周囲に配置するオブジェクト：{{objects}}。これらを画面内に効果的に配置する。{{/objects}}{{^objects}}キャラクターの周囲には、タイトルに関連する象徴的なアイテム、矢印、衝撃波、漫符などが多数浮遊。{{/objects}}\n\n【ライティングと雰囲気】フラットなアニメ塗りだが、リッチな質感。コントラスト強めの劇的なライティング。{{#colorTheme}}カラーパレット：{{colorTheme}}。{{/colorTheme}}{{^colorTheme}}暖色系を基調とした力強いカラーパレット。{{/colorTheme}}"
+        },
+        "anime-pop": {
+          "name": "アニメ・ポップ",
+          "description": "アニメ調の楽しい・テンション高めのサムネイル",
+          "optionalParams": ["objects", "background", "characterStyle", "colorTheme"],
+          "promptTemplate": "【全体設定】YouTubeサムネイル、アスペクト比16:9。超エネルギッシュで高品質な日本製アニメイラストレーションスタイル。視聴者の目を引くクリックベイト風の派手な構図。彩度が高く、ポップアート要素を取り入れた賑やかな画面作り。\n\n【レイアウト・構図】画面を左右に分割した構図。左側（画面の40〜50%）にテキスト要素を配置し、右側（画面の50〜60%）にメインキャラクターを大きく配置する。\n\n【テキスト要素】画面左側に、極太でインパクトのあるフォントを使って以下のテキストを縦に積み上げるように配置する。テキスト内容：「{{title}}」。テキストはカラフルなレインボーグラデーションや蛍光ピンク・イエロー・シアンで、ポップな装飾（星・ハート・キラキラ付き）。タイトルが長い場合は、バランスよく改行して左側エリア内に収める。\n\n【メインキャラクター】画面右側に大きく配置された、最高に可愛いアニメスタイルの女子アイドル。キラキラした瞳でカメラ目線、『最高の笑顔』でピースサインやウィンク。ポーズは両手を広げる、ジャンプする、ハートを作るなど楽しさ全開の躍動感のあるポーズ。{{#characterStyle}}衣装と髪型：{{characterStyle}}。{{/characterStyle}}{{^characterStyle}}衣装と髪型は、タイトルのテーマから連想される要素を盛り込んだ、カラフルでキュートなステージ衣装風。{{/characterStyle}}キャラクターは画面右端から少しはみ出すくらい大きく描く。\n\n【背景と小道具】{{#background}}背景：{{background}}。{{/background}}{{^background}}タイトルのテーマを抽象的に表現した、賑やかで奥行きのある背景。{{/background}}パステルカラーの集中線、ハート、星、音符、キラキラエフェクトを多用。{{#objects}}キャラクターの周囲に配置するオブジェクト：{{objects}}。これらを画面内に効果的に配置する。{{/objects}}{{^objects}}キャラクターの周囲には、タイトルに関連する象徴的なアイテム、紙吹雪、風船、花びら、漫符などが多数浮遊。{{/objects}}\n\n【ライティングと雰囲気】フラットなアニメ塗りだが、リッチな質感。全体的に明るくハッピーな光。{{#colorTheme}}カラーパレット：{{colorTheme}}。{{/colorTheme}}{{^colorTheme}}パステル調やネオンカラーを基調としたポップなカラーパレット。{{/colorTheme}}"
+        },
+        "anime-bright": {
+          "name": "アニメ・輝き",
+          "description": "アニメ調の成功・夢・未来の輝きを表現するサムネイル",
+          "optionalParams": ["objects", "background", "characterStyle", "colorTheme"],
+          "promptTemplate": "【全体設定】YouTubeサムネイル、アスペクト比16:9。超エネルギッシュで高品質な日本製アニメイラストレーションスタイル。視聴者の目を引くクリックベイト風の派手な構図。彩度が高く、ポップアート要素を取り入れた賑やかな画面作り。\n\n【テキスト要素】画面の最も目立つ位置（上部または中央）に、極太でインパクトのあるフォントを使って以下のテキストを配置する。テキスト内容：「{{title}}」。テキストはゴールド・シルバー・白のグラデーションで、輝くような光沢感・立体感・光のエフェクト付き。タイトルが長い場合は、バランスよく改行して配置すること。\n\n【メインキャラクター】画面中央または少し左右に配置された、最高に可愛いアニメスタイルの女子アイドル。キラキラした瞳でカメラ目線、『希望に満ちた笑顔』または『夢見るような表情』。ポーズは空に手を伸ばす、光に包まれる、または未来を見据えるような前向きで躍動感のあるポーズ。{{#characterStyle}}衣装と髪型：{{characterStyle}}。{{/characterStyle}}{{^characterStyle}}衣装と髪型は、タイトルのテーマから連想される要素を盛り込んだ、上品で輝かしいステージ衣装風。{{/characterStyle}}\n\n【背景と小道具】{{#background}}背景：{{background}}。{{/background}}{{^background}}タイトルのテーマを抽象的に表現した、賑やかで奥行きのある背景。{{/background}}光の放射線、レンズフレア、ゴールドのキラキラエフェクト、上昇する光の粒子を多用。{{#objects}}キャラクターの周囲に配置するオブジェクト：{{objects}}。これらを画面内に効果的に配置する。{{/objects}}{{^objects}}キャラクターの周囲には、タイトルに関連する象徴的なアイテム、王冠、トロフィー、星、羽根などが多数浮遊。{{/objects}}\n\n【ライティングと雰囲気】フラットなアニメ塗りだが、リッチな質感。後ろから差し込むような神々しいバックライト。{{#colorTheme}}カラーパレット：{{colorTheme}}。{{/colorTheme}}{{^colorTheme}}ゴールド・白・淡いブルーを基調とした輝かしいカラーパレット。{{/colorTheme}}"
+        },
+        "formal-default": {
+          "name": "フォーマル・抽象",
+          "description": "抽象的・モダンデジタルアート風のサムネイル。ユーザーが詳細プロンプトを入力する前提",
+          "requiresDetailedPrompt": true,
+          "promptSchema": {
+            "layout_schema": {
+              "composition_type": "Asymmetrical Balance (Left-heavy subject, Right-heavy background element)",
+              "visual_flow": "Eye moves from Left Subject -> Center Object -> Right Background Entity",
+              "aspect_ratio": "16:9"
+            },
+            "art_direction": {
+              "style": "Abstract, Modern Digital Art, Flat Vector with Texture",
+              "color_palette": "{{テーマに合わせたカラーコード}}",
+              "mood": "{{全体の雰囲気}}"
+            },
+            "scene_elements": {
+              "primary_subject_left": {
+                "role": "{{左側の主役}}",
+                "pose": "Looking at interaction_object, hands {{手の動作}}",
+                "expression": "{{表情}}",
+                "abstraction_level": "High (Silhouette or simplified shapes)"
+              },
+              "secondary_entity_right": {
+                "role": "{{右奥の存在}}",
+                "position": "Looming in background right, large"
+              },
+              "interaction_object": {
+                "type": "{{中央のアイテム}}",
+                "visual_details": "Simple geometric representation, glowing or highlighted"
+              }
+            },
+            "text_overlays": {
+              "badge_top_left": "{{左上バッジ}}",
+              "title_bottom": "{{下部タイトル}}"
+            }
+          },
+          "promptTemplate": "YouTube thumbnail, {{style}}, {{mood}} atmosphere. [Left] A simplified {{primary_subject}} with {{expression}} expression, {{pose}}. [Center] Focused on a {{interaction_object}}. [Right] A large abstract {{secondary_entity}} in the background. {{color_palette}} color scheme. Minimalist, geometric shapes.\n\n{{prompt}}"
+        },
+        "real-default": {
+          "name": "リアル・写真風",
+          "description": "リアル写真風のサムネイル。ユーザーが詳細プロンプトを入力する前提",
+          "requiresDetailedPrompt": true,
+          "promptSchema": {
+            "meta_info": {
+              "media_type": "YouTube Thumbnail / Blog Header / Instagram Ad / Movie Poster",
+              "aspect_ratio": "16:9",
+              "primary_category": "Tech / Beauty / Gaming / Business / Vlog"
+            },
+            "visual_content": {
+              "main_subject": {
+                "type": "Human / Animal / Object / Abstract 3D",
+                "count": "人数や個数",
+                "description": "被写体の詳細な特徴",
+                "attire_and_accessories": "服装、持ち物など",
+                "pose_and_action": "ポーズ、手の動き、視線",
+                "facial_expression": "表情、感情"
+              },
+              "background_environment": {
+                "setting_type": "Indoor / Outdoor / Studio / Abstract Gradient",
+                "location_details": "場所の詳細",
+                "key_props": "背景にある重要なオブジェクト",
+                "time_of_day": "Day / Night / Golden Hour / Artificial Light",
+                "vibe_keywords": "雰囲気キーワード"
+              }
+            },
+            "text_and_graphics": {
+              "has_text": true,
+              "text_overlays": {
+                "content": "テキスト内容",
+                "language": "ja/en",
+                "color": "文字色",
+                "style": "Bold / Serif / Handwritten / Glowing / 3D effect",
+                "position": "配置場所",
+                "size_impact": "Dominant / Subtitle / Label"
+              },
+              "graphic_elements": {
+                "icons_and_logos": "アイコンやロゴの説明",
+                "shapes_and_effects": "矢印、集中線、枠線、パーティクル、ぼかし効果など"
+              }
+            },
+            "design_composition": {
+              "color_palette": ["主要色1", "主要色2", "アクセントカラー"],
+              "composition_technique": "Rule of Thirds / Centered / Symmetrical",
+              "lighting_style": "cinematic lighting / natural / neon"
+            }
+          },
+          "promptTemplate": "{{prompt}}"
+        }
+      }
+    },
+    "illustration": {
+      "name": "説明画像",
+      "description": "比較画像、グラレコ、カスタム",
+      "defaultMode": "comparison",
+      "modes": {
+        "comparison": {
+          "name": "比較図",
+          "description": "対比・比較をインフォグラフィック風に視覚化",
+          "promptTemplate": "以下の比較内容をインフォグラフィック風の説明画像として作成してください：{{items}}。左右または上下に分割したレイアウトで、それぞれの特徴を視覚的に対比させてください。アイコン・イラストを効果的に使い、メリット・デメリットや違いが一目でわかるようにしてください。色は対比を強調するために暖色系と寒色系を使い分けてください。すべてのテキストは日本語で、読みやすいサイズで配置してください。"
+        },
+        "graphrec": {
+          "name": "グラフィックレコーディング",
+          "description": "手描き風のグラレコスタイルで情報を視覚化",
+          "promptTemplate": "あなたは熟練した『グラフィックレコーダー』です。以下の内容を、手描きのイラスト・アイコン・手書き文字を組み合わせた『グラフィックレコーディング』スタイルで一枚の画像にまとめてください。\n\n【内容】{{content}}\n\n【デザイン指示】\n- 媒体: 大きな模造紙またはホワイトボードに描かれたアナログな質感。紙の繊維やマーカーのかすれを表現\n- タッチ: プロのファシリテーターが使う水性マーカーや色鉛筆による温かみのある手描きスタイル。完璧な直線ではなく人間味のある揺らぎを持たせる\n- テキスト: タイトル・見出し・本文すべて手書きの日本語で描画。活字フォントは使用しない。重要キーワードは太字マーカーで大きく、補足は細ペンで小さく\n- 色彩: 基本は黒とグレーの線画。強調色として温かみのある黄色・落ち着いた青・アクセントの赤など2〜3色に絞る\n- 構成: 中心テーマを真ん中に配置し、主要トピック（3〜5点）を周囲に展開。矢印や枠線で視線を論理的に誘導\n- メタファー: 各トピックを象徴する親しみやすいアイコン（成長＝芽、課題＝壁、アイデア＝電球など）を使用"
+        },
+        "custom": {
+          "name": "カスタム",
+          "description": "自由記述でプロンプトを指定",
+          "promptTemplate": "以下の内容を高品質なイラスト画像として作成してください。手描き風の温かみのあるタッチで、親しみやすく見やすいデザインにしてください。テキストは日本語で、読みやすいサイズで配置してください。\n\n【内容】{{prompt}}"
+        }
+      }
+    }
+  }
+}

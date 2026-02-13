@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NoteStructure",
+  "description": "Phase 2 出力: note 記事の構成設計",
+  "type": "object",
+  "required": ["version", "hook", "sections", "paidBreakpoint"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "hook": {
+      "type": "object",
+      "required": ["opening", "promise"],
+      "properties": {
+        "opening": {
+          "type": "string",
+          "description": "共感を呼ぶ導入文"
+        },
+        "promise": {
+          "type": "string",
+          "description": "読者への約束（この記事で得られること）"
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["heading", "keyPoints", "emotionalGoal"],
+        "properties": {
+          "heading": { "type": "string" },
+          "keyPoints": { "type": "array", "items": { "type": "string" } },
+          "emotionalGoal": {
+            "type": "string",
+            "description": "このセクションで読者に感じてほしいこと"
+          }
+        }
+      }
+    },
+    "paidBreakpoint": {
+      "type": "object",
+      "required": ["afterSection", "teaser"],
+      "properties": {
+        "afterSection": {
+          "type": "integer",
+          "description": "有料になるセクション番号（0-indexed）"
+        },
+        "teaser": {
+          "type": "string",
+          "description": "有料部分への導線テキスト"
+        }
+      }
+    },
+    "estimatedLength": {
+      "type": "integer",
+      "minimum": 2000,
+      "maximum": 5000
+    }
+  }
+}

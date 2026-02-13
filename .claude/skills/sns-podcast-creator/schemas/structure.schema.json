@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PodcastStructure",
+  "description": "Phase 2 出力: ポッドキャストエピソードの構成設計",
+  "type": "object",
+  "required": ["version", "hook", "chapters", "closing"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "hook": {
+      "type": "object",
+      "required": ["theme", "whyItMatters"],
+      "properties": {
+        "theme": {
+          "type": "string",
+          "description": "テーマ紹介テキスト"
+        },
+        "whyItMatters": {
+          "type": "string",
+          "description": "なぜこのテーマが重要か"
+        }
+      }
+    },
+    "chapters": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["title", "keyPoints", "estimatedMinutes"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "具体的なチャプタータイトル"
+          },
+          "keyPoints": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "estimatedMinutes": {
+            "type": "number",
+            "minimum": 3,
+            "maximum": 7
+          }
+        }
+      }
+    },
+    "closing": {
+      "type": "object",
+      "required": ["summary", "actionItem"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "要点の振り返り"
+        },
+        "actionItem": {
+          "type": "string",
+          "description": "リスナーへのアクション提案"
+        },
+        "nextEpisodeHint": {
+          "type": "string",
+          "description": "次回予告"
+        }
+      }
+    },
+    "totalEstimatedMinutes": {
+      "type": "number",
+      "minimum": 15,
+      "maximum": 30
+    }
+  }
+}

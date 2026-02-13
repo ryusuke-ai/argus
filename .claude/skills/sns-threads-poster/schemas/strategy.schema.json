@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThreadsStrategy",
+  "description": "Phase 1 出力: Threads 投稿のリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "topic", "category", "angle", "differentiationFromX"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["tips", "news", "experience", "discussion", "behind_the_scenes", "hot_take"]
+    },
+    "angle": {
+      "type": "string",
+      "description": "投稿の角度"
+    },
+    "differentiationFromX": {
+      "type": "string",
+      "description": "X の投稿とどう差別化するか"
+    },
+    "postType": {
+      "type": "string",
+      "enum": ["single", "carousel"]
+    }
+  }
+}

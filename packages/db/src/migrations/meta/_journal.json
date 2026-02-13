@@ -1,0 +1,48 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1770226715771,
+      "tag": "0000_lumpy_fantastic_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770566531449,
+      "tag": "0001_workable_otto_octavius",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770729387427,
+      "tag": "0002_thin_sheva_callister",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770773487081,
+      "tag": "0003_milky_daredevil",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1770801826425,
+      "tag": "0004_steady_moon_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770906522525,
+      "tag": "0005_goofy_shriek",
+      "breakpoints": true
+    }
+  ]
+}

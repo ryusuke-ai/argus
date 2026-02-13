@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TikTok Video",
+  "type": "object",
+  "required": ["type", "format", "title", "description", "script", "metadata"],
+  "properties": {
+    "type": { "const": "tiktok_video" },
+    "format": { "enum": ["short", "standard"] },
+    "title": { "type": "string", "maxLength": 150 },
+    "description": { "type": "string", "maxLength": 2200 },
+    "script": {
+      "type": "object",
+      "required": ["hook", "body", "cta"],
+      "properties": {
+        "hook": {
+          "type": "object",
+          "required": ["duration", "narration", "textOverlay", "visualDirection"],
+          "properties": {
+            "duration": { "type": "string" },
+            "narration": { "type": "string" },
+            "textOverlay": { "type": "string" },
+            "visualDirection": { "type": "string" }
+          }
+        },
+        "body": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["duration", "narration", "textOverlay", "visualDirection"],
+            "properties": {
+              "duration": { "type": "string" },
+              "narration": { "type": "string" },
+              "textOverlay": { "type": "string" },
+              "visualDirection": { "type": "string" }
+            }
+          }
+        },
+        "cta": {
+          "type": "object",
+          "required": ["duration", "narration", "textOverlay", "visualDirection"],
+          "properties": {
+            "duration": { "type": "string" },
+            "narration": { "type": "string" },
+            "textOverlay": { "type": "string" },
+            "visualDirection": { "type": "string" }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["category", "estimatedDuration"],
+      "properties": {
+        "category": { "enum": ["tutorial", "before_after", "tips", "myth_busting", "day_in_life", "reaction", "series"] },
+        "estimatedDuration": { "type": "integer", "minimum": 15, "maximum": 180 },
+        "hashtags": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },
+        "suggestedSound": { "type": "string" },
+        "scheduledHour": { "type": "integer", "minimum": 0, "maximum": 23 }
+      }
+    }
+  }
+}

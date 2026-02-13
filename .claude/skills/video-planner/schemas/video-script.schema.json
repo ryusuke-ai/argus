@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Video Script Schema",
+  "description": "video-explainerでレンダリング可能な動画スクリプトを定義するスキーマ",
+  "type": "object",
+  "required": ["title", "scenes"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "動画タイトル"
+    },
+    "bgm": {
+      "type": "string",
+      "description": "BGMファイル名（assets/bgm/内、拡張子なし）",
+      "default": "bgm"
+    },
+    "bgmVolume": {
+      "type": "number",
+      "description": "BGM音量（0.0〜1.0）",
+      "default": 0.15,
+      "minimum": 0,
+      "maximum": 1
+    },
+    "scenes": {
+      "type": "array",
+      "description": "シーン配列",
+      "items": {
+        "type": "object",
+        "required": ["text", "audio", "character"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "字幕テキスト"
+          },
+          "audio": {
+            "type": "string",
+            "description": "音声ファイルパス（例: ./parts/001_tsukuyomi.wav）"
+          },
+          "character": {
+            "type": "string",
+            "description": "キャラクター指定（tsukuyomi, ginga, tsukuyomi/angry等）"
+          },
+          "image": {
+            "type": "string",
+            "description": "説明画像パス（例: ./images/title.webp）"
+          },
+          "transition": {
+            "type": "string",
+            "enum": ["fade", "slideLeft", "slideRight"],
+            "description": "トランジション効果"
+          },
+          "highlight": {
+            "type": "object",
+            "required": ["text", "sound"],
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "要点を伝える完成度のある文（10-20文字程度）"
+              },
+              "sound": {
+                "type": "string",
+                "enum": ["shakin", "pa", "jean"],
+                "description": "効果音"
+              }
+            },
+            "description": "subsectionの要点ハイライト（効果音必須）"
+          },
+          "accent": {
+            "type": "string",
+            "enum": ["accent-1", "accent-2"],
+            "description": "効果音"
+          }
+        }
+      }
+    },
+    "_imageInstructions": {
+      "type": "array",
+      "description": "画像作成指示（参照用、レンダリング時は無視される）",
+      "items": {
+        "type": "object",
+        "required": ["filename", "description", "skill"],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "出力ファイル名（例: title.webp）"
+          },
+          "description": {
+            "type": "string",
+            "description": "画像の詳細な説明"
+          },
+          "skill": {
+            "type": "string",
+            "enum": ["svg-header-image", "mermaid-to-webp", "svg-diagram"],
+            "description": "使用するスキル"
+          },
+          "mermaidType": {
+            "type": "string",
+            "enum": ["flowchart", "sequenceDiagram", "classDiagram", "erDiagram"],
+            "description": "Mermaid図のタイプ（mermaid-to-webp使用時）"
+          }
+        }
+      }
+    }
+  }
+}

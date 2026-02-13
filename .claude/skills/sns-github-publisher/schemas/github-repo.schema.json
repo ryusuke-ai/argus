@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GitHub Repository",
+  "type": "object",
+  "required": ["type", "name", "description", "readme", "topics", "visibility", "license", "metadata"],
+  "properties": {
+    "type": { "const": "github_repo" },
+    "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "description": { "type": "string", "maxLength": 350 },
+    "readme": { "type": "string" },
+    "topics": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 20,
+      "items": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+    },
+    "visibility": { "enum": ["public", "private"] },
+    "license": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "required": ["category"],
+      "properties": {
+        "category": { "enum": ["tool", "template", "config", "demo", "library", "mcp_server"] },
+        "techStack": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "socialPreviewDescription": { "type": "string" }
+      }
+    }
+  }
+}

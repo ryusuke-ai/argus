@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TikTokStructure",
+  "description": "Phase 2 出力: TikTok 台本の構成設計",
+  "type": "object",
+  "required": ["version", "hook", "scenes", "cta", "isLoopable"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "hook": {
+      "type": "object",
+      "required": ["type", "text", "durationSeconds"],
+      "properties": {
+        "type": { "type": "string" },
+        "text": { "type": "string" },
+        "durationSeconds": { "type": "number", "maximum": 3 }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["description", "durationSeconds", "textOverlay"],
+        "properties": {
+          "description": { "type": "string" },
+          "durationSeconds": { "type": "number" },
+          "textOverlay": {
+            "type": "object",
+            "properties": {
+              "main": { "type": "string" },
+              "sub": { "type": "string" },
+              "position": { "type": "string", "enum": ["center", "top", "bottom"] }
+            }
+          }
+        }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "type": "string", "enum": ["follow", "comment", "series", "save"] },
+        "text": { "type": "string" }
+      }
+    },
+    "isLoopable": {
+      "type": "boolean",
+      "description": "ループ構成かどうか"
+    },
+    "totalDurationSeconds": {
+      "type": "number",
+      "description": "合計秒数"
+    }
+  }
+}

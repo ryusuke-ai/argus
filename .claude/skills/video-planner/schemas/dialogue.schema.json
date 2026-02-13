@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Video Dialogue Schema",
+  "description": "動画のセリフ・ダイアログを定義するスキーマ",
+  "type": "object",
+  "required": ["mode", "segments"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["dialogue", "narration"],
+      "description": "動画モード"
+    },
+    "segments": {
+      "type": "array",
+      "description": "セリフ一覧",
+      "items": {
+        "type": "object",
+        "required": ["speaker", "text"],
+        "properties": {
+          "speaker": {
+            "type": "string",
+            "description": "話者（tsukuyomi, ginga）"
+          },
+          "text": {
+            "type": "string",
+            "description": "セリフテキスト（読み上げやすい長さ。長い場合は分割推奨）"
+          },
+          "sectionId": {
+            "type": "string",
+            "description": "所属セクションID"
+          },
+          "subsectionId": {
+            "type": "string",
+            "description": "所属サブセクションID"
+          },
+          "emotion": {
+            "type": "string",
+            "enum": ["default", "angry", "doubt", "love", "thinking", "surprised"],
+            "description": "感情・表情（tsukuyomiのみ）"
+          }
+        }
+      }
+    }
+  }
+}

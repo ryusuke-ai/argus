@@ -1,0 +1,23 @@
+{
+  "tsukuyomi": {
+    "ttsName": "つくよみちゃん",
+    "textBoxColor": "rgba(0, 40, 80, 0.9)",
+    "playbackRate": 1.0,
+    "fileId": "tsukuyomi"
+  },
+  "ginga": {
+    "ttsName": "AI声優-銀芽",
+    "textBoxColor": "rgba(60, 60, 60, 0.9)",
+    "playbackRate": 1.15,
+    "fileId": "ginga"
+  },
+  "default": {
+    "textBoxColor": "rgba(80, 20, 30, 0.9)",
+    "playbackRate": 1.0,
+    "fileId": "default"
+  },
+  "_ttsNameToFileId": {
+    "つくよみちゃん": "tsukuyomi",
+    "AI声優-銀芽": "ginga"
+  }
+}

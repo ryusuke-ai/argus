@@ -1,0 +1,190 @@
+{
+  "title": "2026年、AIが「身体」を手に入れた",
+  "subtitle": "スマホの次を狙う最新AIデバイス完全ガイド",
+  "theme": "2026年に登場する注目AIデバイスの全貌と、ポストスマホ時代の到来",
+  "tone": "tech",
+  "audience": "テクノロジーに関心のあるビジネスパーソン・エンジニア",
+  "totalSlides": 18,
+  "sections": [
+    {
+      "id": "opening",
+      "title": "表紙",
+      "displayTitle": "2026年、AIが「身体」を手に入れた",
+      "keyMessage": "2026年はAIがソフトウェアを飛び出し専用ハードウェアに宿る転換点となる",
+      "slideCount": 1,
+      "slides": [
+        {
+          "id": "slide-0-1",
+          "title": "表紙",
+          "purpose": "タイトルスライド",
+          "contentHints": ["2026年、AIが「身体」を手に入れた", "スマホの次を狙う最新AIデバイス完全ガイド"]
+        }
+      ]
+    },
+    {
+      "id": "landscape",
+      "title": "AIデバイスの現在地",
+      "displayTitle": "なぜ今AIデバイスなのか",
+      "keyMessage": "ChatGPTの月間ユーザーが4億人を超え、AIとの対話がスマホ画面に収まらなくなっている",
+      "slideCount": 2,
+      "slides": [
+        {
+          "id": "slide-1-1",
+          "title": "AIの進化がハードウェアを変える",
+          "purpose": "AIデバイスが生まれる背景を提示",
+          "contentHints": ["生成AIの爆発的普及（ChatGPT 4億ユーザー）", "スマホ画面操作の限界", "音声・視覚・身体性を持つAIへの需要"]
+        },
+        {
+          "id": "slide-1-2",
+          "title": "2026年AIデバイスカテゴリマップ",
+          "purpose": "全体像を俯瞰するマップ",
+          "contentHints": ["スマートグラス", "ウェアラブルAI", "AIコンパニオン", "エッジAIコンピュータ", "家庭用AIロボット"]
+        }
+      ]
+    },
+    {
+      "id": "smart-glasses",
+      "title": "AIスマートグラス",
+      "displayTitle": "目の前に広がるAIの世界",
+      "keyMessage": "GoogleがSamsung・Warby Parkerと組み、Gemini搭載の軽量AIグラスを2026年内に発売する",
+      "slideCount": 3,
+      "slides": [
+        {
+          "id": "slide-2-1",
+          "title": "Google AIグラス × Warby Parker",
+          "purpose": "本命プロダクトの詳細紹介",
+          "contentHints": ["Samsung・Gentle Monster・Warby Parkerとの3社提携", "Android XR + Gemini AI搭載", "オーディオ型とディスプレイ型の2ラインナップ", "度付きレンズ対応"]
+        },
+        {
+          "id": "slide-2-2",
+          "title": "2つのモデル：音声型 vs 表示型",
+          "purpose": "2モデルの違いを比較",
+          "contentHints": ["音声型: スピーカー+マイク+カメラでGeminiと対話", "表示型: レンズ内ディスプレイでナビ・翻訳を表示", "競合Ray-Ban Meta Gen2はバッテリー8時間"]
+        },
+        {
+          "id": "slide-2-3",
+          "title": "スマートグラス市場の競争構図",
+          "purpose": "市場全体のプレイヤーを俯瞰",
+          "contentHints": ["Google + Samsung陣営 vs Meta + Ray-Ban陣営", "Razer Project Motoko: デュアルカメラ＋フルAI", "2026年 日本市場にもRay-Ban Meta上陸予定"]
+        }
+      ]
+    },
+    {
+      "id": "openai-device",
+      "title": "OpenAI × Jony Ive のAIデバイス",
+      "displayTitle": "ポストスマホの最有力候補",
+      "keyMessage": "OpenAIがJony Ive率いるIOを買収し、スクリーンレスで文脈を理解するAIデバイスを2026年後半に投入する",
+      "slideCount": 3,
+      "slides": [
+        {
+          "id": "slide-3-1",
+          "title": "OpenAI初のハードウェア参入",
+          "purpose": "プロジェクトの全体像",
+          "contentHints": ["Sam Altman × Jony Ive（元Apple CDO）の共同開発", "IO社を買収してハードウェアチーム統合", "Foxconn製造、初期生産4000-5000万台規模"]
+        },
+        {
+          "id": "slide-3-2",
+          "title": "3つのデバイスコンセプト",
+          "purpose": "複数の開発中フォームファクターを紹介",
+          "contentHints": ["AIペン: 手書きノートをChatGPTに直接送信+音声対話", "AIイヤホン「Sweetpea」: リアルタイムアシスタント", "ポケットサイズ端末: スクリーンレス、カメラ+マイクで周囲を理解"]
+        },
+        {
+          "id": "slide-3-3",
+          "title": "「スマホより平和な」デバイス",
+          "purpose": "設計思想と社会的インパクト",
+          "contentHints": ["Altman: ユーザーはそのシンプルさに驚くだろう", "スクリーン依存からの脱却を目指す設計思想", "2026年後半に情報公開→発売予定"]
+        }
+      ]
+    },
+    {
+      "id": "edge-ai",
+      "title": "手のひらのAIスーパーコンピュータ",
+      "displayTitle": "クラウド不要のエッジAI",
+      "keyMessage": "Tiiny AI Pocket Labは300gの筐体に80GB RAM・190TOPSを搭載し、1200億パラメータのLLMを完全オフラインで動かす",
+      "slideCount": 3,
+      "slides": [
+        {
+          "id": "slide-4-1",
+          "title": "Tiiny AI Pocket Lab",
+          "purpose": "製品スペックと衝撃を伝える",
+          "contentHints": ["300g / 142×80×22mm のポケットサイズ", "80GB RAM + 1TB SSD", "CPU + NPU + dNPU = 190 INT8 TOPS", "120Bパラメータを毎秒20+トークンでオフライン推論"]
+        },
+        {
+          "id": "slide-4-2",
+          "title": "なぜエッジAIが重要か",
+          "purpose": "クラウドAIとの違いと利点を説明",
+          "contentHints": ["プライバシー: データが手元から出ない", "レイテンシ: ネットワーク遅延ゼロ", "コスト: API課金なしで無制限利用", "オフライン: 飛行機でも災害時でも動く"]
+        },
+        {
+          "id": "slide-4-3",
+          "title": "エッジAIの今後の展望",
+          "purpose": "市場のトレンドと可能性",
+          "contentHints": ["Kickstarter 2026年2月開始、早期価格$1,399", "Wi-Fi 6 (2.4Gbps) + Bluetooth 5.3対応", "開発者向けローカルAI開発環境としても注目"]
+        }
+      ]
+    },
+    {
+      "id": "wearable-companion",
+      "title": "AIウェアラブル＆コンパニオン",
+      "displayTitle": "身につける・一緒にいるAI",
+      "keyMessage": "CES 2026では$75のAIリングからアイトラッキング付きコンパニオンまで、AIが日常生活に溶け込むデバイスが続々登場した",
+      "slideCount": 3,
+      "slides": [
+        {
+          "id": "slide-5-1",
+          "title": "Pebble Index 01: $75のAIリング",
+          "purpose": "手軽な価格帯のAIウェアラブル紹介",
+          "contentHints": ["ボタンを押して話すだけでメモ・リマインダー登録", "Claude搭載のオフラインLLMがアプリ内で分析", "予約価格$75（出荷後$99）、2026年3月出荷"]
+        },
+        {
+          "id": "slide-5-2",
+          "title": "AIコンパニオン: Lepro Ami",
+          "purpose": "新しいカテゴリ「AIコンパニオン」の紹介",
+          "contentHints": ["8インチOLEDディスプレイ搭載", "アイトラッキングで目が合う体験", "仮想の友人が「本当にそこにいる」感覚を再現"]
+        },
+        {
+          "id": "slide-5-3",
+          "title": "記録する系AIデバイス",
+          "purpose": "ライフログ型デバイスの紹介",
+          "contentHints": ["SwitchBot AI Mindclip: 会話を録音・要約するラペルピン", "常時記録→AI要約のライフログ時代の到来", "プライバシーとの両立が最大の課題"]
+        }
+      ]
+    },
+    {
+      "id": "home-robots",
+      "title": "家庭用AIロボット",
+      "displayTitle": "AIロボットが家事をする時代",
+      "keyMessage": "LG CLOiDは洗濯物を畳み、Dreame Cyber Xは自力で階段を昇降する——家庭用ロボットがついに実用レベルに到達した",
+      "slideCount": 2,
+      "slides": [
+        {
+          "id": "slide-6-1",
+          "title": "CES 2026の注目ロボットたち",
+          "purpose": "主要製品を一覧紹介",
+          "contentHints": ["LG CLOiD: 洗濯畳み・キッチン作業をこなすヒューマノイド", "Dreame Cyber X: 4本脚で階段を自力昇降するロボット掃除機", "SwitchBot Onero H1: 衣類を拾い洗濯機に入れるヘルパーロボット"]
+        },
+        {
+          "id": "slide-6-2",
+          "title": "家庭用ロボットの進化ポイント",
+          "purpose": "なぜ今年が転換点なのかを解説",
+          "contentHints": ["AIビジョンによる環境認識の飛躍的向上", "マニピュレーション（物を掴む・畳む）技術の成熟", "2026年内に一般販売開始予定の製品が複数"]
+        }
+      ]
+    },
+    {
+      "id": "closing",
+      "title": "まとめと展望",
+      "displayTitle": "AIデバイス時代の歩き方",
+      "keyMessage": "2026年後半にOpenAI・Google・Metaの本命デバイスが出揃い、AIとの付き合い方そのものが変わる",
+      "slideCount": 1,
+      "slides": [
+        {
+          "id": "slide-7-1",
+          "title": "2026年後半が本番——注目すべきタイムライン",
+          "purpose": "全体のまとめと今後のウォッチポイント",
+          "contentHints": ["2026年前半: Pebble Index出荷、Tiiny AI Kickstarter", "2026年中盤: Google AIグラス発売", "2026年後半: OpenAI × Jony Iveデバイス公開", "「持つ」から「身につける」「一緒にいる」AIへの転換"]
+        }
+      ]
+    }
+  ]
+}

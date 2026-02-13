@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "files": [],
+  "references": [
+    { "path": "./packages/agent-core" },
+    { "path": "./packages/db" },
+    { "path": "./packages/knowledge" },
+    { "path": "./packages/knowledge-personal" },
+    { "path": "./packages/gmail" },
+    { "path": "./packages/google-calendar" },
+    { "path": "./packages/slack-canvas" },
+    { "path": "./packages/tiktok" },
+    { "path": "./apps/slack-bot" },
+    { "path": "./apps/dashboard" },
+    { "path": "./apps/agent-orchestrator" }
+  ]
+}

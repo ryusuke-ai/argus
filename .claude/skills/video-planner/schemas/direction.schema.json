@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Video Direction Schema",
+  "description": "動画の演出計画を定義するスキーマ",
+  "type": "object",
+  "required": ["scenes"],
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "description": "各シーン（セリフ）の演出情報。dialogue.jsonのsegmentsと同じ順序・数",
+      "items": {
+        "type": "object",
+        "required": ["index"],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "dialogue.jsonのsegmentsインデックス（0始まり）"
+          },
+          "image": {
+            "type": ["string", "null"],
+            "description": "説明画像ファイル名（例: title.webp）。nullまたは省略で画像なし"
+          },
+          "transition": {
+            "type": ["string", "null"],
+            "enum": ["fade", "slideLeft", "slideRight", null],
+            "description": "トランジション効果。話題の変わり目のみに指定"
+          },
+          "highlight": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "required": ["text", "sound"],
+                "properties": {
+                  "text": { "type": "string", "description": "要点を伝える完成度のある文（主語述語目的語を含む、10-20文字程度）" },
+                  "sound": { "type": "string", "enum": ["shakin", "pa", "jean"], "description": "効果音（必須）" }
+                }
+              }
+            ],
+            "description": "subsectionの要点をユーザーに伝えるハイライト。効果音必須。頻度は低め（subsectionごとに0-1個）"
+          },
+          "section": {
+            "type": ["string", "null"],
+            "description": "視聴者向けセクション名（2-6文字）。displayTitleを参照。セクションの最初のシーンにのみ指定"
+          },
+          "background": {
+            "type": ["string", "null"],
+            "description": "背景素材。アセット名（cherry, deepblue, dot, emphasis, hyperspace, kirakira, kokuban, love, mowamowa, planet, room, simple, skyblue, worries）、相対パス、またはHTTPS URL。nullでデフォルト背景"
+          }
+        }
+      }
+    },
+    "imageInstructions": {
+      "type": "array",
+      "description": "作成が必要な画像の指示一覧",
+      "items": {
+        "type": "object",
+        "required": ["filename", "description", "skill"],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "出力ファイル名（例: title.webp）"
+          },
+          "description": {
+            "type": "string",
+            "description": "画像の詳細な説明（スキルへの指示として使用）"
+          },
+          "skill": {
+            "type": "string",
+            "description": "使用するスキル名（svg-header-image, mermaid-to-webp, svg-diagram等）"
+          },
+          "options": {
+            "type": "object",
+            "description": "スキル固有のオプション（将来拡張用）",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Presentation Structure Schema",
+  "description": "プレゼン資料の構成を定義するスキーマ",
+  "type": "object",
+  "required": ["title", "tone", "sections"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "プレゼンタイトル"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "サブタイトル（任意）"
+    },
+    "theme": {
+      "type": "string",
+      "description": "テーマ（1文）"
+    },
+    "tone": {
+      "type": "string",
+      "enum": ["tech", "proposal", "education", "report"],
+      "description": "プレゼンのトーン"
+    },
+    "audience": {
+      "type": "string",
+      "description": "ターゲット聴衆"
+    },
+    "totalSlides": {
+      "type": "number",
+      "description": "総スライド数"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "slideCount", "keyMessage"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "セクションID（例: intro, problem, solution）"
+          },
+          "title": {
+            "type": "string",
+            "description": "セクションタイトル（内部用）"
+          },
+          "displayTitle": {
+            "type": "string",
+            "description": "聴衆に見せる見出し（8-20文字）"
+          },
+          "keyMessage": {
+            "type": "string",
+            "description": "このセクションで伝える核心メッセージ"
+          },
+          "slideCount": {
+            "type": "number",
+            "description": "このセクションのスライド数"
+          },
+          "slides": {
+            "type": "array",
+            "description": "スライド詳細ヒント",
+            "items": {
+              "type": "object",
+              "required": ["id", "title"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "スライドID"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "スライドタイトル"
+                },
+                "purpose": {
+                  "type": "string",
+                  "description": "このスライドの役割"
+                },
+                "contentHints": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "内容ヒント"
+                },
+                "suggestedLayout": {
+                  "type": "string",
+                  "enum": ["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote", "key-number", "timeline", "icon-grid"],
+                  "description": "推奨レイアウト（Phase 2 でのレイアウト選択ガイド）"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

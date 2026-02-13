@@ -1,0 +1,23 @@
+[api]
+enabled = false
+
+[db]
+port = 5432
+
+[db.pooler]
+enabled = false
+
+[studio]
+enabled = false
+
+[auth]
+enabled = false
+
+[storage]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false

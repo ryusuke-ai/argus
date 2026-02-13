@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZennArticle",
+  "description": "Zenn 技術記事の出力スキーマ",
+  "type": "object",
+  "required": ["type", "title", "emoji", "articleType", "topics", "body", "metadata"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "zenn_article"
+    },
+    "title": {
+      "type": "string",
+      "description": "記事タイトル（技術名 + 具体的内容）",
+      "maxLength": 70
+    },
+    "emoji": {
+      "type": "string",
+      "description": "アイキャッチ用絵文字（1文字）"
+    },
+    "articleType": {
+      "type": "string",
+      "enum": ["tech", "idea"],
+      "description": "記事タイプ"
+    },
+    "topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 5,
+      "description": "トピックタグ（最大5個）"
+    },
+    "body": {
+      "type": "string",
+      "description": "Markdown 本文（コードブロック付き）"
+    },
+    "published": {
+      "type": "boolean",
+      "default": true,
+      "description": "公開状態"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["wordCount", "category"],
+      "properties": {
+        "wordCount": {
+          "type": "integer",
+          "description": "本文の文字数"
+        },
+        "codeBlockCount": {
+          "type": "integer",
+          "description": "コードブロックの数"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["tutorial", "first-impression", "comparison", "deep-dive"],
+          "description": "記事カテゴリ"
+        }
+      }
+    }
+  }
+}

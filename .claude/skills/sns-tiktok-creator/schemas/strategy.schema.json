@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TikTokStrategy",
+  "description": "Phase 1 出力: TikTok 動画のリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "topic", "category", "format", "hookType"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": { "type": "string" },
+    "category": {
+      "type": "string",
+      "enum": ["tutorial", "before_after", "tips", "myth_busting", "day_in_life", "reaction", "series"]
+    },
+    "format": {
+      "type": "string",
+      "enum": ["short", "standard"],
+      "description": "short: 15-60秒, standard: 60-180秒"
+    },
+    "hookType": {
+      "type": "string",
+      "enum": ["result", "question", "shock", "negation", "number", "story"]
+    },
+    "trendSounds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "トレンドサウンド候補"
+    },
+    "trendContext": { "type": "string" }
+  }
+}

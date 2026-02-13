@@ -1,0 +1,61 @@
+# Worktrees
+.worktrees/
+
+# Claude agent workspace (temp files)
+.claude/agent-workspace/*
+!.claude/agent-workspace/.gitkeep
+.claude/agent-output/*
+!.claude/agent-output/.gitkeep
+
+# Claude internal plans (contain local paths)
+.claude/.docs/plans/
+
+# Docs plans (contain local paths)
+docs/plans/
+
+# Auto-generated reports
+apps/agent-orchestrator/report/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Build output
+dist/
+.next/
+*.tsbuildinfo
+
+# Test / Coverage
+coverage/
+
+# Persistent data (news history etc.)
+data/
+
+# Logs
+logs/
+*.log
+
+# Auth tokens & credentials
+*-tokens.json
+credentials.json
+service-account*.json
+*.pem
+*.key
+
+# Zenn content (separate repo)
+zenn-content/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XStructure",
+  "description": "Phase 2 出力: X 投稿の構成設計",
+  "type": "object",
+  "required": ["version", "postType", "hook", "posts"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "postType": {
+      "type": "string",
+      "enum": ["single", "thread"]
+    },
+    "hook": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["breaking", "result", "question", "shock", "number"],
+          "description": "フックのタイプ"
+        },
+        "text": {
+          "type": "string",
+          "description": "フックテキスト"
+        }
+      }
+    },
+    "posts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["role", "keyMessage"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "この投稿の役割（hook, detail, evidence, cta）"
+          },
+          "keyMessage": {
+            "type": "string",
+            "description": "伝えたい核心メッセージ"
+          },
+          "targetLength": {
+            "type": "integer",
+            "description": "目標文字数"
+          }
+        }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "text": { "type": "string" }
+      }
+    }
+  }
+}

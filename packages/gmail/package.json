@@ -1,0 +1,32 @@
+{
+  "name": "@argus/gmail",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "gmail-server": "./dist/mcp-cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "auth": "tsx --env-file=../../.env src/cli-auth.ts"
+  },
+  "dependencies": {
+    "googleapis": "^146.0.0",
+    "@argus/db": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "drizzle-orm": "^0.45.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0",
+    "vitest": "^4.0.0"
+  }
+}

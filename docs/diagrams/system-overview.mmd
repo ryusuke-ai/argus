@@ -1,0 +1,81 @@
+%% Argus System Overview - Component Diagram
+%% Layered architecture showing all major components and their connections
+
+graph TB
+    %% ── User Interface Layer ──
+    subgraph UI["User Interface"]
+        Slack["Slack Workspace"]
+        Browser["Web Browser"]
+    end
+
+    %% ── Application Layer ──
+    subgraph Apps["Applications"]
+        SlackBot["Slack Bot<br/>:3939"]
+        Dashboard["Dashboard<br/>:3150<br/>(Next.js 16)"]
+        Orchestrator["Orchestrator<br/>:3950<br/>(Cron Scheduler)"]
+    end
+
+    %% ── Core Layer ──
+    subgraph Core["Core"]
+        AgentCore["Agent Core<br/>(SDK Wrapper)"]
+        DB[("PostgreSQL<br/>(Supabase)")]
+    end
+
+    %% ── MCP Server Layer ──
+    subgraph MCP["MCP Servers (stdio)"]
+        Knowledge["Knowledge<br/>(Collector/Executor)"]
+        Personal["Personal<br/>Knowledge"]
+        GmailMCP["Gmail"]
+        CalendarMCP["Google<br/>Calendar"]
+    end
+
+    %% ── External Services ──
+    subgraph External["External Services"]
+        Claude["Claude Agent SDK"]
+        Google["Google APIs"]
+        SNSAPI["SNS APIs<br/>(X, YouTube, TikTok,<br/>Threads, Instagram)"]
+        R2["Cloudflare R2"]
+    end
+
+    %% ── Connections ──
+    Slack -->|Socket Mode| SlackBot
+    Browser -->|HTTPS| Dashboard
+
+    SlackBot --> AgentCore
+    SlackBot --> DB
+    SlackBot --> SNSAPI
+    Orchestrator --> AgentCore
+    Orchestrator --> DB
+    Dashboard --> DB
+
+    AgentCore -->|AsyncGenerator| Claude
+    AgentCore -.->|MCP Protocol| Knowledge
+    AgentCore -.->|MCP Protocol| Personal
+    AgentCore -.->|MCP Protocol| GmailMCP
+    AgentCore -.->|MCP Protocol| CalendarMCP
+
+    Knowledge --> DB
+    Personal --> DB
+    GmailMCP --> Google
+    GmailMCP --> DB
+    CalendarMCP --> Google
+    SlackBot --> R2
+
+    %% ── Styles ──
+    classDef uiStyle fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724
+    classDef appStyle fill:#cce5ff,stroke:#004085,stroke-width:2px,color:#004085
+    classDef coreStyle fill:#fff3cd,stroke:#856404,stroke-width:2px,color:#856404
+    classDef mcpStyle fill:#e2d5f1,stroke:#6f42c1,stroke-width:2px,color:#4a235a
+    classDef extStyle fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41
+
+    class Slack,Browser uiStyle
+    class SlackBot,Dashboard,Orchestrator appStyle
+    class AgentCore,DB coreStyle
+    class Knowledge,Personal,GmailMCP,CalendarMCP mcpStyle
+    class Claude,Google,SNSAPI,R2 extStyle
+
+    style UI fill:none,stroke:#28a745,stroke-width:2px,stroke-dasharray:5 5
+    style Apps fill:none,stroke:#004085,stroke-width:2px,stroke-dasharray:5 5
+    style Core fill:none,stroke:#856404,stroke-width:2px,stroke-dasharray:5 5
+    style MCP fill:none,stroke:#6f42c1,stroke-width:2px,stroke-dasharray:5 5
+    style External fill:none,stroke:#6c757d,stroke-width:2px,stroke-dasharray:5 5

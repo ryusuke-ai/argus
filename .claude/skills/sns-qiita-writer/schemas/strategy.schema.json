@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QiitaStrategy",
+  "description": "Phase 1 出力: Qiita 記事のリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "topic", "category", "targetAudience", "competitors", "differentiators", "keywords", "trends"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": {
+      "type": "string",
+      "description": "記事のテーマ"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["tutorial", "tips", "experience", "comparison", "handson"],
+      "description": "記事カテゴリ"
+    },
+    "targetAudience": {
+      "type": "string",
+      "enum": ["beginner", "intermediate", "advanced"],
+      "description": "ターゲット読者層"
+    },
+    "competitors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["title", "url", "strengths", "weaknesses"],
+        "properties": {
+          "title": { "type": "string" },
+          "url": { "type": "string" },
+          "strengths": { "type": "array", "items": { "type": "string" } },
+          "weaknesses": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "description": "競合記事の分析"
+    },
+    "differentiators": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "差別化ポイント"
+    },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "ターゲットキーワード"
+    },
+    "trends": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "関連トレンド"
+    }
+  }
+}

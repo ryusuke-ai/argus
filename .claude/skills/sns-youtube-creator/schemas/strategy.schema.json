@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "YouTubeStrategy",
+  "description": "Phase 1 出力: YouTube メタデータのリサーチ & 戦略",
+  "type": "object",
+  "required": ["version", "topic", "category", "competitors", "keywords", "differentiators"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["tutorial", "review", "demo", "news"]
+    },
+    "competitors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["title", "views", "channel"],
+        "properties": {
+          "title": { "type": "string" },
+          "views": { "type": "string" },
+          "channel": { "type": "string" },
+          "strengths": { "type": "array", "items": { "type": "string" } },
+          "weaknesses": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "differentiators": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommendedDuration": {
+      "type": "string",
+      "description": "推奨動画尺"
+    }
+  }
+}

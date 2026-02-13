@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.secrets/**)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(DROP TABLE*)",
+      "Bash(DELETE FROM*)",
+      "Write(.env)",
+      "Write(.env.*)",
+      "Write(.secrets/**)"
+    ],
+    "allow": [
+      "Read(packages/**)",
+      "Read(apps/**)",
+      "Read(.docs/**)",
+      "Read(.claude/**)",
+      "Read(data/**)",
+      "Write(data/**)",
+      "Write(.claude/agent-output/**)",
+      "Write(.claude/agent-workspace/**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Bash(node .claude/skills/*/scripts/*)",
+      "Bash(ffmpeg *)",
+      "WebSearch(*)"
+    ]
+  }
+}
