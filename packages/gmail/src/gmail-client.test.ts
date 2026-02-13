@@ -122,7 +122,7 @@ describe("gmail-client", () => {
 
       expect(gmailMock.users.messages.list).toHaveBeenCalledWith({
         userId: "me",
-        q: "is:unread in:inbox",
+        q: "is:unread in:inbox -category:promotions -category:social -category:updates -category:forums",
         maxResults: 10,
       });
     });
@@ -176,9 +176,7 @@ describe("gmail-client", () => {
       expect(rawDecoded).toContain(`Subject: ${expectedSubject}`);
       expect(rawDecoded).toContain("In-Reply-To: msg-123");
       expect(rawDecoded).toContain("References: msg-123");
-      expect(rawDecoded).toContain(
-        "Content-Type: text/plain; charset=utf-8",
-      );
+      expect(rawDecoded).toContain("Content-Type: text/plain; charset=utf-8");
       expect(rawDecoded).toContain("Thank you for your email.");
     });
 
@@ -234,8 +232,7 @@ describe("gmail-client", () => {
     it("fixes UTF-8 mojibake (UTF-8 bytes misread as Latin-1)", () => {
       // "請求書" = UTF-8 bytes E8 AB 8B E6 B1 82 E6 9B B8
       // Misread as ISO-8859-1 → U+00E8 U+00AB U+008B U+00E6 U+00B1 U+0082 U+00E6 U+009B U+00B8
-      const mojibake =
-        "\u00e8\u00ab\u008b\u00e6\u00b1\u0082\u00e6\u009b\u00b8";
+      const mojibake = "\u00e8\u00ab\u008b\u00e6\u00b1\u0082\u00e6\u009b\u00b8";
       expect(decodeHeader(mojibake)).toBe("請求書");
     });
 
@@ -247,8 +244,7 @@ describe("gmail-client", () => {
       // E3→ã(U+00E3), 83→ƒ(U+0192), 86→†(U+2020)
       // E3→ã(U+00E3), 82→‚(U+201A), B9→¹(U+00B9)
       // E3→ã(U+00E3), 83→ƒ(U+0192), 88→ˆ(U+02C6)
-      const mojibake =
-        "\u00e3\u0192\u2020\u00e3\u201a\u00b9\u00e3\u0192\u02c6";
+      const mojibake = "\u00e3\u0192\u2020\u00e3\u201a\u00b9\u00e3\u0192\u02c6";
       expect(decodeHeader(mojibake)).toBe("テスト");
     });
 
@@ -286,8 +282,7 @@ describe("gmail-client", () => {
     });
 
     it("extracts From from MIME text", () => {
-      const mime =
-        "From: sender@example.com\r\nSubject: Test\r\n\r\nBody";
+      const mime = "From: sender@example.com\r\nSubject: Test\r\n\r\nBody";
       expect(extractMimeHeader(mime, "From")).toBe("sender@example.com");
     });
 
@@ -334,9 +329,7 @@ describe("gmail-client", () => {
       const htmlData = Buffer.from("<p>HTML only</p>").toString("base64url");
       const payload: gmail_v1.Schema$MessagePart = {
         mimeType: "multipart/alternative",
-        parts: [
-          { mimeType: "text/html", body: { data: htmlData } },
-        ],
+        parts: [{ mimeType: "text/html", body: { data: htmlData } }],
       };
 
       expect(extractBody(payload)).toBe("<p>HTML only</p>");
@@ -349,9 +342,7 @@ describe("gmail-client", () => {
         parts: [
           {
             mimeType: "multipart/alternative",
-            parts: [
-              { mimeType: "text/plain", body: { data: plainData } },
-            ],
+            parts: [{ mimeType: "text/plain", body: { data: plainData } }],
           },
           {
             mimeType: "application/pdf",

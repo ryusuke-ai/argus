@@ -5,6 +5,7 @@
     "type": "git",
     "url": "https://github.com/ryusuke-ai/argus.git"
   },
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {

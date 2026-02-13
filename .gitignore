@@ -58,6 +58,23 @@ supabase/.temp/
 # Zenn content (separate repo)
 zenn-content/
 
+# Generated media assets (TTS audio, copied backgrounds, etc.)
+.claude/skills/video-explainer/remotion/public/audio_*.wav
+.claude/skills/video-explainer/remotion/public/bg_*.mp4
+.claude/skills/video-explainer/remotion/public/bgm_*.mp3
+.claude/skills/video-explainer/remotion/public/chara_*.png
+.claude/skills/video-explainer/remotion/public/sound_*.mp3
+.claude/skills/video-explainer/remotion/public/watermark_*.png
+.claude/skills/video-explainer/remotion/public/font_*.ttf
+
+# Video assets (BGM, effects, backgrounds, characters)
+.claude/skills/video-explainer/assets/accent/
+.claude/skills/video-explainer/assets/backgrounds/
+.claude/skills/video-explainer/assets/bgm/
+.claude/skills/video-explainer/assets/chara/
+.claude/skills/video-explainer/assets/transition/
+.claude/skills/video-explainer/assets/watermark/
+
 # OS
 .DS_Store
 Thumbs.db

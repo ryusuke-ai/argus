@@ -1,23 +1,80 @@
 // Gmail Checker - fetches unread emails, classifies with Claude, notifies Slack
 // Runs as a cron job via the scheduler
 
-import { fetchUnreadMessages, markAsRead, refreshTokenIfNeeded, loadTokens } from "@argus/gmail";
+import {
+  fetchUnreadMessages,
+  markAsRead,
+  refreshTokenIfNeeded,
+  loadTokens,
+} from "@argus/gmail";
 import type { ClassificationResult } from "@argus/gmail";
 import { db, gmailMessages } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { query } from "@argus/agent-core";
 import { updateGmailCanvas } from "./canvas/gmail-canvas.js";
 
+/** Patterns for pre-filtering emails before Claude classification */
+const SKIP_PATTERNS = {
+  senders: [
+    /^no-?reply@/i,
+    /^noreply@/i,
+    /^notification@/i,
+    /^info@/i,
+    /^news@/i,
+    /^marketing@/i,
+  ],
+  domains: [
+    "amazonses.com",
+    "sendgrid.net",
+    "mailchimp.com",
+    "contact.vpass.ne.jp",
+  ],
+  subjects: [
+    /ご利用のお知らせ/,
+    /ポイント/,
+    /セール/,
+    /キャンペーン/,
+    /newsletter/i,
+    /unsubscribe/i,
+  ],
+};
+
+/**
+ * Pre-filter: skip emails that are clearly not important
+ * based on sender address, domain, or subject patterns.
+ */
+export function shouldSkipEmail(from: string, subject: string): boolean {
+  // Extract email address from "Name <email>" format
+  const emailMatch = from.match(/<([^>]+)>/);
+  const email = emailMatch ? emailMatch[1] : from;
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+
+  for (const pattern of SKIP_PATTERNS.senders) {
+    if (pattern.test(email)) return true;
+  }
+
+  for (const d of SKIP_PATTERNS.domains) {
+    if (domain === d || domain.endsWith(`.${d}`)) return true;
+  }
+
+  for (const pattern of SKIP_PATTERNS.subjects) {
+    if (pattern.test(subject)) return true;
+  }
+
+  return false;
+}
+
 /**
  * Check Gmail for unread messages, classify them, and notify Slack.
  *
  * Flow per message:
  * 1. Check for duplicate (already processed)
- * 2. Classify with Claude (needs_reply / needs_attention / other)
- * 3. Insert into DB (get UUID)
- * 4. Post to Slack with UUID in button values (if not "other")
- * 5. Update DB with slack_message_ts
- * 6. Mark as read in Gmail
+ * 2. Pre-filter by sender/subject patterns
+ * 3. Classify with Claude (needs_reply / needs_attention / other)
+ * 4. Insert into DB (get UUID)
+ * 5. Post to Slack with UUID in button values (if not "other")
+ * 6. Update DB with slack_message_ts
+ * 7. Mark as read in Gmail
  */
 export async function checkGmail(): Promise<void> {
   // 1. トークン確認
@@ -50,6 +107,13 @@ export async function checkGmail(): Promise<void> {
       continue;
     }
 
+    // プレフィルタ: 明らかに不要なメールをスキップ
+    if (shouldSkipEmail(msg.from, msg.subject)) {
+      console.log(`[Gmail Checker] Skipped by pre-filter: ${msg.subject}`);
+      await markAsRead(msg.id);
+      continue;
+    }
+
     // Claude で分類
     const classification = await classifyEmail(msg.from, msg.subject, msg.body);
     if (!classification) {
@@ -58,16 +122,19 @@ export async function checkGmail(): Promise<void> {
     }
 
     // DB に先に insert して UUID を取得
-    const [inserted] = await db.insert(gmailMessages).values({
-      gmailId: msg.id,
-      threadId: msg.threadId,
-      fromAddress: msg.from,
-      subject: msg.subject,
-      classification: classification.classification,
-      status: "pending",
-      draftReply: classification.draftReply,
-      receivedAt: msg.receivedAt,
-    }).returning();
+    const [inserted] = await db
+      .insert(gmailMessages)
+      .values({
+        gmailId: msg.id,
+        threadId: msg.threadId,
+        fromAddress: msg.from,
+        subject: msg.subject,
+        classification: classification.classification,
+        status: "pending",
+        draftReply: classification.draftReply,
+        receivedAt: msg.receivedAt,
+      })
+      .returning();
 
     // Slack 投稿 (要返信 or 要確認のみ) - ボタンの value に DB の UUID を使用
     let slackTs: string | null = null;
@@ -112,10 +179,18 @@ From: ${from}
 Subject: ${subject}
 Body: ${body.slice(0, 3000)}
 
-分類:
-- needs_reply: 返信が必要なメール（人からの質問、依頼、打ち合わせ調整等）
-- needs_attention: 返信不要だがすぐ確認すべきもの（重要な通知、決済完了等）
-- other: スパム、自動通知、ニュースレター、広告等
+分類基準（厳格に適用すること）:
+- needs_reply: **人間が直接書いた**メールで、返信が明示的に求められているもの（質問、依頼、打ち合わせ調整、見積もり依頼等）。自動生成メールは該当しない。
+- needs_attention: **緊急性のある**通知のみ。具体的にはセキュリティ警告、アカウント不正利用、サービス障害、CI/CDの失敗、重要な契約・法的通知。
+- other: 上記以外すべて。以下は明確にotherに分類すること:
+  - 領収書、注文確認、配送通知
+  - ポイント通知、利用明細、カード利用通知
+  - ニュースレター、メルマガ、製品アップデート
+  - 広告、プロモーション、キャンペーン
+  - SNS通知（いいね、フォロー、コメント）
+  - 自動生成のシステム通知全般
+
+迷ったらotherに分類してください。
 
 必ず以下のJSON形式のみで返してください（他のテキストは不要）:
 {"classification": "needs_reply|needs_attention|other", "summary": "要約", "draft_reply": "返信案またはnull"}
@@ -144,7 +219,8 @@ needs_replyの場合のみdraft_replyに返信案を入れてください。他�
     };
 
     return {
-      classification: parsed.classification as ClassificationResult["classification"],
+      classification:
+        parsed.classification as ClassificationResult["classification"],
       summary: parsed.summary,
       draftReply: parsed.draft_reply,
     };
@@ -193,7 +269,11 @@ export async function postToSlack(
           type: "rich_text_section",
           elements: [
             { type: "emoji", name: "envelope_with_arrow" },
-            { type: "text", text: " \u8981\u8FD4\u4FE1", style: { bold: true } },
+            {
+              type: "text",
+              text: " \u8981\u8FD4\u4FE1",
+              style: { bold: true },
+            },
             { type: "text", text: `  ${msg.subject}`, style: { bold: true } },
           ],
         },
@@ -207,7 +287,11 @@ export async function postToSlack(
           type: "rich_text_section",
           elements: [
             { type: "emoji", name: "eyes" },
-            { type: "text", text: " \u8981\u78BA\u8A8D", style: { bold: true } },
+            {
+              type: "text",
+              text: " \u8981\u78BA\u8A8D",
+              style: { bold: true },
+            },
             { type: "text", text: `  ${msg.subject}`, style: { bold: true } },
           ],
         },
@@ -230,9 +314,7 @@ export async function postToSlack(
     elements: [
       {
         type: "rich_text_quote",
-        elements: [
-          { type: "text", text: classification.summary },
-        ],
+        elements: [{ type: "text", text: classification.summary }],
       },
     ],
   });
@@ -244,9 +326,7 @@ export async function postToSlack(
       elements: [
         {
           type: "rich_text_preformatted",
-          elements: [
-            { type: "text", text: classification.draftReply },
-          ],
+          elements: [{ type: "text", text: classification.draftReply }],
         },
       ],
     });
@@ -255,7 +335,10 @@ export async function postToSlack(
       elements: [
         {
           type: "button",
-          text: { type: "plain_text", text: "\u3053\u306E\u5185\u5BB9\u3067\u8FD4\u4FE1" },
+          text: {
+            type: "plain_text",
+            text: "\u3053\u306E\u5185\u5BB9\u3067\u8FD4\u4FE1",
+          },
           style: "primary",
           action_id: "gmail_reply",
           value: dbRecordId,
@@ -301,7 +384,11 @@ export async function postToSlack(
       }),
     });
 
-    const data = (await response.json()) as { ok: boolean; ts?: string; error?: string };
+    const data = (await response.json()) as {
+      ok: boolean;
+      ts?: string;
+      error?: string;
+    };
     if (!data.ok) {
       console.error("[Gmail Checker] Slack error:", data.error);
       return null;

@@ -245,6 +245,24 @@ Technical deep-dives into Argus's architecture and design decisions:
 - [MCP サーバーで AI エージェントにナレッジベースを持たせる方法](https://zenn.dev/ryusuke_ai/articles/mcp-knowledge-base-design)
 - [AI エージェントの全行動を記録する ─ Observation-First アーキテクチャの設計と実装](https://zenn.dev/ryusuke_ai/articles/observation-first-architecture)
 
+## Security
+
+Argus is designed as a **self-hosted, single-user system**. Important security considerations:
+
+- The agent core uses `bypassPermissions` mode to enable autonomous task execution. This is intentional for a self-hosted environment where the operator trusts all input sources.
+- The Dashboard API endpoints do not include application-level authentication. In production, external access is protected by **Cloudflare Access** (email-based one-time PIN).
+- **If you deploy this system**, ensure you configure network-level authentication (e.g., Cloudflare Access, VPN, or reverse proxy auth) before exposing any endpoints to the internet.
+
 ## License
 
-[MIT](LICENSE)
+This project is licensed under [MIT](LICENSE).
+
+### Third-Party Licenses
+
+This project includes dependencies and assets with their own licenses. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for details.
+
+Notable:
+
+- **[Remotion](https://www.remotion.dev/)** — Used for video rendering. Remotion is **free for individuals and companies with up to 3 employees**, but requires a [Company License](https://www.remotion.dev/docs/license) for larger organizations. If you fork this project for commercial use with 4+ employees, you must purchase a Remotion license.
+- **[Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)** — Subject to [Anthropic's Terms of Service](https://www.anthropic.com/legal/terms). Usage requires a valid Claude subscription or API key.
+- **Media assets** (character images, BGM, sound effects, background videos) are **not included** in this repository. See the [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for setup instructions.
