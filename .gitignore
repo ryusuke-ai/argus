@@ -75,6 +75,9 @@ zenn-content/
 .claude/skills/video-explainer/assets/transition/
 .claude/skills/video-explainer/assets/watermark/
 
+# Skill demo images
+.claude/skills/svg-to-webp/demos*.png
+
 # OS
 .DS_Store
 Thumbs.db
