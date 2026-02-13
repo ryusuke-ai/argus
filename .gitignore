@@ -33,6 +33,9 @@ dist/
 # Test / Coverage
 coverage/
 
+# Agent output (root level)
+/agent-output/
+
 # Persistent data (news history etc.)
 data/
 
@@ -43,9 +46,14 @@ logs/
 # Auth tokens & credentials
 *-tokens.json
 credentials.json
+**/cookies.json
 service-account*.json
 *.pem
 *.key
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
 
 # Zenn content (separate repo)
 zenn-content/

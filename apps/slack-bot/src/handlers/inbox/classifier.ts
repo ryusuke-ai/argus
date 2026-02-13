@@ -63,11 +63,15 @@ export async function classifyMessage(
 
   // 最終ガード: どのパスでも summary が30文字を超えたら summarizeText で短縮
   if (result.summary.length > 30) {
-    console.log(`[inbox/classifier] GUARD: summary too long (${result.summary.length} chars: "${result.summary}"), truncating`);
+    console.log(
+      `[inbox/classifier] GUARD: summary too long (${result.summary.length} chars: "${result.summary}"), truncating`,
+    );
     result.summary = summarizeText(messageText);
   }
 
-  console.log(`[inbox/classifier] FINAL summary: "${result.summary}" (${result.summary.length} chars) for: "${messageText.slice(0, 50)}"`);
+  console.log(
+    `[inbox/classifier] FINAL summary: "${result.summary}" (${result.summary.length} chars) for: "${messageText.slice(0, 50)}"`,
+  );
   return result;
 }
 
@@ -75,7 +79,10 @@ export async function classifyMessage(
  * AI レスポンスから ClassificationResult をパース。
  * originalText: パース失敗時のフォールバック用に元メッセージを渡す
  */
-export function parseClassificationResult(text: string, originalText?: string): ClassificationResult {
+export function parseClassificationResult(
+  text: string,
+  originalText?: string,
+): ClassificationResult {
   try {
     const jsonMatch =
       text.match(/```json\s*([\s\S]*?)```/) || text.match(/\{[\s\S]*\}/);
@@ -91,7 +98,9 @@ export function parseClassificationResult(text: string, originalText?: string): 
       // summary が長すぎる場合はキーワードベースの summarizeText でフォールバック
       let summary = parsed.summary;
       if (summary.length > 30 && originalText) {
-        console.log(`[inbox/classifier] AI summary too long (${summary.length} chars), using summarizeText fallback`);
+        console.log(
+          `[inbox/classifier] AI summary too long (${summary.length} chars), using summarizeText fallback`,
+        );
         summary = summarizeText(originalText);
       }
       return {
@@ -117,7 +126,7 @@ export function parseClassificationResult(text: string, originalText?: string): 
 
 /**
  * フィラー・丁寧語・依頼表現を除去して名詞句の要約を生成する。
- * 「私の志望する企業を教えてください。」→「志望企業の確認」
+ * 「私の目標を教えてください。」→「目標の確認」
  */
 export function summarizeText(text: string): string {
   let s = text.trim();
@@ -137,7 +146,10 @@ export function summarizeText(text: string): string {
   // 先頭の助詞を除去（メールアドレス除去後に残る「に」「を」等）
   s = s.replace(/^[にをはがで]\s*/g, "");
   // フィラー・接続詞を除去
-  s = s.replace(/^(そしたら|それでは|では|じゃあ|あと|ちなみに|ところで)\s*/g, "");
+  s = s.replace(
+    /^(そしたら|それでは|では|じゃあ|あと|ちなみに|ところで)\s*/g,
+    "",
+  );
   // 冒頭の主語（私の、自分の等）を除去
   s = s.replace(/^(私の|自分の|僕の|俺の|うちの|わたしの)\s*/g, "");
 
@@ -145,29 +157,70 @@ export function summarizeText(text: string): string {
   let action = "";
   const actionPatterns: Array<{ pattern: RegExp; suffix: string }> = [
     // 「〜を教えてください」→ 「〜の確認」
-    { pattern: /を?(?:教えて|おしえて)(?:ください|下さい|くれ|もらえますか?)?$/, suffix: "の確認" },
+    {
+      pattern: /を?(?:教えて|おしえて)(?:ください|下さい|くれ|もらえますか?)?$/,
+      suffix: "の確認",
+    },
     // 「〜を調べてください」→ 「〜の調査」
-    { pattern: /を?(?:調べて|しらべて|調査して|リサーチして)(?:ください|下さい|くれ)?$/, suffix: "の調査" },
+    {
+      pattern:
+        /を?(?:調べて|しらべて|調査して|リサーチして)(?:ください|下さい|くれ)?$/,
+      suffix: "の調査",
+    },
     // 「〜を作ってください」→ 「〜の作成」
-    { pattern: /を?(?:作って|作成して|生成して|書いて)(?:ください|下さい|くれ|ほしい)?$/, suffix: "の作成" },
+    {
+      pattern:
+        /を?(?:作って|作成して|生成して|書いて)(?:ください|下さい|くれ|ほしい)?$/,
+      suffix: "の作成",
+    },
     // 「〜を修正してください」→ 「〜の修正」
-    { pattern: /を?(?:修正して|直して|変更して|改善して|更新して)(?:ください|下さい|くれ)?$/, suffix: "の修正" },
+    {
+      pattern:
+        /を?(?:修正して|直して|変更して|改善して|更新して)(?:ください|下さい|くれ)?$/,
+      suffix: "の修正",
+    },
     // 「〜を追加してください」→ 「〜の追加」
-    { pattern: /を?(?:追加して|実装して|入れて)(?:ください|下さい|くれ)?$/, suffix: "の追加" },
+    {
+      pattern: /を?(?:追加して|実装して|入れて)(?:ください|下さい|くれ)?$/,
+      suffix: "の追加",
+    },
     // 「〜をまとめてください」→ 「〜の整理」
-    { pattern: /を?(?:まとめて|整理して)(?:ください|下さい|くれ)?$/, suffix: "の整理" },
+    {
+      pattern: /を?(?:まとめて|整理して)(?:ください|下さい|くれ)?$/,
+      suffix: "の整理",
+    },
     // 「〜を見せてください」→ 「〜の確認」
-    { pattern: /を?(?:見せて|みせて|見て|確認して|チェックして)(?:ください|下さい|くれ)?$/, suffix: "の確認" },
+    {
+      pattern:
+        /を?(?:見せて|みせて|見て|確認して|チェックして)(?:ください|下さい|くれ)?$/,
+      suffix: "の確認",
+    },
     // 「〜を削除してください」→ 「〜の削除」
-    { pattern: /を?(?:削除して|消して|除去して)(?:ください|下さい|くれ)?$/, suffix: "の削除" },
+    {
+      pattern: /を?(?:削除して|消して|除去して)(?:ください|下さい|くれ)?$/,
+      suffix: "の削除",
+    },
     // 「〜を送ってください」→ 「〜の送信」
-    { pattern: /を?(?:送って|送信して)(?:ください|下さい|くれ)?$/, suffix: "の送信" },
+    {
+      pattern: /を?(?:送って|送信して)(?:ください|下さい|くれ)?$/,
+      suffix: "の送信",
+    },
     // 「〜をリマインドして」→ 「〜のリマインド」
-    { pattern: /を?(?:リマインドして|リマインダー.*)(?:ください|下さい|くれ)?$/, suffix: "のリマインド" },
+    {
+      pattern: /を?(?:リマインドして|リマインダー.*)(?:ください|下さい|くれ)?$/,
+      suffix: "のリマインド",
+    },
     // 「〜に追加して」→ 「〜への登録」
-    { pattern: /に(?:追加して|登録して|入れて)(?:ください|下さい|くれ)?$/, suffix: "への登録" },
+    {
+      pattern: /に(?:追加して|登録して|入れて)(?:ください|下さい|くれ)?$/,
+      suffix: "への登録",
+    },
     // 汎用: 「〜してください」「〜してほしい」「〜して」
-    { pattern: /(?:してほしいです|してほしい|してもらえますか?|してもらえる?|してください|して下さい|してくれ|しておいて|お願いします|お願い|して)$/, suffix: "" },
+    {
+      pattern:
+        /(?:してほしいです|してほしい|してもらえますか?|してもらえる?|してください|して下さい|してくれ|しておいて|お願いします|お願い|して)$/,
+      suffix: "",
+    },
   ];
 
   for (const { pattern, suffix } of actionPatterns) {
@@ -185,7 +238,7 @@ export function summarizeText(text: string): string {
   if (s !== beforeAbout) {
     s = s.replace(/(を|は|が|に|で|の)$/g, "");
   }
-  // 「〜する」形の連体修飾を短縮（「志望する企業」→「志望企業」）
+  // 「〜する」形の連体修飾を短縮（「注目する技術」→「注目技術」）
   s = s.replace(/する([^\s])/g, "$1");
   // 「〜って何」「〜とは」→ 確認
   if (/って何|とは$/.test(s)) {
@@ -244,8 +297,16 @@ const STRONG_RULES: ScoringRule[] = [
   { pattern: /調べて|調査して|リサーチして/, intent: "research", weight: 10 },
   { pattern: /検索して/, intent: "research", weight: 8 },
   // code_change: 作成・変更系動詞
-  { pattern: /作って|作成して|生成して|書いて/, intent: "code_change", weight: 10 },
-  { pattern: /修正して|直して|変更して|改善して/, intent: "code_change", weight: 10 },
+  {
+    pattern: /作って|作成して|生成して|書いて/,
+    intent: "code_change",
+    weight: 10,
+  },
+  {
+    pattern: /修正して|直して|変更して|改善して/,
+    intent: "code_change",
+    weight: 10,
+  },
   { pattern: /追加して|実装して/, intent: "code_change", weight: 8 },
   // question: 質問形式
   { pattern: /教えて(?:ください)?$/, intent: "question", weight: 10 },
@@ -260,12 +321,31 @@ const STRONG_RULES: ScoringRule[] = [
   { pattern: /整理して|まとめて/, intent: "organize", weight: 10 },
   { pattern: /一覧.*(?:出して|作って|見せて)/, intent: "organize", weight: 8 },
   // todo: 明示的な ToDo 追加指示（code_change の合算スコアより高い weight で優先）
-  { pattern: /(?:ToDo|todo|Tudu|tudu|ToDoリスト|タスクリスト|やることリスト|やること).*(?:追加|登録|入れて|メモ)/, intent: "todo", weight: 15 },
-  { pattern: /(?:追加|登録|入れて).*(?:ToDo|todo|Tudu|tudu|ToDoリスト|タスクリスト|やることリスト)/, intent: "todo", weight: 15 },
+  {
+    pattern:
+      /(?:ToDo|todo|Tudu|tudu|ToDoリスト|タスクリスト|やることリスト|やること).*(?:追加|登録|入れて|メモ)/,
+    intent: "todo",
+    weight: 15,
+  },
+  {
+    pattern:
+      /(?:追加|登録|入れて).*(?:ToDo|todo|Tudu|tudu|ToDoリスト|タスクリスト|やることリスト)/,
+    intent: "todo",
+    weight: 15,
+  },
   // todo_check: 一覧確認
-  { pattern: /(?:ToDo|todo|Tudu|tudu|タスク|やること).*(?:確認|見せて|一覧|教えて|表示)/, intent: "todo_check", weight: 10 },
+  {
+    pattern:
+      /(?:ToDo|todo|Tudu|tudu|タスク|やること).*(?:確認|見せて|一覧|教えて|表示)/,
+    intent: "todo_check",
+    weight: 10,
+  },
   // todo_complete: 完了報告
-  { pattern: /(?:終わった|完了した|できた|済んだ|やった|片付けた|片付いた)/, intent: "todo_complete", weight: 10 },
+  {
+    pattern: /(?:終わった|完了した|できた|済んだ|やった|片付けた|片付いた)/,
+    intent: "todo_complete",
+    weight: 10,
+  },
 ];
 
 /**
@@ -278,7 +358,11 @@ const MEDIUM_RULES: ScoringRule[] = [
   { pattern: /確認/, intent: "question", weight: 4 },
   { pattern: /カレンダー|スケジュール/, intent: "reminder", weight: 5 },
   { pattern: /ファイル|リスト/, intent: "organize", weight: 3 },
-  { pattern: /(?:やらなきゃ|しなきゃ|しないと|やらないと)/, intent: "todo", weight: 5 },
+  {
+    pattern: /(?:やらなきゃ|しなきゃ|しないと|やらないと)/,
+    intent: "todo",
+    weight: 5,
+  },
   { pattern: /(?:買う|買わなきゃ|買いに行く)/, intent: "todo", weight: 5 },
 ];
 
@@ -295,7 +379,11 @@ const WEAK_RULES: ScoringRule[] = [
   { pattern: /作成|作って/, intent: "code_change", weight: 3 },
 ];
 
-const ALL_RULES: ScoringRule[] = [...STRONG_RULES, ...MEDIUM_RULES, ...WEAK_RULES];
+const ALL_RULES: ScoringRule[] = [
+  ...STRONG_RULES,
+  ...MEDIUM_RULES,
+  ...WEAK_RULES,
+];
 
 /**
  * スコアリングベースのキーワード分類。
@@ -380,16 +468,21 @@ export function keywordClassification(
  * 大規模タスクで方向性の確認が必要かを判定する。
  * code_change intent で、具体的な対象が不明＋スコープが大きい場合に clarifyQuestion を返す。
  */
-function detectLargeTaskClarification(text: string, intent: Intent): string | undefined {
+function detectLargeTaskClarification(
+  text: string,
+  intent: Intent,
+): string | undefined {
   // code_change 以外は即実行
   if (intent !== "code_change") return undefined;
 
   // 大規模スコープを示すキーワード
-  const largeScope = /新機能|新しい.*(?:機能|システム|サービス|アプリ)|設計して|アーキテクチャ|大規模|リプレース|移行して|全体.*(?:リファクタ|作り直)/;
+  const largeScope =
+    /新機能|新しい.*(?:機能|システム|サービス|アプリ)|設計して|アーキテクチャ|大規模|リプレース|移行して|全体.*(?:リファクタ|作り直)/;
   if (!largeScope.test(text)) return undefined;
 
   // 具体的な対象があれば clarify 不要
-  const hasSpecificTarget = /(?:packages|apps|src|\.ts|\.tsx|\.js)\b|(?:inbox|slack-bot|dashboard|agent-core|orchestrator|gmail|calendar|knowledge)/i;
+  const hasSpecificTarget =
+    /(?:packages|apps|src|\.ts|\.tsx|\.js)\b|(?:inbox|slack-bot|dashboard|agent-core|orchestrator|gmail|calendar|knowledge)/i;
   if (hasSpecificTarget.test(text)) return undefined;
 
   return "大きなタスクのようです。方向性を合わせるために、具体的にどのような仕様・要件を想定していますか？スレッドで回答してください。👎 で却下もできます。";

@@ -31,12 +31,12 @@ import { db } from "@argus/db";
 describe("PersonalServiceImpl", () => {
   let service: PersonalServiceImpl;
 
-  const personalityContent = `# 価値観・特性・強み・落とし穴
+  const personalityContent = `# 特性・傾向・指針
 
 ## 🎯 一言で表すと
 
-**構造化・改善志向の実務型**
-「理解の解像度」「実用性」「効率」「再現性」を重視し、成果・成長・自由度を大切にする
+**分析・創造バランス型**
+「正確さ」「創造性」「協調性」を重視し、品質と効率を両立させる
 
 ---
 
@@ -44,73 +44,73 @@ describe("PersonalServiceImpl", () => {
 
 | 価値観 | 具体的な行動 |
 |--------|------------|
-| **時間＝資産** | ムダを嫌い、仕組み化で時間を回収 |
-| **成長＝安心** | 理解が積み上がると精神的に安定 |
+| **品質＝信頼** | 丁寧な検証を重ね、信頼を積み上げる |
+| **学習＝前進** | 新しい知識の獲得に意欲的に取り組む |
 
 ---
 
-## 🧠 思考スタイル（性格特性）
+## 🧠 思考スタイル（傾向）
 
-**全体像→分解→具体例→検証** の順で理解を進める
+**仮説→検証→改善** のサイクルを繰り返す
 
 ---
 
 ## ⚡ 強み（行動パターン）
 
 ### 得意なこと
-- **効率化**: 音声入力、ショートカット、ツール選定に投資
-- **仕組み化**: 再利用可能な形に落とす
+- **分析力**: データから傾向を読み取る
+- **計画力**: タスクを構造化して進める
 
 ---
 
-## ⚠️ 落とし穴（注意すべき弱点）
+## ⚠️ 注意点
 
-1. **優先順位の迷い**
-   - 興味の範囲が広く、全部改善したくなる
+1. **完璧主義の傾向**
+   - 細部にこだわりすぎることがある
 
 ---
 
-## 🚫 やらないこと
+## 🚫 避けること
 
-### 時間・行動
-- 目的が無いこと → 基本的に断る
+### 行動
+- 根拠のない判断 → 必ずデータで裏付け
 
 ---
 
 ## 💚 好きなこと
 
-- 仕事と生活を効率化、自動化すること
-- 人に説明する、教える
+- 新しい技術を学ぶこと
+- チームで問題を解決すること
 
 ---
 
-## 💔 嫌いなこと
+## 💔 苦手なこと
 
-- 自分の目標に関係ないことをすること
-- ルーティンワーク
+- 曖昧な指示のまま進めること
+- 長期間同じ作業を繰り返すこと
 
 ---
 
 ## ⚡ 得意なこと
 
-- 即行動する
-- 好きなことに没頭できる
+- 複雑な問題を分解すること
+- 文書化・ナレッジ共有
 
 ---
 
 ## 😓 苦手なこと
 
-- 自分が好きじゃないことをすること
+- 急な方針転換への対応
 `;
 
   const habitsIndexContent = `# Habits
 `;
 
-  const habitsValueContent = `# 朝の習慣
-- 朝は絶対に何も食べない
+  const habitsValueContent = `# 朝のルーティン
+- まずメールチェックから始める
 
-# 夜の習慣
-- ToDo、ジャーナリングを前日の夜につける
+# 夜のルーティン
+- 翌日のタスクを整理してから寝る
 `;
 
   // Helper to build a mock row from the DB
@@ -130,26 +130,21 @@ describe("PersonalServiceImpl", () => {
 
   // All test data rows
   const allRows = [
+    makeRow("areas/habits/index.md", "areas", "index", habitsIndexContent),
+    makeRow("areas/habits/value.md", "areas", "value", habitsValueContent),
     makeRow(
-      "areas/habits/index.md",
-      "areas",
-      "index",
-      habitsIndexContent,
+      "ideas/idea.md",
+      "ideas",
+      "idea",
+      "# My Idea\n\nSome idea content here.\n",
     ),
+    makeRow("personality/value.md", "personality", "value", personalityContent),
     makeRow(
-      "areas/habits/value.md",
-      "areas",
-      "value",
-      habitsValueContent,
+      "todo/today.md",
+      "todo",
+      "today",
+      "# Today\n\n- Task 1\n- Task 2\n",
     ),
-    makeRow("ideas/idea.md", "ideas", "idea", "# My Idea\n\nSome idea content here.\n"),
-    makeRow(
-      "personality/value.md",
-      "personality",
-      "value",
-      personalityContent,
-    ),
-    makeRow("todo/today.md", "todo", "today", "# Today\n\n- Task 1\n- Task 2\n"),
   ];
 
   // Helper to set up db.select() mock for full-row select (no column arg)
@@ -280,17 +275,17 @@ describe("PersonalServiceImpl", () => {
   // 7. search() matches by file name even if content does not match
   it("search() matches by file name even if content does not match", async () => {
     const row = makeRow(
-      "personality/desired-companies.md",
+      "personality/project-goals.md",
       "personality",
-      "desired-companies",
-      "# 企業リスト\n\n- 株式会社A\n- 株式会社B\n",
+      "project-goals",
+      "# プロジェクト目標\n\n- プロジェクトAlpha\n- プロジェクトBeta\n",
     );
     mockSelectFull([row]);
 
-    const results = await service.search("desired-companies");
+    const results = await service.search("project-goals");
     expect(results.length).toBeGreaterThanOrEqual(1);
     const match = results.find(
-      (r) => r.path === "personality/desired-companies.md",
+      (r) => r.path === "personality/project-goals.md",
     );
     expect(match).toBeDefined();
     expect(match!.matches[0].text).toContain("[ファイル名マッチ]");
@@ -308,7 +303,7 @@ describe("PersonalServiceImpl", () => {
 
     const content = await service.getPersonalityContext("values");
     expect(content).toContain("価値観");
-    expect(content).toContain("時間＝資産");
+    expect(content).toContain("品質＝信頼");
   });
 
   // 9. getPersonalityContext("habits") reads from habits directory
@@ -344,8 +339,8 @@ describe("PersonalServiceImpl", () => {
 
     const content = await service.getPersonalityContext("habits");
     expect(content).toContain("Habits");
-    expect(content).toContain("朝の習慣");
-    expect(content).toContain("朝は絶対に何も食べない");
+    expect(content).toContain("朝のルーティン");
+    expect(content).toContain("まずメールチェックから始める");
   });
 
   // 10. getPersonalityContext() returns summary
@@ -361,7 +356,7 @@ describe("PersonalServiceImpl", () => {
     const content = await service.getPersonalityContext();
     // Should contain the first section in full
     expect(content).toContain("一言で表すと");
-    expect(content).toContain("構造化・改善志向の実務型");
+    expect(content).toContain("分析・創造バランス型");
     // Should contain one-line summaries from other sections
     expect(content).toContain("価値観");
     expect(content).toContain("思考スタイル");

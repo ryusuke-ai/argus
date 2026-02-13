@@ -1,6 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { resolve, dirname } from "node:path";
-import { db, sessions, messages, tasks, lessons, type Session } from "@argus/db";
+import {
+  db,
+  sessions,
+  messages,
+  tasks,
+  lessons,
+  type Session,
+} from "@argus/db";
 import {
   query,
   resume,
@@ -65,11 +72,11 @@ const SLACK_SDK_OPTIONS = {
 - ログイン操作後は「ログインしました」と報告し、認証情報はレスポンスに含めない（セキュリティ配慮）
 
 ## Personal Knowledge MCP
-ユーザーの個人情報（志望企業、面接エピソード、価値観、強み、習慣、TODO 等）を保存・検索するナレッジベースです。
+ユーザーの個人情報（目標、経験・エピソード、価値観、強み、習慣、TODO 等）を保存・検索するナレッジベースです。
 ユーザーの個人情報に関する質問を受けたら、**必ず最初に personal_list でファイル一覧を確認**し、該当しそうなファイルを personal_read で読んでください。
 
 - **personal_list**: ノート一覧を取得（category でフィルタ可能: personality, areas, ideas, todo）
-- **personal_read**: 指定パスのノートを読む（例: "personality/desired-companies.md"）
+- **personal_read**: 指定パスのノートを読む（例: "personality/goals.md"）
 - **personal_search**: キーワードでノート内容を横断検索
 - **personal_context**: パーソナリティ情報を取得（section: values, strengths, weaknesses, habits, thinking, likes, dislikes）
 - **personal_add**: 新規ノートを作成
@@ -78,7 +85,7 @@ const SLACK_SDK_OPTIONS = {
 **使い方のコツ**:
 1. まず personal_list で全体像を把握する
 2. ファイル名から該当しそうなものを personal_read で読む
-3. 見つからない場合は personal_search で短いキーワード（例: 「志望」「強み」）で検索する
+3. 見つからない場合は personal_search で短いキーワード（例: 「目標」「強み」）で検索する
 `,
   },
   disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
@@ -89,12 +96,16 @@ const SLACK_SDK_OPTIONS = {
       args: [
         "@playwright/mcp@latest",
         "--headless",
-        "--caps", "vision",
-        "--output-dir", "/tmp/argus-slack-images",
-        "--user-data-dir", "/tmp/argus-playwright-data",
+        "--caps",
+        "vision",
+        "--output-dir",
+        "/tmp/argus-slack-images",
+        "--user-data-dir",
+        "/tmp/argus-playwright-data",
       ],
       env: {
-        PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        PATH:
+          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
       },
     },
     "google-calendar": {
@@ -110,10 +121,11 @@ const SLACK_SDK_OPTIONS = {
         GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
         GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
         DATABASE_URL: process.env.DATABASE_URL || "",
-        PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        PATH:
+          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
       },
     },
-    "gmail": {
+    gmail: {
       command: "node",
       args: [
         resolve(
@@ -126,7 +138,8 @@ const SLACK_SDK_OPTIONS = {
         GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
         GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
         DATABASE_URL: process.env.DATABASE_URL || "",
-        PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        PATH:
+          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
       },
     },
     "knowledge-personal": {
@@ -139,7 +152,8 @@ const SLACK_SDK_OPTIONS = {
       ],
       env: {
         DATABASE_URL: process.env.DATABASE_URL || "",
-        PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        PATH:
+          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
       },
     },
   },
@@ -232,7 +246,9 @@ export class SessionManager {
 
       // Fallback: resume failed → start fresh query with new session
       if (!result.success) {
-        console.warn("[SessionManager] Resume failed, falling back to new query");
+        console.warn(
+          "[SessionManager] Resume failed, falling back to new query",
+        );
         result = await query(messageText, {
           model,
           hooks,
@@ -283,7 +299,11 @@ export class SessionManager {
     onProgress?: ProgressCallback,
   ): ArgusHooks {
     const obsDB: ObservationDB = { db, tasks, lessons, eq };
-    const baseHooks = createDBObservationHooks(obsDB, dbSessionId, "[SessionManager]");
+    const baseHooks = createDBObservationHooks(
+      obsDB,
+      dbSessionId,
+      "[SessionManager]",
+    );
 
     if (!onProgress) return baseHooks;
 
@@ -359,7 +379,11 @@ export function formatToolProgress(
     case "Bash": {
       // description が日本語ならそのまま使う
       const desc = toolInput.description;
-      if (typeof desc === "string" && desc.length > 0 && containsJapanese(desc)) {
+      if (
+        typeof desc === "string" &&
+        desc.length > 0 &&
+        containsJapanese(desc)
+      ) {
         return `🔧 ${desc}`;
       }
       // コマンドから日本語を生成
@@ -396,7 +420,10 @@ export function formatToolProgress(
     }
     default: {
       // MCP tools (e.g. playwright_*) → ブラウザ操作の進捗
-      if (toolName.startsWith("playwright_") || toolName.startsWith("browser_")) {
+      if (
+        toolName.startsWith("playwright_") ||
+        toolName.startsWith("browser_")
+      ) {
         return `🌐 ブラウザを操作しています`;
       }
       return null;
@@ -414,10 +441,13 @@ export function summarizeCommand(cmd: string): string {
   const firstCmd = trimmed.split(/[|;&]/).at(0)?.trim() ?? trimmed;
 
   // pnpm / npm / yarn
-  if (/^(pnpm|npm|yarn)\s+install/.test(firstCmd)) return "パッケージをインストールしています";
-  if (/^(pnpm|npm|yarn)\s+build/.test(firstCmd)) return "ビルドを実行しています";
+  if (/^(pnpm|npm|yarn)\s+install/.test(firstCmd))
+    return "パッケージをインストールしています";
+  if (/^(pnpm|npm|yarn)\s+build/.test(firstCmd))
+    return "ビルドを実行しています";
   if (/^(pnpm|npm|yarn)\s+test/.test(firstCmd)) return "テストを実行しています";
-  if (/^(pnpm|npm|yarn)\s+dev/.test(firstCmd)) return "開発サーバーを起動しています";
+  if (/^(pnpm|npm|yarn)\s+dev/.test(firstCmd))
+    return "開発サーバーを起動しています";
   if (/^(pnpm|npm|yarn)\s+run\s+(\S+)/.test(firstCmd)) {
     const match = firstCmd.match(/^(?:pnpm|npm|yarn)\s+run\s+(\S+)/);
     return `${match![1]} スクリプトを実行しています`;
@@ -438,7 +468,8 @@ export function summarizeCommand(cmd: string): string {
   if (/^mkdir/.test(firstCmd)) return "ディレクトリを作成しています";
 
   // node / tsx / python scripts
-  if (/^(node|tsx|ts-node)\s+/.test(firstCmd)) return "スクリプトを実行しています";
+  if (/^(node|tsx|ts-node)\s+/.test(firstCmd))
+    return "スクリプトを実行しています";
   if (/^python/.test(firstCmd)) return "スクリプトを実行しています";
 
   // curl / wget
@@ -447,7 +478,8 @@ export function summarizeCommand(cmd: string): string {
   // ls / pwd / cat / head / tail / wc
   if (/^(ls|dir)\b/.test(firstCmd)) return "ファイル一覧を確認しています";
   if (/^pwd\b/.test(firstCmd)) return "作業ディレクトリを確認しています";
-  if (/^(cat|head|tail|less|more)\b/.test(firstCmd)) return "ファイルの内容を確認しています";
+  if (/^(cat|head|tail|less|more)\b/.test(firstCmd))
+    return "ファイルの内容を確認しています";
   if (/^wc\b/.test(firstCmd)) return "ファイルの情報を確認しています";
   if (/^(find|locate)\b/.test(firstCmd)) return "ファイルを検索しています";
   if (/^(grep|rg|ag)\b/.test(firstCmd)) return "テキストを検索しています";
@@ -460,14 +492,17 @@ export function summarizeCommand(cmd: string): string {
   if (/^touch\b/.test(firstCmd)) return "ファイルを作成しています";
 
   // tar / zip / unzip
-  if (/^(tar|zip|unzip|gzip|gunzip)\b/.test(firstCmd)) return "ファイルを圧縮・展開しています";
+  if (/^(tar|zip|unzip|gzip|gunzip)\b/.test(firstCmd))
+    return "ファイルを圧縮・展開しています";
 
   // ffmpeg / ffprobe
   if (/^ffmpeg/.test(firstCmd)) return "メディアファイルを変換しています";
-  if (/^ffprobe/.test(firstCmd)) return "メディアファイルの情報を確認しています";
+  if (/^ffprobe/.test(firstCmd))
+    return "メディアファイルの情報を確認しています";
 
   // docker
-  if (/^docker\s+build/.test(firstCmd)) return "Dockerイメージをビルドしています";
+  if (/^docker\s+build/.test(firstCmd))
+    return "Dockerイメージをビルドしています";
   if (/^docker\s+run/.test(firstCmd)) return "Dockerコンテナを起動しています";
   if (/^docker\s+/.test(firstCmd)) return "Dockerの操作を実行しています";
 

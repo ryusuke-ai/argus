@@ -14,7 +14,10 @@ if (!SLACK_BOT_TOKEN) {
   process.exit(1);
 }
 
-const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
+const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL;
+if (!SNS_CHANNEL) {
+  throw new Error("SLACK_SNS_CHANNEL environment variable is required");
+}
 
 async function postMessage(
   channel: string,

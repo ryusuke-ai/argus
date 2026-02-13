@@ -55,8 +55,19 @@ import type { ProgressReporter } from "../../utils/progress-reporter.js";
 
 function buildSystemPrompt(): string {
   const now = new Date();
-  const jstDate = now.toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" });
-  const jstTime = now.toLocaleTimeString("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false });
+  const jstDate = now.toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
+  const jstTime = now.toLocaleTimeString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
   return `
 # Inbox Agent Execution Mode
@@ -95,11 +106,11 @@ function buildSystemPrompt(): string {
 メール送信を指示された場合は、必ずこの send_email ツールを使用してください。Bash でコードを書いて送信しようとしないでください。
 
 ### Personal Knowledge MCP
-ユーザーの個人情報（志望企業、面接エピソード、価値観、強み、習慣、TODO 等）を保存・検索するナレッジベースです。
+ユーザーの個人情報（目標、経験・エピソード、価値観、強み、習慣、TODO 等）を保存・検索するナレッジベースです。
 ユーザーの個人情報に関する質問を受けたら、**必ず最初に personal_list でファイル一覧を確認**し、該当しそうなファイルを personal_read で読んでください。
 
 - **personal_list**: ノート一覧を取得（category でフィルタ可能: personality, areas, ideas, todo）
-- **personal_read**: 指定パスのノートを読む（例: "personality/desired-companies.md"）
+- **personal_read**: 指定パスのノートを読む（例: "personality/goals.md"）
 - **personal_search**: キーワードでノート内容を横断検索
 - **personal_context**: パーソナリティ情報を取得（section: values, strengths, weaknesses, habits, thinking, likes, dislikes）
 - **personal_add**: 新規ノートを作成
@@ -108,7 +119,7 @@ function buildSystemPrompt(): string {
 **使い方のコツ**:
 1. まず personal_list で全体像を把握する
 2. ファイル名から該当しそうなものを personal_read で読む
-3. 見つからない場合は personal_search で短いキーワード（例: 「志望」「強み」）で検索する
+3. 見つからない場合は personal_search で短いキーワード（例: 「目標」「強み」）で検索する
 
 ## ルール
 - 必ず日本語で回答する
@@ -165,7 +176,9 @@ export class InboxExecutor {
             GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
             GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
             DATABASE_URL: process.env.DATABASE_URL || "",
-            PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+            PATH:
+              process.env.PATH ||
+              "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
           },
         },
         gmail: {
@@ -181,7 +194,9 @@ export class InboxExecutor {
             GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
             GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
             DATABASE_URL: process.env.DATABASE_URL || "",
-            PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+            PATH:
+              process.env.PATH ||
+              "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
           },
         },
         "knowledge-personal": {
@@ -194,7 +209,9 @@ export class InboxExecutor {
           ],
           env: {
             DATABASE_URL: process.env.DATABASE_URL || "",
-            PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+            PATH:
+              process.env.PATH ||
+              "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
           },
         },
       },
@@ -268,7 +285,9 @@ export class InboxExecutor {
 
       // resume 失敗 → 新規 query にフォールバック
       if (!result.success) {
-        console.warn("[inbox/executor] Resume failed, falling back to new query");
+        console.warn(
+          "[inbox/executor] Resume failed, falling back to new query",
+        );
         result = await query(messageText, {
           hooks,
           sdkOptions,
@@ -351,7 +370,11 @@ export class InboxExecutor {
         const input = toolInput as Record<string, unknown>;
 
         // フェーズ自動進行: ツール呼び出しパターンからフェーズ遷移を検出
-        const nextPhase = detectPhaseTransition(toolName, input, currentPhaseIndex);
+        const nextPhase = detectPhaseTransition(
+          toolName,
+          input,
+          currentPhaseIndex,
+        );
         if (nextPhase > currentPhaseIndex) {
           try {
             for (let i = currentPhaseIndex; i < nextPhase; i++) {
@@ -402,7 +425,9 @@ function shortPath(input: Record<string, unknown>, key: string): string {
   const v = str(input, key, 200);
   if (!v) return "";
   const idx = v.indexOf("argus/");
-  return idx >= 0 ? v.slice(idx + "argus/".length) : v.split("/").slice(-3).join("/");
+  return idx >= 0
+    ? v.slice(idx + "argus/".length)
+    : v.split("/").slice(-3).join("/");
 }
 
 /** 開始メッセージ（onPreToolUse）: 絵文字なし、テキストのみ */

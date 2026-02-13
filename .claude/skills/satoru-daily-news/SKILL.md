@@ -111,7 +111,7 @@ Slack の `chat.postMessage` で `#argus-daily-news` チャンネルに Block Ki
 
 ```json
 {
-  "channel": "<SLACK_DAILY_NEWS_CHANNEL>",
+  "channel": "環境変数 SLACK_DAILY_NEWS_CHANNEL を参照",
   "blocks": [
     {
       "type": "header",
