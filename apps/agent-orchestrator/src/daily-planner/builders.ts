@@ -1,200 +1,24 @@
-// Daily Planner - collects calendar events, pending emails, pending tasks
-// and formats them into a Slack Block Kit daily plan deterministically.
-// Runs as a cron job via the scheduler.
+// Daily Planner - Block Kit builders, Canvas markdown, Slack posting, DB save, main entry
+// Formats collected data into Slack Block Kit daily plan deterministically.
 
-import { loadTokens, refreshTokenIfNeeded } from "@argus/gmail";
-import { listEvents } from "@argus/google-calendar";
-import { db, gmailMessages, inboxTasks, dailyPlans, todos } from "@argus/db";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { db, dailyPlans } from "@argus/db";
+import { eq, desc } from "drizzle-orm";
 import { summarizeJa } from "@argus/agent-core";
 import { upsertCanvas, findCanvasId, saveCanvasId } from "@argus/slack-canvas";
 
-// --- Types ---
-
-export interface TodoSummary {
-  id: string;
-  content: string;
-  category: string | null;
-  createdAt: Date;
-}
-
-export interface DailyData {
-  date: string;
-  events: CalendarEventSummary[];
-  pendingEmails: PendingEmailSummary[];
-  pendingTasks: PendingTaskSummary[];
-  pendingTodos: TodoSummary[];
-}
-
-export interface CalendarEventSummary {
-  title: string;
-  start: string;
-  end: string | undefined;
-  location: string | undefined;
-}
-
-export interface PendingEmailSummary {
-  id: string;
-  from: string;
-  subject: string;
-  classification: string;
-  receivedAt: Date;
-}
-
-export interface PendingTaskSummary {
-  id: string;
-  summary: string;
-  intent: string;
-  status: string;
-  createdAt: Date;
-}
-
-// --- Utility functions ---
-
-const DAY_OF_WEEK_JA = ["日", "月", "火", "水", "木", "金", "土"];
-
-export function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-export function getDayOfWeek(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return DAY_OF_WEEK_JA[d.getDay()];
-}
-
-export function formatTime(isoString: string): string {
-  const d = new Date(isoString);
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-// --- Data collection ---
-
-/**
- * Collect calendar events for the given date.
- * Uses Google Calendar API via @argus/google-calendar.
- */
-export async function collectCalendarEvents(
-  date: string,
-): Promise<CalendarEventSummary[]> {
-  try {
-    const tokens = await loadTokens();
-    if (!tokens) {
-      console.log("[Daily Planner] No Gmail tokens found. Skipping calendar.");
-      return [];
-    }
-    await refreshTokenIfNeeded();
-
-    const timeMin = `${date}T00:00:00+09:00`;
-    const timeMax = `${date}T23:59:59+09:00`;
-
-    const events = await listEvents({ timeMin, timeMax, maxResults: 50 });
-
-    return events.map((e) => ({
-      title: e.title,
-      start: e.start,
-      end: e.end || undefined,
-      location: e.location || undefined,
-    }));
-  } catch (error) {
-    console.error("[Daily Planner] Calendar fetch error:", error);
-    return [];
-  }
-}
-
-/**
- * Collect pending emails that need attention.
- * Queries gmail_messages with status='pending' and classification in ('needs_reply', 'needs_attention').
- */
-export async function collectPendingEmails(): Promise<PendingEmailSummary[]> {
-  try {
-    const rows = await db
-      .select()
-      .from(gmailMessages)
-      .where(
-        and(
-          eq(gmailMessages.status, "pending"),
-          inArray(gmailMessages.classification, [
-            "needs_reply",
-            "needs_attention",
-          ]),
-        ),
-      );
-
-    return rows.map((r) => ({
-      id: r.id,
-      from: r.fromAddress,
-      subject: r.subject,
-      classification: r.classification,
-      receivedAt: r.receivedAt,
-    }));
-  } catch (error) {
-    console.error("[Daily Planner] Pending emails fetch error:", error);
-    return [];
-  }
-}
-
-/**
- * Collect pending/queued/running tasks from inbox_tasks.
- */
-export async function collectPendingTasks(): Promise<PendingTaskSummary[]> {
-  try {
-    const rows = await db
-      .select()
-      .from(inboxTasks)
-      .where(inArray(inboxTasks.status, ["pending", "queued", "running"]));
-
-    return rows.map((r) => ({
-      id: r.id,
-      summary: r.summary,
-      intent: r.intent,
-      status: r.status,
-      createdAt: r.createdAt,
-    }));
-  } catch (error) {
-    console.error("[Daily Planner] Pending tasks fetch error:", error);
-    return [];
-  }
-}
-
-/**
- * Collect pending todos from the todos table.
- */
-export async function collectPendingTodos(): Promise<TodoSummary[]> {
-  try {
-    const rows = await db
-      .select()
-      .from(todos)
-      .where(eq(todos.status, "pending"));
-    return rows.map((r) => ({
-      id: r.id,
-      content: r.content,
-      category: r.category,
-      createdAt: r.createdAt,
-    }));
-  } catch (error) {
-    console.error("[Daily Planner] Pending todos fetch error:", error);
-    return [];
-  }
-}
-
-/**
- * Collect all daily data from 4 sources in parallel.
- */
-export async function collectDailyData(date: string): Promise<DailyData> {
-  const [events, pendingEmails, pendingTasks, pendingTodos] = await Promise.all([
-    collectCalendarEvents(date),
-    collectPendingEmails(),
-    collectPendingTasks(),
-    collectPendingTodos(),
-  ]);
-
-  return { date, events, pendingEmails, pendingTasks, pendingTodos };
-}
+import type {
+  DailyData,
+  CalendarEventSummary,
+  PendingEmailSummary,
+  PendingTaskSummary,
+  TodoSummary,
+} from "./collectors.js";
+import {
+  getDayOfWeek,
+  formatTime,
+  formatDate,
+  collectDailyData,
+} from "./collectors.js";
 
 // --- Display limits (based on Slack Block Kit best practices) ---
 
@@ -246,7 +70,10 @@ function formatDateJa(dateStr: string): string {
 /**
  * Build event lines for vertical list display.
  */
-function buildEventLines(events: CalendarEventSummary[], max: number): string[] {
+function buildEventLines(
+  events: CalendarEventSummary[],
+  max: number,
+): string[] {
   const display = events.slice(0, max);
   return display.map((e) => {
     const start = e.start.includes("T") ? formatTime(e.start) : "終日";
@@ -292,8 +119,7 @@ function buildEmailLines(emails: PendingEmailSummary[], max: number): string[] {
 function buildTaskLines(tasks: PendingTaskSummary[], max: number): string[] {
   const sorted = [...tasks].sort(
     (a, b) =>
-      (TASK_STATUS_ORDER[a.status] ?? 9) -
-      (TASK_STATUS_ORDER[b.status] ?? 9),
+      (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9),
   );
   const display = sorted.slice(0, max);
 
@@ -385,7 +211,8 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
   // --- Summary context ---
   const parts: string[] = [];
   if (data.events.length > 0) parts.push(`予定 ${data.events.length}件`);
-  if (data.pendingEmails.length > 0) parts.push(`メール ${data.pendingEmails.length}件`);
+  if (data.pendingEmails.length > 0)
+    parts.push(`メール ${data.pendingEmails.length}件`);
   if (totalTaskCount > 0) parts.push(`タスク ${totalTaskCount}件`);
   blocks.push({
     type: "context",
@@ -423,7 +250,12 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     if (data.events.length > MAX_EVENTS) {
       blocks.push({
         type: "context",
-        elements: [{ type: "mrkdwn", text: `_他 ${data.events.length - MAX_EVENTS} 件_` }],
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `_他 ${data.events.length - MAX_EVENTS} 件_`,
+          },
+        ],
       });
     }
   }
@@ -433,7 +265,11 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     blocks.push({ type: "divider" });
     blocks.push({
       type: "header",
-      text: { type: "plain_text", text: `:envelope:  未対応メール`, emoji: true },
+      text: {
+        type: "plain_text",
+        text: `:envelope:  未対応メール`,
+        emoji: true,
+      },
     });
 
     const sorted = [...data.pendingEmails].sort(
@@ -466,7 +302,12 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     if (data.pendingEmails.length > MAX_EMAILS) {
       blocks.push({
         type: "context",
-        elements: [{ type: "mrkdwn", text: `_他 ${data.pendingEmails.length - MAX_EMAILS} 件_` }],
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `_他 ${data.pendingEmails.length - MAX_EMAILS} 件_`,
+          },
+        ],
       });
     }
   }
@@ -478,7 +319,11 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     blocks.push({ type: "divider" });
     blocks.push({
       type: "header",
-      text: { type: "plain_text", text: `:clipboard:  未完了タスク`, emoji: true },
+      text: {
+        type: "plain_text",
+        text: `:clipboard:  未完了タスク`,
+        emoji: true,
+      },
     });
 
     // Group todos by category
@@ -496,11 +341,10 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
       });
       for (const t of items) {
         blocks.push(
-          checkboxItem(
-            truncateText(t.content),
-            `dp_check_todo_${t.id}`,
-            { type: "todo", id: t.id },
-          ),
+          checkboxItem(truncateText(t.content), `dp_check_todo_${t.id}`, {
+            type: "todo",
+            id: t.id,
+          }),
         );
       }
     }
@@ -508,7 +352,12 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     if (pendingTodos.length > MAX_TODOS) {
       blocks.push({
         type: "context",
-        elements: [{ type: "mrkdwn", text: `_他 ${pendingTodos.length - MAX_TODOS} 件_` }],
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `_他 ${pendingTodos.length - MAX_TODOS} 件_`,
+          },
+        ],
       });
     }
 
@@ -528,18 +377,22 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
 
       for (const t of displayTasks) {
         blocks.push(
-          checkboxItem(
-            summarizeJa(t.summary),
-            `dp_check_inbox_${t.id}`,
-            { type: "inbox", id: t.id },
-          ),
+          checkboxItem(summarizeJa(t.summary), `dp_check_inbox_${t.id}`, {
+            type: "inbox",
+            id: t.id,
+          }),
         );
       }
 
       if (inboxTasksFiltered.length > MAX_TASKS) {
         blocks.push({
           type: "context",
-          elements: [{ type: "mrkdwn", text: `_他 ${inboxTasksFiltered.length - MAX_TASKS} 件_` }],
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `_他 ${inboxTasksFiltered.length - MAX_TASKS} 件_`,
+            },
+          ],
         });
       }
     }
@@ -594,7 +447,8 @@ export function buildCanvasMarkdown(data: DailyData): string {
   // Summary
   const parts: string[] = [];
   if (data.events.length > 0) parts.push(`予定 ${data.events.length}件`);
-  if (data.pendingEmails.length > 0) parts.push(`メール ${data.pendingEmails.length}件`);
+  if (data.pendingEmails.length > 0)
+    parts.push(`メール ${data.pendingEmails.length}件`);
   if (totalTaskCount > 0) parts.push(`タスク ${totalTaskCount}件`);
   lines.push(parts.length > 0 ? parts.join(" · ") : "予定なし");
   lines.push("");
@@ -754,7 +608,9 @@ export async function postDailyPlan(
  * Legacy: Find existing canvas ID from previous daily plans for this channel.
  * Used as fallback when canvas_registry has no entry yet.
  */
-async function findExistingCanvasIdLegacy(channel: string): Promise<string | null> {
+async function findExistingCanvasIdLegacy(
+  channel: string,
+): Promise<string | null> {
   try {
     const rows = await db
       .select()
@@ -765,7 +621,8 @@ async function findExistingCanvasIdLegacy(channel: string): Promise<string | nul
 
     for (const row of rows) {
       const raw = row.rawData as Record<string, unknown> | null;
-      if (raw?.canvasId && typeof raw.canvasId === "string") return raw.canvasId;
+      if (raw?.canvasId && typeof raw.canvasId === "string")
+        return raw.canvasId;
     }
     return null;
   } catch {
@@ -854,8 +711,15 @@ export async function generateDailyPlan(): Promise<void> {
   const title = `📋 デイリープラン ${formatDateJa(today)}（${dayOfWeek}）`;
 
   // Look up existing canvasId: canvas_registry first, then legacy DB fallback
-  const existingCanvasId = await findCanvasId("daily-plan") ?? await findExistingCanvasIdLegacy(channel);
-  const canvasResult = await upsertCanvas(channel, title, markdown, existingCanvasId);
+  const existingCanvasId =
+    (await findCanvasId("daily-plan")) ??
+    (await findExistingCanvasIdLegacy(channel));
+  const canvasResult = await upsertCanvas(
+    channel,
+    title,
+    markdown,
+    existingCanvasId,
+  );
 
   const canvasId = canvasResult.canvasId;
   if (canvasResult.success && canvasId) {
@@ -866,8 +730,18 @@ export async function generateDailyPlan(): Promise<void> {
   const blocks = buildBlocks(data);
 
   // 5. Save to DB (store canvasId in rawData for reuse)
-  const rawDataWithCanvas = { ...data, canvasId } as DailyData & { canvasId: string | null };
-  await saveDailyPlan(today, channel, blocks, rawDataWithCanvas as unknown as DailyData, null);
+  const rawDataWithCanvas = { ...data, canvasId } as DailyData & {
+    canvasId: string | null;
+  };
+  await saveDailyPlan(
+    today,
+    channel,
+    blocks,
+    rawDataWithCanvas as unknown as DailyData,
+    null,
+  );
 
-  console.log(`[Daily Planner] Daily plan completed for ${today} (canvas: ${canvasId})`);
+  console.log(
+    `[Daily Planner] Daily plan completed for ${today} (canvas: ${canvasId})`,
+  );
 }

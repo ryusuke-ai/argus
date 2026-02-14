@@ -80,8 +80,8 @@ import {
   formatDate,
   getDayOfWeek,
   formatTime,
-} from "./daily-planner.js";
-import type { DailyData } from "./daily-planner.js";
+} from "./daily-planner/index.js";
+import type { DailyData } from "./daily-planner/index.js";
 import { db } from "@argus/db";
 
 /** Helper: extract mrkdwn text from all section blocks */
@@ -109,7 +109,8 @@ function checkboxActions(
   blocks: Record<string, unknown>[],
 ): Record<string, unknown>[] {
   return blocks.filter(
-    (b) => b.type === "section" && (b as { accessory?: unknown }).accessory != null,
+    (b) =>
+      b.type === "section" && (b as { accessory?: unknown }).accessory != null,
   );
 }
 
@@ -129,11 +130,10 @@ function checkboxValue(block: Record<string, unknown>): string {
 function contextTexts(blocks: Record<string, unknown>[]): string[] {
   return blocks
     .filter((b) => b.type === "context")
-    .flatMap(
-      (b) =>
-        ((b as { elements?: { text?: string }[] }).elements ?? []).map(
-          (e) => e.text ?? "",
-        ),
+    .flatMap((b) =>
+      ((b as { elements?: { text?: string }[] }).elements ?? []).map(
+        (e) => e.text ?? "",
+      ),
     );
 }
 
@@ -713,9 +713,9 @@ describe("daily-planner", () => {
       const texts = sectionTexts(blocks);
 
       // Heading is separate
-      expect(
-        headerTexts(blocks).some((t) => t.includes("未対応メール")),
-      ).toBe(true);
+      expect(headerTexts(blocks).some((t) => t.includes("未対応メール"))).toBe(
+        true,
+      );
 
       // Each email has its own checkbox (formatSender extracts name before @)
       // Checkbox labels are in actions blocks, not section blocks — check raw blocks
@@ -765,9 +765,9 @@ describe("daily-planner", () => {
       const texts = sectionTexts(blocks);
 
       // Heading is separate
-      expect(
-        headerTexts(blocks).some((t) => t.includes("未完了タスク")),
-      ).toBe(true);
+      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
+        true,
+      );
 
       // 受信タスク label (now in section block)
       expect(texts.some((t) => t.includes("*受信タスク*"))).toBe(true);
@@ -912,9 +912,9 @@ describe("daily-planner", () => {
       const texts = sectionTexts(blocks);
 
       // Section header
-      expect(
-        headerTexts(blocks).some((t) => t.includes("未完了タスク")),
-      ).toBe(true);
+      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
+        true,
+      );
 
       // Category labels in section blocks (bigger text)
       expect(texts.some((t) => t.includes("*仕事*"))).toBe(true);
@@ -991,9 +991,9 @@ describe("daily-planner", () => {
       const texts = sectionTexts(blocks);
 
       // Both should be under 未完了タスク
-      expect(
-        headerTexts(blocks).some((t) => t.includes("未完了タスク")),
-      ).toBe(true);
+      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
+        true,
+      );
 
       // Category for todo (section block)
       expect(texts.some((t) => t.includes("*買い物*"))).toBe(true);
@@ -1329,9 +1329,9 @@ describe("daily-planner", () => {
       const blocks = buildBlocks(data);
 
       // Should not show 未完了タスク section since only code_change
-      expect(
-        headerTexts(blocks).some((t) => t.includes("未完了タスク")),
-      ).toBe(false);
+      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
+        false,
+      );
       // Should show empty state
       const texts = sectionTexts(blocks);
       expect(
@@ -1353,7 +1353,7 @@ describe("daily-planner", () => {
         { type: "header", text: { type: "plain_text", text: "Plan" } },
       ];
       const ts = await (
-        await import("./daily-planner.js")
+        await import("./daily-planner/index.js")
       ).postDailyPlan("#daily-plan", blocks, "2026-02-08");
 
       expect(ts).toBe("1234567890.123456");
@@ -1375,7 +1375,8 @@ describe("daily-planner", () => {
     it("should return null when SLACK_BOT_TOKEN is not set", async () => {
       process.env.SLACK_BOT_TOKEN = "";
 
-      const { postDailyPlan: postFn } = await import("./daily-planner.js");
+      const { postDailyPlan: postFn } =
+        await import("./daily-planner/index.js");
       const ts = await postFn("#daily-plan", [], "2026-02-08");
 
       expect(ts).toBeNull();
@@ -1392,7 +1393,8 @@ describe("daily-planner", () => {
       });
       vi.stubGlobal("fetch", mockFetchImpl);
 
-      const { postDailyPlan: postFn } = await import("./daily-planner.js");
+      const { postDailyPlan: postFn } =
+        await import("./daily-planner/index.js");
       const ts = await postFn("#nonexistent", [], "2026-02-08");
 
       expect(ts).toBeNull();
@@ -1408,7 +1410,8 @@ describe("daily-planner", () => {
         .mockRejectedValue(new Error("Network error"));
       vi.stubGlobal("fetch", mockFetchImpl);
 
-      const { postDailyPlan: postFn } = await import("./daily-planner.js");
+      const { postDailyPlan: postFn } =
+        await import("./daily-planner/index.js");
       const ts = await postFn("#daily-plan", [], "2026-02-08");
 
       expect(ts).toBeNull();
@@ -1502,7 +1505,8 @@ describe("daily-planner", () => {
         values: vi.fn().mockResolvedValue(undefined),
       });
 
-      const { saveDailyPlan: saveFn } = await import("./daily-planner.js");
+      const { saveDailyPlan: saveFn } =
+        await import("./daily-planner/index.js");
 
       await saveFn(
         "2026-02-08",
@@ -1540,7 +1544,8 @@ describe("daily-planner", () => {
         }),
       });
 
-      const { saveDailyPlan: saveFn } = await import("./daily-planner.js");
+      const { saveDailyPlan: saveFn } =
+        await import("./daily-planner/index.js");
 
       await saveFn(
         "2026-02-08",
@@ -1571,7 +1576,8 @@ describe("daily-planner", () => {
         }),
       });
 
-      const { saveDailyPlan: saveFn } = await import("./daily-planner.js");
+      const { saveDailyPlan: saveFn } =
+        await import("./daily-planner/index.js");
 
       await saveFn(
         "2026-02-08",

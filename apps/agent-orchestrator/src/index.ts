@@ -5,7 +5,7 @@
 import express from "express";
 import { AgentScheduler } from "./scheduler.js";
 import { setupKnowledgeRoutes } from "./knowledge-api.js";
-import { generateDailyPlan } from "./daily-planner.js";
+import { generateDailyPlan } from "./daily-planner/index.js";
 
 const app = express();
 const PORT = process.env.PORT || 3950;

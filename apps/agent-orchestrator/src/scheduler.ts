@@ -4,7 +4,7 @@ import { db, agents, type Agent } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { executeAgent } from "./agent-executor.js";
 import { checkGmail } from "./gmail-checker.js";
-import { generateDailyPlan } from "./daily-planner.js";
+import { generateDailyPlan } from "./daily-planner/index.js";
 import { runCodePatrol } from "./code-patrol/index.js";
 import { runConsistencyCheck } from "./consistency-checker/index.js";
 import { updateDailyNewsCanvas } from "./canvas/daily-news-canvas.js";
