@@ -4,7 +4,6 @@
 
 import {
   query,
-  formatLessonsForPrompt,
   extractText,
   splitText,
   createDBObservationHooks,
@@ -13,7 +12,7 @@ import {
   type ObservationDB,
 } from "@argus/agent-core";
 import { db, sessions, messages, tasks, lessons } from "@argus/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   DEEP_RESEARCH_SDK_OPTIONS,
   DEEP_RESEARCH_TIMEOUT_MS,
@@ -56,42 +55,12 @@ export async function executeDeepResearch(
     // 観測 hooks + 進捗通知
     const hooks = createResearchHooks(session.id, say, threadTs);
 
-    // lessons 取得
-    const recentLessons = await db
-      .select({
-        toolName: lessons.toolName,
-        errorPattern: lessons.errorPattern,
-        reflection: lessons.reflection,
-        resolution: lessons.resolution,
-        severity: lessons.severity,
-      })
-      .from(lessons)
-      .orderBy(desc(lessons.createdAt))
-      .limit(5);
-    const lessonsText = formatLessonsForPrompt(recentLessons);
-
-    const baseSystemPrompt = DEEP_RESEARCH_SDK_OPTIONS.systemPrompt as {
-      type: "preset";
-      preset: "claude_code";
-      append?: string;
-    };
-    const sdkOptions: typeof DEEP_RESEARCH_SDK_OPTIONS = lessonsText
-      ? {
-          ...DEEP_RESEARCH_SDK_OPTIONS,
-          systemPrompt: {
-            type: baseSystemPrompt.type,
-            preset: baseSystemPrompt.preset,
-            append: (baseSystemPrompt.append || "") + lessonsText,
-          },
-        }
-      : DEEP_RESEARCH_SDK_OPTIONS;
-
     // query() で実行（resume は使わない — リサーチは毎回独立したセッション）
     const result = await query(topic, {
       model,
       hooks,
       timeout: DEEP_RESEARCH_TIMEOUT_MS,
-      sdkOptions,
+      sdkOptions: DEEP_RESEARCH_SDK_OPTIONS,
     });
 
     // sessionId を DB に保存
@@ -179,7 +148,11 @@ function createResearchHooks(
   threadTs: string,
 ): ArgusHooks {
   const obsDB: ObservationDB = { db, tasks, lessons, eq };
-  const baseHooks = createDBObservationHooks(obsDB, dbSessionId, "[deep-research]");
+  const baseHooks = createDBObservationHooks(
+    obsDB,
+    dbSessionId,
+    "[deep-research]",
+  );
 
   let lastProgressTime = 0;
   let searchCount = 0;
@@ -256,10 +229,7 @@ function extractReportText(result: AgentResult): string {
 /**
  * レポートを Slack Block Kit 形式で構築。
  */
-function buildReportBlocks(
-  reportText: string,
-  result: AgentResult,
-): unknown[] {
+function buildReportBlocks(reportText: string, result: AgentResult): unknown[] {
   const blocks: unknown[] = [];
 
   // ヘッダー
@@ -302,8 +272,4 @@ function buildReportBlocks(
 }
 
 // Exported for testing
-export {
-  formatResearchProgress,
-  extractReportText,
-  buildReportBlocks,
-};
+export { formatResearchProgress, extractReportText, buildReportBlocks };

@@ -1,7 +1,22 @@
 // Agent Executor - executes agents and records execution history
-import { db, agents, agentExecutions, sessions, tasks, lessons } from "@argus/db";
-import { query, formatLessonsForPrompt, scanOutputDir, findNewArtifacts, createDBObservationHooks, type AgentResult, type ArgusHooks, type ObservationDB } from "@argus/agent-core";
-import { eq, desc } from "drizzle-orm";
+import {
+  db,
+  agents,
+  agentExecutions,
+  sessions,
+  tasks,
+  lessons,
+} from "@argus/db";
+import {
+  query,
+  scanOutputDir,
+  findNewArtifacts,
+  createDBObservationHooks,
+  type AgentResult,
+  type ArgusHooks,
+  type ObservationDB,
+} from "@argus/agent-core";
+import { eq } from "drizzle-orm";
 import { notifySlack, uploadFileToSlack } from "./slack-notifier.js";
 import { updateExecutionCanvas } from "./canvas/execution-canvas.js";
 import * as path from "node:path";
@@ -114,39 +129,17 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
       .returning();
     const hooks = createObservationHooks(session.id);
 
-    const recentLessons = await db
-      .select({
-        toolName: lessons.toolName,
-        errorPattern: lessons.errorPattern,
-        reflection: lessons.reflection,
-        resolution: lessons.resolution,
-        severity: lessons.severity,
-      })
-      .from(lessons)
-      .orderBy(desc(lessons.createdAt))
-      .limit(10);
-    const lessonsText = formatLessonsForPrompt(recentLessons);
-
-    const sdkOptions = lessonsText
-      ? {
-          systemPrompt: {
-            type: "preset" as const,
-            preset: "claude_code" as const,
-            append: lessonsText,
-          },
-        }
-      : undefined;
-
     // 成果物スナップショット（実行前）
     const outputDir = path.resolve(process.cwd(), "../.claude/agent-output");
     const snapshotBefore = scanOutputDir(outputDir);
 
     const result: AgentResult = await query(prompt, {
       hooks,
-      ...(sdkOptions ? { sdkOptions } : {}),
       ...(config?.allowedTools ? { allowedTools: config.allowedTools } : {}),
       ...(config?.allowedSkills ? { allowedSkills: config.allowedSkills } : {}),
-      ...(config?.allowedCommands ? { allowedCommands: config.allowedCommands } : {}),
+      ...(config?.allowedCommands
+        ? { allowedCommands: config.allowedCommands }
+        : {}),
     });
 
     if (result.sessionId) {
@@ -198,7 +191,9 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     if (newArtifacts.length > 0) {
       const NOTIFICATION_CHANNEL = process.env.SLACK_NOTIFICATION_CHANNEL;
       if (NOTIFICATION_CHANNEL) {
-        console.log(`[Agent Executor] Uploading ${newArtifacts.length} artifact(s) to Slack`);
+        console.log(
+          `[Agent Executor] Uploading ${newArtifacts.length} artifact(s) to Slack`,
+        );
         for (const artifact of newArtifacts) {
           await uploadFileToSlack(artifact, NOTIFICATION_CHANNEL);
         }

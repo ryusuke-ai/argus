@@ -13,9 +13,9 @@ const {
   mockMarkAsRead: vi.fn(),
 }));
 
-// Hoisted mock for agent-core query
-const { mockQuery } = vi.hoisted(() => ({
-  mockQuery: vi.fn(),
+// Hoisted mock for Anthropic SDK
+const { mockMessagesCreate } = vi.hoisted(() => ({
+  mockMessagesCreate: vi.fn(),
 }));
 
 // Hoisted mock for global fetch
@@ -49,12 +49,19 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((a, b) => ({ field: a, value: b })),
 }));
 
-// Mock @argus/agent-core
-vi.mock("@argus/agent-core", () => ({
-  query: mockQuery,
+// Mock @anthropic-ai/sdk
+vi.mock("@anthropic-ai/sdk", () => ({
+  default: class MockAnthropic {
+    messages = { create: mockMessagesCreate };
+  },
 }));
 
-import { checkGmail, classifyEmail, postToSlack, getTimeAgo } from "./gmail-checker.js";
+import {
+  checkGmail,
+  classifyEmail,
+  postToSlack,
+  getTimeAgo,
+} from "./gmail-checker.js";
 import { db } from "@argus/db";
 
 describe("gmail-checker", () => {
@@ -155,7 +162,9 @@ describe("gmail-checker", () => {
       (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ id: "existing-uuid", gmailId: "msg-1" }]),
+            limit: vi
+              .fn()
+              .mockResolvedValue([{ id: "existing-uuid", gmailId: "msg-1" }]),
           }),
         }),
       });
@@ -204,20 +213,14 @@ describe("gmail-checker", () => {
         }),
       });
 
-      // Mock classify via query
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [
-            {
-              type: "text",
-              text: '{"classification": "needs_reply", "summary": "Meeting request", "draft_reply": "Sure, 3pm works!"}',
-            },
-          ],
-          total_cost_usd: 0.01,
-        },
-        toolCalls: [],
-        success: true,
+      // Mock classify via Anthropic SDK
+      mockMessagesCreate.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: '{"classification": "needs_reply", "summary": "Meeting request", "draft_reply": "Sure, 3pm works!"}',
+          },
+        ],
       });
 
       // Mock Slack post
@@ -286,19 +289,13 @@ describe("gmail-checker", () => {
         }),
       });
 
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [
-            {
-              type: "text",
-              text: '{"classification": "other", "summary": "Newsletter", "draft_reply": null}',
-            },
-          ],
-          total_cost_usd: 0.001,
-        },
-        toolCalls: [],
-        success: true,
+      mockMessagesCreate.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: '{"classification": "other", "summary": "Newsletter", "draft_reply": null}',
+          },
+        ],
       });
 
       const mockFetchImpl = vi.fn();
@@ -343,15 +340,9 @@ describe("gmail-checker", () => {
         }),
       });
 
-      // Classification fails (query returns non-JSON)
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [{ type: "text", text: "I cannot classify this." }],
-          total_cost_usd: 0,
-        },
-        toolCalls: [],
-        success: true,
+      // Classification fails (returns non-JSON)
+      mockMessagesCreate.mockResolvedValue({
+        content: [{ type: "text", text: "I cannot classify this." }],
       });
 
       await checkGmail();
@@ -368,19 +359,13 @@ describe("gmail-checker", () => {
 
   describe("classifyEmail", () => {
     it("should parse Claude JSON response correctly for needs_reply", async () => {
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [
-            {
-              type: "text",
-              text: '{"classification": "needs_reply", "summary": "Request for meeting", "draft_reply": "Thank you for reaching out."}',
-            },
-          ],
-          total_cost_usd: 0.01,
-        },
-        toolCalls: [],
-        success: true,
+      mockMessagesCreate.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: '{"classification": "needs_reply", "summary": "Request for meeting", "draft_reply": "Thank you for reaching out."}',
+          },
+        ],
       });
 
       const result = await classifyEmail(
@@ -397,19 +382,13 @@ describe("gmail-checker", () => {
     });
 
     it("should parse Claude JSON response correctly for needs_attention", async () => {
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [
-            {
-              type: "text",
-              text: '{"classification": "needs_attention", "summary": "Payment processed", "draft_reply": null}',
-            },
-          ],
-          total_cost_usd: 0.01,
-        },
-        toolCalls: [],
-        success: true,
+      mockMessagesCreate.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: '{"classification": "needs_attention", "summary": "Payment processed", "draft_reply": null}',
+          },
+        ],
       });
 
       const result = await classifyEmail(
@@ -426,19 +405,13 @@ describe("gmail-checker", () => {
     });
 
     it("should parse Claude JSON response for other classification", async () => {
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [
-            {
-              type: "text",
-              text: '{"classification": "other", "summary": "Newsletter", "draft_reply": null}',
-            },
-          ],
-          total_cost_usd: 0.001,
-        },
-        toolCalls: [],
-        success: true,
+      mockMessagesCreate.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: '{"classification": "other", "summary": "Newsletter", "draft_reply": null}',
+          },
+        ],
       });
 
       const result = await classifyEmail(
@@ -455,19 +428,13 @@ describe("gmail-checker", () => {
     });
 
     it("should extract JSON from response with surrounding text", async () => {
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [
-            {
-              type: "text",
-              text: 'Here is the classification:\n{"classification": "needs_reply", "summary": "Question about project", "draft_reply": "Let me check."}\nDone.',
-            },
-          ],
-          total_cost_usd: 0.01,
-        },
-        toolCalls: [],
-        success: true,
+      mockMessagesCreate.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: 'Here is the classification:\n{"classification": "needs_reply", "summary": "Question about project", "draft_reply": "Let me check."}\nDone.',
+          },
+        ],
       });
 
       const result = await classifyEmail(
@@ -481,33 +448,19 @@ describe("gmail-checker", () => {
     });
 
     it("should return null when Claude returns non-JSON", async () => {
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [{ type: "text", text: "I cannot classify this email." }],
-          total_cost_usd: 0,
-        },
-        toolCalls: [],
-        success: true,
+      mockMessagesCreate.mockResolvedValue({
+        content: [{ type: "text", text: "I cannot classify this email." }],
       });
 
-      const result = await classifyEmail(
-        "test@test.com",
-        "Test",
-        "Test body",
-      );
+      const result = await classifyEmail("test@test.com", "Test", "Test body");
 
       expect(result).toBeNull();
     });
 
-    it("should return null and log error when query throws", async () => {
-      mockQuery.mockRejectedValue(new Error("API error"));
+    it("should return null and log error when API throws", async () => {
+      mockMessagesCreate.mockRejectedValue(new Error("API error"));
 
-      const result = await classifyEmail(
-        "test@test.com",
-        "Test",
-        "Test body",
-      );
+      const result = await classifyEmail("test@test.com", "Test", "Test body");
 
       expect(result).toBeNull();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -519,27 +472,24 @@ describe("gmail-checker", () => {
     it("should truncate body to 3000 characters", async () => {
       const longBody = "A".repeat(5000);
 
-      mockQuery.mockResolvedValue({
-        message: {
-          type: "assistant",
-          content: [
-            {
-              type: "text",
-              text: '{"classification": "other", "summary": "Long email", "draft_reply": null}',
-            },
-          ],
-          total_cost_usd: 0.01,
-        },
-        toolCalls: [],
-        success: true,
+      mockMessagesCreate.mockResolvedValue({
+        content: [
+          {
+            type: "text",
+            text: '{"classification": "other", "summary": "Long email", "draft_reply": null}',
+          },
+        ],
       });
 
       await classifyEmail("test@test.com", "Long", longBody);
 
       // Verify prompt contains truncated body
-      const callArgs = mockQuery.mock.calls[0][0] as string;
-      expect(callArgs).toContain("A".repeat(3000));
-      expect(callArgs).not.toContain("A".repeat(3001));
+      const callArgs = mockMessagesCreate.mock.calls[0][0] as {
+        messages: Array<{ content: string }>;
+      };
+      const prompt = callArgs.messages[0].content;
+      expect(prompt).toContain("A".repeat(3000));
+      expect(prompt).not.toContain("A".repeat(3001));
     });
   });
 
@@ -593,17 +543,22 @@ describe("gmail-checker", () => {
 
       // Verify button text has no emoji prefixes
       const replyBtn = actionsBlock.elements.find(
-        (e: Record<string, unknown>) => (e as { action_id: string }).action_id === "gmail_reply",
+        (e: Record<string, unknown>) =>
+          (e as { action_id: string }).action_id === "gmail_reply",
       );
-      expect(replyBtn.text.text).toBe("\u3053\u306E\u5185\u5BB9\u3067\u8FD4\u4FE1");
+      expect(replyBtn.text.text).toBe(
+        "\u3053\u306E\u5185\u5BB9\u3067\u8FD4\u4FE1",
+      );
 
       const editBtn = actionsBlock.elements.find(
-        (e: Record<string, unknown>) => (e as { action_id: string }).action_id === "gmail_edit",
+        (e: Record<string, unknown>) =>
+          (e as { action_id: string }).action_id === "gmail_edit",
       );
       expect(editBtn.text.text).toBe("\u7DE8\u96C6");
 
       const skipBtn = actionsBlock.elements.find(
-        (e: Record<string, unknown>) => (e as { action_id: string }).action_id === "gmail_skip",
+        (e: Record<string, unknown>) =>
+          (e as { action_id: string }).action_id === "gmail_skip",
       );
       expect(skipBtn.text.text).toBe("\u30B9\u30AD\u30C3\u30D7");
 
@@ -676,7 +631,9 @@ describe("gmail-checker", () => {
 
     it("should return null when Slack API returns error", async () => {
       const mockFetchImpl = vi.fn().mockResolvedValue({
-        json: vi.fn().mockResolvedValue({ ok: false, error: "channel_not_found" }),
+        json: vi
+          .fn()
+          .mockResolvedValue({ ok: false, error: "channel_not_found" }),
       });
       vi.stubGlobal("fetch", mockFetchImpl);
 
@@ -694,7 +651,9 @@ describe("gmail-checker", () => {
     });
 
     it("should return null when fetch throws", async () => {
-      const mockFetchImpl = vi.fn().mockRejectedValue(new Error("Network error"));
+      const mockFetchImpl = vi
+        .fn()
+        .mockRejectedValue(new Error("Network error"));
       vi.stubGlobal("fetch", mockFetchImpl);
 
       const ts = await postToSlack(

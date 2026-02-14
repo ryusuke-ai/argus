@@ -4,12 +4,9 @@ import { resolve, dirname } from "node:path";
 import {
   query,
   resume,
-  formatLessonsForPrompt,
   type AgentResult,
   type ArgusHooks,
 } from "@argus/agent-core";
-import { db, lessons } from "@argus/db";
-import { desc } from "drizzle-orm";
 
 /** Intent 別のタイムアウト設定（ms） */
 const TIMEOUT_BY_INTENT: Record<string, number> = {
@@ -141,25 +138,12 @@ export class InboxExecutor {
   /**
    * SDK オプションを構築する（query / resume 共通）。
    */
-  private async buildSdkOptions(): Promise<Record<string, unknown>> {
-    const recentLessons = await db
-      .select({
-        toolName: lessons.toolName,
-        errorPattern: lessons.errorPattern,
-        reflection: lessons.reflection,
-        resolution: lessons.resolution,
-        severity: lessons.severity,
-      })
-      .from(lessons)
-      .orderBy(desc(lessons.createdAt))
-      .limit(5);
-    const lessonsText = formatLessonsForPrompt(recentLessons);
-
+  private buildSdkOptions(): Record<string, unknown> {
     return {
       systemPrompt: {
         type: "preset" as const,
         preset: "claude_code" as const,
-        append: buildSystemPrompt() + (lessonsText || ""),
+        append: buildSystemPrompt(),
       },
       disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
       mcpServers: {
@@ -225,7 +209,7 @@ export class InboxExecutor {
     const startTime = Date.now();
 
     try {
-      const sdkOptions = await this.buildSdkOptions();
+      const sdkOptions = this.buildSdkOptions();
       const timeout = TIMEOUT_BY_INTENT[task.intent] || TIMEOUT_BY_INTENT.other;
       const hooks = this.createHooks(reporter);
 
@@ -275,7 +259,7 @@ export class InboxExecutor {
     const startTime = Date.now();
 
     try {
-      const sdkOptions = await this.buildSdkOptions();
+      const sdkOptions = this.buildSdkOptions();
       const hooks = this.createHooks(reporter);
 
       let result = await resume(sessionId, messageText, {

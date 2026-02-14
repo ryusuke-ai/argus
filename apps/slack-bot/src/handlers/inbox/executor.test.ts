@@ -2,33 +2,8 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
-  formatLessonsForPrompt: vi.fn(() => ""),
+  resume: vi.fn(),
 }));
-
-vi.mock("@argus/db", () => {
-  const mockDb = {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue([]),
-    orderBy: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockResolvedValue([{ id: "session-1" }]),
-    update: vi.fn().mockReturnThis(),
-    set: vi.fn().mockReturnThis(),
-  };
-  return {
-    db: mockDb,
-    sessions: {},
-    messages: {},
-    tasks: {},
-    lessons: {},
-    inboxTasks: {},
-    eq: vi.fn(),
-    desc: vi.fn(),
-  };
-});
 
 describe("InboxExecutor", () => {
   let InboxExecutor: typeof import("./executor.js").InboxExecutor;
@@ -53,9 +28,7 @@ describe("InboxExecutor", () => {
         content: [{ type: "text", text: "テスト全件パスしました" }],
         total_cost_usd: 0.05,
       },
-      toolCalls: [
-        { name: "Bash", input: {}, status: "success" },
-      ],
+      toolCalls: [{ name: "Bash", input: {}, status: "success" }],
       success: true,
     });
 
@@ -77,7 +50,9 @@ describe("InboxExecutor", () => {
 
   it("should handle execution failure gracefully", async () => {
     mockQuery.mockRejectedValue(new Error("Timeout"));
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     const executor = new InboxExecutor();
     const result = await executor.executeTask({
@@ -99,8 +74,13 @@ describe("InboxExecutor", () => {
       sessionId: "sdk-session-fail",
       message: {
         type: "assistant",
-        content: [{ type: "text", text: "Googleカレンダーへの追加に失敗しました。認証トークンが未設定のため、カレンダーAPIにアクセスできない状態です。" }],
-        total_cost_usd: 0.10,
+        content: [
+          {
+            type: "text",
+            text: "Googleカレンダーへの追加に失敗しました。認証トークンが未設定のため、カレンダーAPIにアクセスできない状態です。",
+          },
+        ],
+        total_cost_usd: 0.1,
       },
       toolCalls: [{ name: "mcp", input: {}, status: "error" }],
       success: true,
@@ -123,7 +103,12 @@ describe("InboxExecutor", () => {
       sessionId: "sdk-session-auth",
       message: {
         type: "assistant",
-        content: [{ type: "text", text: "No Gmail tokens found. Please authenticate first." }],
+        content: [
+          {
+            type: "text",
+            text: "No Gmail tokens found. Please authenticate first.",
+          },
+        ],
         total_cost_usd: 0.02,
       },
       toolCalls: [],
@@ -170,7 +155,12 @@ describe("InboxExecutor", () => {
       sessionId: "sdk-session-questions",
       message: {
         type: "assistant",
-        content: [{ type: "text", text: "設計を始めます。\n\n1. 対象リポジトリは？\n2. チェック対象は？\n3. 頻度はどのくらい？\n4. 報告先は？" }],
+        content: [
+          {
+            type: "text",
+            text: "設計を始めます。\n\n1. 対象リポジトリは？\n2. チェック対象は？\n3. 頻度はどのくらい？\n4. 報告先は？",
+          },
+        ],
         total_cost_usd: 0.03,
       },
       toolCalls: [],
@@ -194,7 +184,12 @@ describe("InboxExecutor", () => {
       sessionId: "sdk-session-done",
       message: {
         type: "assistant",
-        content: [{ type: "text", text: "カレンダーに登録しました。確認してください。" }],
+        content: [
+          {
+            type: "text",
+            text: "カレンダーに登録しました。確認してください。",
+          },
+        ],
         total_cost_usd: 0.02,
       },
       toolCalls: [{ name: "mcp", input: {}, status: "success" }],

@@ -29,5 +29,20 @@ export function getCommonTools(): Tool[] {
         properties: {},
       },
     },
+    {
+      name: "search_lessons",
+      description:
+        "過去の実行から学んだ教訓を検索します。失敗が繰り返される場合に関連する教訓を探すために使用してください。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "検索キーワード（例: 'Gmail送信', 'Slack投稿'）",
+          },
+        },
+        required: ["query"],
+      },
+    },
   ];
 }

@@ -5,6 +5,8 @@ import {
   CallToolRequestSchema,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
+import { db, lessons } from "@argus/db";
+import { desc, ilike } from "drizzle-orm";
 import type { KnowledgeService, KnowledgeRole } from "./types.js";
 import { getCommonTools, getCollectorTools } from "./tools/index.js";
 
@@ -116,9 +118,64 @@ export class KnowledgeMcpServer {
       case "knowledge_archive":
         return this.service.archive(args.id as string);
 
+      case "search_lessons":
+        return this.searchLessons(args.query as string);
+
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
+  }
+
+  /**
+   * Search lessons by query keyword (ILIKE on content columns).
+   * Returns up to 5 most recent matching lessons.
+   */
+  private async searchLessons(query: string): Promise<unknown> {
+    const results = await db
+      .select({
+        content: lessons.errorPattern,
+        reflection: lessons.reflection,
+        resolution: lessons.resolution,
+        severity: lessons.severity,
+        createdAt: lessons.createdAt,
+      })
+      .from(lessons)
+      .where(ilike(lessons.errorPattern, `%${query}%`))
+      .orderBy(desc(lessons.createdAt))
+      .limit(5);
+
+    // Also search in reflection column
+    const reflectionResults = await db
+      .select({
+        content: lessons.errorPattern,
+        reflection: lessons.reflection,
+        resolution: lessons.resolution,
+        severity: lessons.severity,
+        createdAt: lessons.createdAt,
+      })
+      .from(lessons)
+      .where(ilike(lessons.reflection, `%${query}%`))
+      .orderBy(desc(lessons.createdAt))
+      .limit(5);
+
+    // Merge and deduplicate, keep top 5 newest
+    const seen = new Set<string>();
+    const merged = [];
+    for (const r of [...results, ...reflectionResults]) {
+      const key = `${r.content}-${r.createdAt.toISOString()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push({
+          content: r.content,
+          reflection: r.reflection,
+          resolution: r.resolution,
+          severity: r.severity,
+          createdAt: r.createdAt,
+        });
+      }
+    }
+    merged.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return merged.slice(0, 5);
   }
 
   /**

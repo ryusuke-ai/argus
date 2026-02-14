@@ -6,7 +6,6 @@ vi.mock("@argus/agent-core", async (importOriginal) => {
   return {
     ...actual,
     query: vi.fn(),
-    formatLessonsForPrompt: vi.fn(() => ""),
     createDBObservationHooks: vi.fn(() => ({
       onPreToolUse: vi.fn(),
       onPostToolUse: vi.fn(),
@@ -226,16 +225,13 @@ describe("Deep Research", () => {
 
     it("should handle errors gracefully", async () => {
       const mockSay = vi.fn().mockResolvedValue(undefined);
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       mockQuery.mockRejectedValue(new Error("Network error"));
 
-      await executeDeepResearch(
-        "テストトピック",
-        "C123",
-        "123.456",
-        mockSay,
-      );
+      await executeDeepResearch("テストトピック", "C123", "123.456", mockSay);
 
       // エラーメッセージ
       expect(mockSay).toHaveBeenCalledWith(

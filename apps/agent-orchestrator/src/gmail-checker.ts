@@ -10,8 +10,10 @@ import {
 import type { ClassificationResult } from "@argus/gmail";
 import { db, gmailMessages } from "@argus/db";
 import { eq } from "drizzle-orm";
-import { query } from "@argus/agent-core";
+import Anthropic from "@anthropic-ai/sdk";
 import { updateGmailCanvas } from "./canvas/gmail-canvas.js";
+
+const anthropic = new Anthropic();
 
 /** Patterns for pre-filtering emails before Claude classification */
 const SKIP_PATTERNS = {
@@ -198,13 +200,14 @@ Body: ${body.slice(0, 3000)}
 needs_replyの場合のみdraft_replyに返信案を入れてください。他の場合はnullにしてください。`;
 
   try {
-    const result = await query(prompt, {
-      model: "claude-sonnet-4-5-20250929",
-      allowedTools: [],
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
     });
 
-    const text = result.message.content
-      .filter((b): b is { type: "text"; text: string } => b.type === "text")
+    const text = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
 

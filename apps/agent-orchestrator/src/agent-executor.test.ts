@@ -17,7 +17,6 @@ vi.mock("@argus/db", () => ({
 // Mock agent-core module
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
-  formatLessonsForPrompt: vi.fn(() => ""),
   scanOutputDir: vi.fn(() => new Map()),
   findNewArtifacts: vi.fn(() => []),
   createDBObservationHooks: vi.fn(() => ({
@@ -30,7 +29,6 @@ vi.mock("@argus/agent-core", () => ({
 // Mock drizzle-orm
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((a, b) => ({ field: a, value: b })),
-  desc: vi.fn((col) => ({ column: col, direction: "desc" })),
 }));
 
 // Mock slack-notifier
@@ -41,34 +39,20 @@ vi.mock("./slack-notifier.js", () => ({
 
 import { executeAgent } from "./agent-executor.js";
 import { db } from "@argus/db";
-import { query, formatLessonsForPrompt } from "@argus/agent-core";
+import { query } from "@argus/agent-core";
 import { notifySlack } from "./slack-notifier.js";
 
 /**
- * Create a select mock that handles both agent lookup and lessons query chains.
- * - Agent lookup: db.select().from().where().limit() → agentResult
- * - Lessons query: db.select({...}).from().orderBy().limit() → []
+ * Create a select mock for agent lookup.
+ * Agent lookup: db.select().from().where().limit() → agentResult
  */
 function createSelectMock(agentResult: unknown[]) {
-  return vi.fn().mockImplementation((...args: unknown[]) => {
-    if (args.length > 0) {
-      // Lessons query: db.select({ columns }).from().orderBy().limit()
-      return {
-        from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      };
-    }
-    // Agent lookup: db.select().from().where().limit()
-    return {
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue(agentResult),
-        }),
+  return vi.fn().mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue(agentResult),
       }),
-    };
+    }),
   });
 }
 
@@ -89,7 +73,9 @@ describe("executeAgent", () => {
       }),
     });
 
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([]),
+    );
 
     (db.update as ReturnType<typeof vi.fn>).mockReturnValue({
       set: vi.fn().mockReturnValue({
@@ -100,7 +86,9 @@ describe("executeAgent", () => {
 
   it("should handle agent not found as permanent error (Issue #3: no retry, notify Slack)", async () => {
     // Setup: agent not found - permanent error, no execution record created
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([]),
+    );
 
     // Execute - should not throw (handled internally)
     await executeAgent(mockAgentId);
@@ -115,16 +103,27 @@ describe("executeAgent", () => {
 
   it("should create execution record only after agent is verified", async () => {
     // Setup: agent found with valid prompt
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([
-      { id: mockAgentId, name: "Test Agent", config: { prompt: "Test prompt" } },
-    ]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([
+        {
+          id: mockAgentId,
+          name: "Test Agent",
+          config: { prompt: "Test prompt" },
+        },
+      ]),
+    );
 
     // Insert is called for: agentExecutions (returning execution), sessions (returning session)
     // Then update is called for: sessions (update sessionId), agentExecutions (update status)
-    const insertMock = vi.fn()
+    const insertMock = vi
+      .fn()
       .mockReturnValueOnce({
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: mockExecutionId, startedAt: new Date() }]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([
+              { id: mockExecutionId, startedAt: new Date() },
+            ]),
         }),
       })
       .mockReturnValueOnce({
@@ -162,9 +161,9 @@ describe("executeAgent", () => {
 
   it("should update status to error when agent has no prompt", async () => {
     // Setup: agent found but no prompt
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([
-      { id: mockAgentId, name: "Test Agent", config: {} },
-    ]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([{ id: mockAgentId, name: "Test Agent", config: {} }]),
+    );
 
     const insertMock = vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -193,15 +192,26 @@ describe("executeAgent", () => {
 
   it("should execute agent with hooks and update status to success", async () => {
     // Setup: agent found with valid prompt
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([
-      { id: mockAgentId, name: "Test Agent", config: { prompt: "Test prompt" } },
-    ]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([
+        {
+          id: mockAgentId,
+          name: "Test Agent",
+          config: { prompt: "Test prompt" },
+        },
+      ]),
+    );
 
     // Insert: execution record first, then session record
-    const insertMock = vi.fn()
+    const insertMock = vi
+      .fn()
       .mockReturnValueOnce({
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: mockExecutionId, startedAt: new Date() }]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([
+              { id: mockExecutionId, startedAt: new Date() },
+            ]),
         }),
       })
       .mockReturnValueOnce({
@@ -240,13 +250,16 @@ describe("executeAgent", () => {
     await executeAgent(mockAgentId);
 
     // query should be called with prompt and options containing hooks (including onToolFailure)
-    expect(query).toHaveBeenCalledWith("Test prompt", expect.objectContaining({
-      hooks: expect.objectContaining({
-        onPreToolUse: expect.any(Function),
-        onPostToolUse: expect.any(Function),
-        onToolFailure: expect.any(Function),
+    expect(query).toHaveBeenCalledWith(
+      "Test prompt",
+      expect.objectContaining({
+        hooks: expect.objectContaining({
+          onPreToolUse: expect.any(Function),
+          onPostToolUse: expect.any(Function),
+          onToolFailure: expect.any(Function),
+        }),
       }),
-    }));
+    );
     // Session created before query, no transaction needed
     expect(db.insert).toHaveBeenCalledTimes(2);
     expect(capturedStatus).toBe("success");
@@ -254,15 +267,26 @@ describe("executeAgent", () => {
 
   it("should update status to error when query fails", async () => {
     // Setup: agent found with valid prompt
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([
-      { id: mockAgentId, name: "Test Agent", config: { prompt: "Test prompt" } },
-    ]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([
+        {
+          id: mockAgentId,
+          name: "Test Agent",
+          config: { prompt: "Test prompt" },
+        },
+      ]),
+    );
 
     // Insert: execution record + session record for each attempt (retryable error gets retried)
-    const insertMock = vi.fn()
+    const insertMock = vi
+      .fn()
       .mockReturnValueOnce({
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: mockExecutionId, startedAt: new Date() }]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([
+              { id: mockExecutionId, startedAt: new Date() },
+            ]),
         }),
       })
       .mockReturnValueOnce({
@@ -272,7 +296,9 @@ describe("executeAgent", () => {
       })
       .mockReturnValueOnce({
         values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: "retry-exec", startedAt: new Date() }]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([{ id: "retry-exec", startedAt: new Date() }]),
         }),
       })
       .mockReturnValueOnce({
@@ -318,9 +344,9 @@ describe("executeAgent", () => {
 
   it("should handle error in error handler gracefully (Issue #2)", async () => {
     // Setup: agent found but no prompt (will cause error)
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([
-      { id: mockAgentId, name: "Test Agent", config: {} },
-    ]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([{ id: mockAgentId, name: "Test Agent", config: {} }]),
+    );
 
     const insertMock = vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -356,9 +382,9 @@ describe("executeAgent", () => {
 
   it("should record duration in milliseconds", async () => {
     // Setup: agent found but no prompt
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([
-      { id: mockAgentId, name: "Test Agent", config: {} },
-    ]));
+    (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+      createSelectMock([{ id: mockAgentId, name: "Test Agent", config: {} }]),
+    );
 
     const insertMock = vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -385,123 +411,5 @@ describe("executeAgent", () => {
     expect(capturedDurationMs).toBeDefined();
     expect(typeof capturedDurationMs).toBe("number");
     expect(capturedDurationMs).toBeGreaterThanOrEqual(0);
-  });
-
-  it("should inject lessons into sdkOptions when lessons exist", async () => {
-    // Setup: agent found with valid prompt
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation((...args: unknown[]) => {
-      if (args.length > 0) {
-        // Lessons query returns lessons
-        return {
-          from: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                {
-                  toolName: "Bash",
-                  errorPattern: "exit code 1",
-                  reflection: "missing dep",
-                  resolution: "npm install first",
-                  severity: "high",
-                },
-              ]),
-            }),
-          }),
-        };
-      }
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              { id: mockAgentId, name: "Test Agent", config: { prompt: "Test prompt" } },
-            ]),
-          }),
-        }),
-      };
-    });
-
-    // Mock formatLessonsForPrompt to return lesson text
-    (formatLessonsForPrompt as ReturnType<typeof vi.fn>).mockReturnValue(
-      "\n# Past Lessons\n1. [HIGH] Bash\n  Error: exit code 1",
-    );
-
-    const insertMock = vi.fn()
-      .mockReturnValueOnce({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: mockExecutionId, startedAt: new Date() }]),
-        }),
-      })
-      .mockReturnValueOnce({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: mockDbSessionId }]),
-        }),
-      });
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementation(insertMock);
-
-    const updateMock = vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
-      }),
-    });
-    (db.update as ReturnType<typeof vi.fn>).mockImplementation(updateMock);
-
-    (query as ReturnType<typeof vi.fn>).mockResolvedValue({
-      sessionId: mockSessionId,
-      message: { type: "assistant", content: [{ type: "text", text: "Done" }], total_cost_usd: 0.01 },
-      toolCalls: [],
-      success: true,
-    });
-
-    await executeAgent(mockAgentId);
-
-    // query should include sdkOptions with lessons text
-    expect(query).toHaveBeenCalledWith("Test prompt", expect.objectContaining({
-      sdkOptions: expect.objectContaining({
-        systemPrompt: expect.objectContaining({
-          append: expect.stringContaining("Past Lessons"),
-        }),
-      }),
-    }));
-  });
-
-  it("should not inject sdkOptions when no lessons exist", async () => {
-    // Setup: no lessons
-    (db.select as ReturnType<typeof vi.fn>).mockImplementation(createSelectMock([
-      { id: mockAgentId, name: "Test Agent", config: { prompt: "Test prompt" } },
-    ]));
-
-    (formatLessonsForPrompt as ReturnType<typeof vi.fn>).mockReturnValue("");
-
-    const insertMock = vi.fn()
-      .mockReturnValueOnce({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: mockExecutionId, startedAt: new Date() }]),
-        }),
-      })
-      .mockReturnValueOnce({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: mockDbSessionId }]),
-        }),
-      });
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementation(insertMock);
-
-    const updateMock = vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
-      }),
-    });
-    (db.update as ReturnType<typeof vi.fn>).mockImplementation(updateMock);
-
-    (query as ReturnType<typeof vi.fn>).mockResolvedValue({
-      sessionId: mockSessionId,
-      message: { type: "assistant", content: [{ type: "text", text: "Done" }], total_cost_usd: 0.01 },
-      toolCalls: [],
-      success: true,
-    });
-
-    await executeAgent(mockAgentId);
-
-    // query should NOT include sdkOptions
-    const callArgs = (query as ReturnType<typeof vi.fn>).mock.calls[0][1];
-    expect(callArgs.sdkOptions).toBeUndefined();
   });
 });

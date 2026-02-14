@@ -11,8 +11,6 @@ import {
 import {
   query,
   resume,
-  getDefaultModel,
-  formatLessonsForPrompt,
   extractText,
   createDBObservationHooks,
   type AgentResult,
@@ -20,7 +18,7 @@ import {
   type ArgusHooks,
   type ObservationDB,
 } from "@argus/agent-core";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export type ProgressCallback = (message: string) => Promise<void>;
 
@@ -91,23 +89,6 @@ const SLACK_SDK_OPTIONS = {
   disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
   additionalDirectories: ["/tmp/argus-slack-images"],
   mcpServers: {
-    playwright: {
-      command: "npx",
-      args: [
-        "@playwright/mcp@latest",
-        "--headless",
-        "--caps",
-        "vision",
-        "--output-dir",
-        "/tmp/argus-slack-images",
-        "--user-data-dir",
-        "/tmp/argus-playwright-data",
-      ],
-      env: {
-        PATH:
-          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-      },
-    },
     "google-calendar": {
       command: "node",
       args: [
@@ -158,6 +139,37 @@ const SLACK_SDK_OPTIONS = {
     },
   },
 };
+
+/**
+ * Playwright MCP サーバー設定。
+ * トークン節約のため、キーワード検出時のみ sdkOptions に追加する。
+ */
+const PLAYWRIGHT_MCP = {
+  command: "npx",
+  args: [
+    "@playwright/mcp@latest",
+    "--headless",
+    "--caps",
+    "vision",
+    "--output-dir",
+    "/tmp/argus-slack-images",
+    "--user-data-dir",
+    "/tmp/argus-playwright-data",
+  ],
+  env: {
+    PATH: process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+  },
+};
+
+const PLAYWRIGHT_KEYWORDS =
+  /ブラウザ|スクショ|スクリーンショット|screenshot|playwright|サイト確認|ページ|ウェブ/i;
+
+/**
+ * メッセージに Playwright が必要なキーワードが含まれるか判定する。
+ */
+export function needsPlaywright(text: string): boolean {
+  return PLAYWRIGHT_KEYWORDS.test(text);
+}
 
 export class SessionManager {
   /**
@@ -212,26 +224,13 @@ export class SessionManager {
     let result: AgentResult;
     const hooks = this.createObservationHooks(session.id, onProgress);
 
-    // Fetch recent lessons and build SDK options with lessons injection
-    const recentLessons = await db
-      .select({
-        toolName: lessons.toolName,
-        errorPattern: lessons.errorPattern,
-        reflection: lessons.reflection,
-        resolution: lessons.resolution,
-        severity: lessons.severity,
-      })
-      .from(lessons)
-      .orderBy(desc(lessons.createdAt))
-      .limit(10);
-    const lessonsText = formatLessonsForPrompt(recentLessons);
-
-    const sdkOptions = lessonsText
+    // Playwright MCP をキーワード検出時のみ追加（~7,000トークン節約）
+    const sdkOptions = needsPlaywright(messageText)
       ? {
           ...SLACK_SDK_OPTIONS,
-          systemPrompt: {
-            ...SLACK_SDK_OPTIONS.systemPrompt,
-            append: SLACK_SDK_OPTIONS.systemPrompt.append + lessonsText,
+          mcpServers: {
+            ...SLACK_SDK_OPTIONS.mcpServers,
+            playwright: PLAYWRIGHT_MCP,
           },
         }
       : SLACK_SDK_OPTIONS;
