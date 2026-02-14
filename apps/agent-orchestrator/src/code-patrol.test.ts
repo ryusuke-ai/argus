@@ -70,7 +70,7 @@ import {
   parseQualityAnalysis,
   type ScanResult,
   type PatrolReport,
-} from "./code-patrol.js";
+} from "./code-patrol/index.js";
 
 // Helper to create a minimal v2 PatrolReport
 function makeReport(overrides: Partial<PatrolReport> = {}): PatrolReport {
@@ -1088,11 +1088,10 @@ Another random line`;
         }),
       );
 
-      const fixBlock = blocks.find(
-        (b) =>
-          (b as { text?: { text?: string } }).text?.text?.includes(
-            "Fixed missing import",
-          ),
+      const fixBlock = blocks.find((b) =>
+        (b as { text?: { text?: string } }).text?.text?.includes(
+          "Fixed missing import",
+        ),
       );
       expect(fixBlock).toBeDefined();
     });
@@ -1116,9 +1115,8 @@ Another random line`;
         }),
       );
 
-      const compareBlock = blocks.find(
-        (b) =>
-          (b as { text?: { text?: string } }).text?.text?.includes("修正前"),
+      const compareBlock = blocks.find((b) =>
+        (b as { text?: { text?: string } }).text?.text?.includes("修正前"),
       );
       expect(compareBlock).toBeDefined();
     });
@@ -1130,9 +1128,8 @@ Another random line`;
         }),
       );
 
-      const verifyBlock = blocks.find(
-        (b) =>
-          (b as { text?: { text?: string } }).text?.text?.includes("PASS"),
+      const verifyBlock = blocks.find((b) =>
+        (b as { text?: { text?: string } }).text?.text?.includes("PASS"),
       );
       expect(verifyBlock).toBeDefined();
       const verifyText = (verifyBlock as { text: { text: string } }).text.text;
@@ -1159,16 +1156,11 @@ Another random line`;
         }),
       );
 
-      const recBlock = blocks.find(
-        (b) =>
-          (b as { text?: { text?: string } }).text?.text?.includes(
-            "express@4",
-          ),
+      const recBlock = blocks.find((b) =>
+        (b as { text?: { text?: string } }).text?.text?.includes("express@4"),
       );
       expect(recBlock).toBeDefined();
     });
-
-
 
     it("should include quality analysis section when present", () => {
       const report = makeReport({
@@ -1196,13 +1188,17 @@ Another random line`;
           (b as { text: { text: string } }).text?.text?.includes("品質スコア"),
       );
       expect(scoreHeaders.length).toBe(1);
-      expect((scoreHeaders[0] as { text: { text: string } }).text.text).toContain("7/10");
+      expect(
+        (scoreHeaders[0] as { text: { text: string } }).text.text,
+      ).toContain("7/10");
 
       // Find the summary section
       const summaryBlocks = blocks.filter(
         (b) =>
           (b as { type: string }).type === "section" &&
-          (b as { text: { text: string } }).text?.text?.includes("全体的に良好"),
+          (b as { text: { text: string } }).text?.text?.includes(
+            "全体的に良好",
+          ),
       );
       expect(summaryBlocks.length).toBe(1);
     });
@@ -1458,7 +1454,7 @@ Another random line`;
           // typecheck returns errors
           return Promise.resolve({
             stdout:
-              'src/app.ts(10,5): error TS2322: Type \'string\' is not assignable to type \'number\'',
+              "src/app.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'",
             stderr: "",
           });
         }
@@ -1558,13 +1554,21 @@ Another random line`;
     });
 
     it("should clamp overallScore to 1-10", () => {
-      const text = JSON.stringify({ findings: [], overallScore: 15, summary: "test" });
+      const text = JSON.stringify({
+        findings: [],
+        overallScore: 15,
+        summary: "test",
+      });
       const result = parseQualityAnalysis(text);
       expect(result!.overallScore).toBe(10);
     });
 
     it("should clamp overallScore minimum to 1", () => {
-      const text = JSON.stringify({ findings: [], overallScore: -5, summary: "test" });
+      const text = JSON.stringify({
+        findings: [],
+        overallScore: -5,
+        summary: "test",
+      });
       const result = parseQualityAnalysis(text);
       expect(result!.overallScore).toBe(1);
     });
@@ -1573,7 +1577,13 @@ Another random line`;
       const text = JSON.stringify({
         findings: [
           { category: "invalid", title: "test" },
-          { category: "pattern", title: "valid", severity: "warning", file: "a.ts", suggestion: "fix" },
+          {
+            category: "pattern",
+            title: "valid",
+            severity: "warning",
+            file: "a.ts",
+            suggestion: "fix",
+          },
         ],
         overallScore: 5,
         summary: "test",
@@ -1586,7 +1596,13 @@ Another random line`;
     it("should default severity to info for invalid severity", () => {
       const text = JSON.stringify({
         findings: [
-          { category: "structure", severity: "critical", file: "a.ts", title: "test", suggestion: "fix" },
+          {
+            category: "structure",
+            severity: "critical",
+            file: "a.ts",
+            title: "test",
+            suggestion: "fix",
+          },
         ],
         overallScore: 5,
         summary: "test",

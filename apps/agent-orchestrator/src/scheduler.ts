@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { executeAgent } from "./agent-executor.js";
 import { checkGmail } from "./gmail-checker.js";
 import { generateDailyPlan } from "./daily-planner.js";
-import { runCodePatrol } from "./code-patrol.js";
+import { runCodePatrol } from "./code-patrol/index.js";
 import { runConsistencyCheck } from "./consistency-checker.js";
 import { updateDailyNewsCanvas } from "./canvas/daily-news-canvas.js";
 
@@ -221,9 +221,7 @@ export class AgentScheduler {
       },
       { timezone: "Asia/Tokyo" },
     );
-    console.log(
-      "[Scheduler] Daily News Canvas scheduled (5:00 AM JST daily)",
-    );
+    console.log("[Scheduler] Daily News Canvas scheduled (5:00 AM JST daily)");
   }
 
   /**
