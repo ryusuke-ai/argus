@@ -5,7 +5,7 @@ import {
   parseLintOutput,
   type ConsistencyReport,
   type Finding,
-} from "./consistency-checker.js";
+} from "./consistency-checker/index.js";
 
 describe("consistency-checker", () => {
   describe("buildReportBlocks", () => {
@@ -191,7 +191,9 @@ describe("consistency-checker", () => {
       const headerBlocks = blocks.filter(
         (b) =>
           (b as { type: string }).type === "header" &&
-          (b as { text: { text: string } }).text?.text?.includes("未使用エクスポート"),
+          (b as { text: { text: string } }).text?.text?.includes(
+            "未使用エクスポート",
+          ),
       );
       expect(headerBlocks.length).toBe(1);
     });
@@ -253,7 +255,9 @@ packages/db/src/schema.ts:10:export const sessions = pgTable("sessions", {`;
 
       const result = parseLintOutput(output);
       expect(result.topViolations.length).toBeGreaterThan(0);
-      const noUnusedVars = result.topViolations.find(v => v.rule === "@typescript-eslint/no-unused-vars");
+      const noUnusedVars = result.topViolations.find(
+        (v) => v.rule === "@typescript-eslint/no-unused-vars",
+      );
       expect(noUnusedVars?.count).toBe(2);
     });
   });
@@ -282,7 +286,9 @@ packages/db/src/schema.ts:10:export const sessions = pgTable("sessions", {`;
     const headerBlocks = blocks.filter(
       (b) =>
         (b as { type: string }).type === "header" &&
-        (b as { text: { text: string } }).text?.text?.includes("テストカバレッジ"),
+        (b as { text: { text: string } }).text?.text?.includes(
+          "テストカバレッジ",
+        ),
     );
     expect(headerBlocks.length).toBe(1);
   });

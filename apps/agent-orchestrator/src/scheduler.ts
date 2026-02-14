@@ -6,7 +6,7 @@ import { executeAgent } from "./agent-executor.js";
 import { checkGmail } from "./gmail-checker.js";
 import { generateDailyPlan } from "./daily-planner.js";
 import { runCodePatrol } from "./code-patrol/index.js";
-import { runConsistencyCheck } from "./consistency-checker.js";
+import { runConsistencyCheck } from "./consistency-checker/index.js";
 import { updateDailyNewsCanvas } from "./canvas/daily-news-canvas.js";
 
 /**

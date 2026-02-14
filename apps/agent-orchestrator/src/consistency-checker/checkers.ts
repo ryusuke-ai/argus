@@ -1,5 +1,5 @@
-// Consistency Checker - scans monorepo for contradictions, duplications, and staleness.
-// Runs weekly via the scheduler (Saturday 4:00 AM JST).
+// Consistency Checker - check functions and helpers
+// Scans monorepo for contradictions, duplications, and staleness.
 // Purely deterministic — no Claude calls needed.
 
 import { readFile, readdir, access } from "node:fs/promises";
@@ -9,10 +9,10 @@ import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
 
-const REPO_ROOT = new URL("../../../", import.meta.url).pathname.replace(
-  /\/$/,
-  "",
-);
+export const REPO_ROOT = new URL(
+  "../../../../",
+  import.meta.url,
+).pathname.replace(/\/$/, "");
 
 // --- Types ---
 
@@ -176,10 +176,7 @@ export async function checkDependencyVersions(): Promise<Finding[]> {
       const versions = new Set(infos.map((i) => i.version));
       if (versions.size > 1) {
         const versionList = infos
-          .map(
-            (i) =>
-              `${i.source}: ${i.version}${i.isDev ? " (dev)" : ""}`,
-          )
+          .map((i) => `${i.source}: ${i.version}${i.isDev ? " (dev)" : ""}`)
           .join(", ");
         findings.push({
           category: "dependency",
@@ -207,10 +204,7 @@ export async function checkClaudeMdFreshness(): Promise<Finding[]> {
   const findings: Finding[] = [];
 
   try {
-    const claudeMd = await readFile(
-      join(REPO_ROOT, "CLAUDE.md"),
-      "utf-8",
-    );
+    const claudeMd = await readFile(join(REPO_ROOT, "CLAUDE.md"), "utf-8");
 
     // Check skills — extract from tree format: ├── skill-name/
     const actualSkills = await listDir(join(REPO_ROOT, ".claude/skills"));
@@ -244,9 +238,7 @@ export async function checkClaudeMdFreshness(): Promise<Finding[]> {
     );
 
     // Match both ASCII () and fullwidth （）parentheses
-    const agentsMatch = claudeMd.match(
-      /agents\/[^(（]*[（(]([^)）]+)[)）]/,
-    );
+    const agentsMatch = claudeMd.match(/agents\/[^(（]*[（(]([^)）]+)[)）]/);
     if (agentsMatch) {
       const mentioned = new Set(
         agentsMatch[1].split(/[,、]/).map((s: string) => s.trim()),
@@ -385,9 +377,8 @@ export async function checkSchemaSync(): Promise<Finding[]> {
     );
     if (dataModelSection) {
       const mentionedTables = new Set<string>();
-      const tableRowMatches = dataModelSection[0].matchAll(
-        /\|\s*`([^`]+)`\s*\|/g,
-      );
+      const tableRowMatches =
+        dataModelSection[0].matchAll(/\|\s*`([^`]+)`\s*\|/g);
       for (const match of tableRowMatches) {
         mentionedTables.add(match[1]);
       }
@@ -488,7 +479,10 @@ export async function checkCodeDuplication(): Promise<Finding[]> {
       title: `コード重複 ${cloneCount}箇所（${percentage.toFixed(1)}%）`,
       details: duplicates
         .slice(0, 5)
-        .map((d) => `${d.firstFile?.name ?? "?"} ↔ ${d.secondFile?.name ?? "?"} (${d.lines ?? 0}行)`)
+        .map(
+          (d) =>
+            `${d.firstFile?.name ?? "?"} ↔ ${d.secondFile?.name ?? "?"} (${d.lines ?? 0}行)`,
+        )
         .join(", "),
     });
   } catch (error) {
@@ -507,7 +501,9 @@ export interface LintSummary {
 
 export function parseLintOutput(output: string): LintSummary {
   // ESLint summary line: "X problems (Y errors, Z warnings)"
-  const summaryMatch = output.match(/(\d+) problems? \((\d+) errors?, (\d+) warnings?\)/);
+  const summaryMatch = output.match(
+    /(\d+) problems? \((\d+) errors?, (\d+) warnings?\)/,
+  );
   const errors = summaryMatch ? parseInt(summaryMatch[2], 10) : 0;
   const warnings = summaryMatch ? parseInt(summaryMatch[3], 10) : 0;
 
@@ -531,14 +527,11 @@ export function parseLintOutput(output: string): LintSummary {
 export async function checkLintViolations(): Promise<Finding[]> {
   const findings: Finding[] = [];
   try {
-    const { stdout, stderr } = await execAsync(
-      "pnpm lint 2>&1 || true",
-      {
-        cwd: REPO_ROOT,
-        timeout: 120_000,
-        env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
-      },
-    );
+    const { stdout, stderr } = await execAsync("pnpm lint 2>&1 || true", {
+      cwd: REPO_ROOT,
+      timeout: 120_000,
+      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+    });
 
     const output = stdout || stderr;
     const summary = parseLintOutput(output);
@@ -548,20 +541,22 @@ export async function checkLintViolations(): Promise<Finding[]> {
         category: "lint",
         severity: "warning",
         title: `ESLint エラー ${summary.errors}件 / 警告 ${summary.warnings}件`,
-        details: summary.topViolations
-          .slice(0, 5)
-          .map((v) => `${v.rule} (${v.count}件)`)
-          .join(", ") || "詳細なし",
+        details:
+          summary.topViolations
+            .slice(0, 5)
+            .map((v) => `${v.rule} (${v.count}件)`)
+            .join(", ") || "詳細なし",
       });
     } else if (summary.warnings > 0) {
       findings.push({
         category: "lint",
         severity: "info",
         title: `ESLint 警告 ${summary.warnings}件（エラーなし）`,
-        details: summary.topViolations
-          .slice(0, 5)
-          .map((v) => `${v.rule} (${v.count}件)`)
-          .join(", ") || "詳細なし",
+        details:
+          summary.topViolations
+            .slice(0, 5)
+            .map((v) => `${v.rule} (${v.count}件)`)
+            .join(", ") || "詳細なし",
       });
     }
   } catch (error) {
@@ -597,11 +592,17 @@ export async function checkUnusedExports(): Promise<Finding[]> {
         {
           cwd: REPO_ROOT,
           timeout: 10_000,
-          env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+          env: {
+            ...process.env,
+            PATH: `/opt/homebrew/bin:${process.env.PATH}`,
+          },
         },
       );
 
-      const importFiles = importOutput.trim().split("\n").filter(f => f && f.replace(/^\.\//, "") !== exp.file);
+      const importFiles = importOutput
+        .trim()
+        .split("\n")
+        .filter((f) => f && f.replace(/^\.\//, "") !== exp.file);
       if (importFiles.length === 0) {
         unusedExports.push(exp);
       }
@@ -701,7 +702,11 @@ async function collectTsFiles(
   const entries = await readdir(dirPath, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = join(dirPath, entry.name);
-    if (entry.isDirectory() && entry.name !== "node_modules" && entry.name !== "dist") {
+    if (
+      entry.isDirectory() &&
+      entry.name !== "node_modules" &&
+      entry.name !== "dist"
+    ) {
       await collectTsFiles(fullPath, results, baseDir);
     } else if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
       results.push(relative(join(baseDir, ".."), fullPath));
@@ -709,222 +714,9 @@ async function collectTsFiles(
   }
 }
 
-// --- Run all checks ---
-
-export async function runAllChecks(): Promise<ConsistencyReport> {
-  const results = await Promise.all([
-    checkTsconfigReferences(),
-    checkDependencyVersions(),
-    checkClaudeMdFreshness(),
-    checkReadmeCompleteness(),
-    checkSchemaSync(),
-    checkGitHygiene(),
-    checkCodeDuplication(),
-    checkUnusedExports(),
-    checkLintViolations(),
-    checkTestCoverage(),
-  ]);
-
-  const findings = results.flat();
-
-  return {
-    date: new Date().toISOString().split("T")[0],
-    totalFindings: findings.length,
-    errors: findings.filter((f) => f.severity === "error").length,
-    warnings: findings.filter((f) => f.severity === "warning").length,
-    infos: findings.filter((f) => f.severity === "info").length,
-    findings,
-    scannedAt: new Date().toISOString(),
-  };
-}
-
-// --- Block Kit report ---
-
-const SEVERITY_PREFIX: Record<Finding["severity"], string> = {
-  error: ":red_circle:",
-  warning: ":warning:",
-  info: ":information_source:",
-};
-
-const CATEGORY_LABEL: Record<Finding["category"], string> = {
-  tsconfig: "TypeScript Config",
-  dependency: "依存バージョン",
-  documentation: "CLAUDE.md",
-  readme: "README.md",
-  schema: "DB スキーマ",
-  "git-hygiene": "Git 衛生",
-  duplication: "コード重複",
-  "unused-export": "未使用エクスポート",
-  lint: "ESLint",
-  "test-coverage": "テストカバレッジ",
-};
-
-const CATEGORY_EMOJI: Record<Finding["category"], string> = {
-  tsconfig: ":gear:",
-  dependency: ":package:",
-  documentation: ":memo:",
-  readme: ":book:",
-  schema: ":floppy_disk:",
-  "git-hygiene": ":broom:",
-  duplication: ":scissors:",
-  "unused-export": ":ghost:",
-  lint: ":mag:",
-  "test-coverage": ":test_tube:",
-};
-
-export function buildReportBlocks(
-  report: ConsistencyReport,
-): Record<string, unknown>[] {
-  const blocks: Record<string, unknown>[] = [];
-
-  // Title with Japanese date
-  const [, month, day] = report.date.split("-");
-  const titleDate = `${Number(month)}月${Number(day)}日`;
-  blocks.push({
-    type: "header",
-    text: {
-      type: "plain_text",
-      text: `Consistency Check - ${titleDate}`,
-      emoji: true,
-    },
-  });
-
-  // Status context (counts only)
-  if (report.totalFindings === 0) {
-    blocks.push({
-      type: "context",
-      elements: [
-        {
-          type: "mrkdwn",
-          text: "検出 0件 — すべて整合しています",
-        },
-      ],
-    });
-  } else {
-    const parts: string[] = [`検出 ${report.totalFindings}件`];
-    if (report.errors > 0) parts.push(`エラー ${report.errors}件`);
-    if (report.warnings > 0) parts.push(`警告 ${report.warnings}件`);
-    if (report.infos > 0) parts.push(`情報 ${report.infos}件`);
-    blocks.push({
-      type: "context",
-      elements: [
-        {
-          type: "mrkdwn",
-          text: parts.join(" · "),
-        },
-      ],
-    });
-  }
-
-  // Group findings by category
-  const byCategory = new Map<Finding["category"], Finding[]>();
-  for (const f of report.findings) {
-    const existing = byCategory.get(f.category) || [];
-    existing.push(f);
-    byCategory.set(f.category, existing);
-  }
-
-  for (const [category, catFindings] of byCategory) {
-    blocks.push({ type: "divider" });
-    blocks.push({
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: `${CATEGORY_EMOJI[category]}  ${CATEGORY_LABEL[category]}`,
-        emoji: true,
-      },
-    });
-
-    const lines = catFindings.map(
-      (f) => `• ${SEVERITY_PREFIX[f.severity]} ${f.title}\n　　_${truncate(f.details, 120)}_`,
-    );
-    blocks.push({
-      type: "section",
-      text: { type: "mrkdwn", text: lines.join("\n") },
-    });
-  }
-
-  return blocks;
-}
-
-// --- Slack posting ---
-
-export async function postConsistencyReport(
-  channel: string,
-  blocks: Record<string, unknown>[],
-  report: ConsistencyReport,
-): Promise<string | null> {
-  const slackBotToken = process.env.SLACK_BOT_TOKEN;
-  if (!slackBotToken) {
-    console.log(
-      "[Consistency] SLACK_BOT_TOKEN not set. Skipping post.",
-    );
-    return null;
-  }
-
-  try {
-    const [, month, day] = report.date.split("-");
-    const titleDate = `${Number(month)}月${Number(day)}日`;
-
-    const response = await fetch("https://slack.com/api/chat.postMessage", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${slackBotToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        channel,
-        blocks,
-        text: `Consistency Check - ${titleDate}: ${report.totalFindings}件検出`,
-      }),
-    });
-
-    const data = (await response.json()) as {
-      ok: boolean;
-      ts?: string;
-      error?: string;
-    };
-
-    if (!data.ok) {
-      console.error("[Consistency] Slack error:", data.error);
-      return null;
-    }
-
-    return data.ts || null;
-  } catch (error) {
-    console.error("[Consistency] Slack post error:", error);
-    return null;
-  }
-}
-
-// --- Main entry point ---
-
-export async function runConsistencyCheck(): Promise<void> {
-  const channel = process.env.CONSISTENCY_CHECK_CHANNEL;
-  if (!channel) {
-    console.log(
-      "[Consistency] CONSISTENCY_CHECK_CHANNEL not set. Skipping.",
-    );
-    return;
-  }
-
-  console.log("[Consistency] Starting consistency check...");
-
-  const report = await runAllChecks();
-
-  console.log(
-    `[Consistency] Check complete: ${report.totalFindings} findings (${report.errors} errors, ${report.warnings} warnings)`,
-  );
-
-  const blocks = buildReportBlocks(report);
-  await postConsistencyReport(channel, blocks, report);
-
-  console.log("[Consistency] Report posted to Slack");
-}
-
 // --- Helpers ---
 
-async function listDir(dirPath: string): Promise<Set<string>> {
+export async function listDir(dirPath: string): Promise<Set<string>> {
   try {
     const entries = await readdir(dirPath);
     return new Set(entries.filter((e) => !e.startsWith(".")));
@@ -939,7 +731,7 @@ async function listDir(dirPath: string): Promise<Set<string>> {
  * then extracts names from indented tree lines (│   ├── name/ or │   └── name/).
  * Stops when hitting a non-indented tree line (top-level sibling directory).
  */
-function extractTreeDirNames(
+export function extractTreeDirNames(
   content: string,
   sectionPrefix: string,
 ): Set<string> {
@@ -971,7 +763,7 @@ function extractTreeDirNames(
   return result;
 }
 
-function extractArchTablePackages(content: string): Set<string> {
+export function extractArchTablePackages(content: string): Set<string> {
   // Match patterns like `apps/slack-bot` or `packages/db` in backticks
   const pattern = /`((?:apps|packages)\/[\w-]+)`/g;
   const matches = content.matchAll(pattern);
@@ -982,10 +774,14 @@ function extractArchTablePackages(content: string): Set<string> {
   return result;
 }
 
-export function parseExportGrep(output: string): Array<{ name: string; file: string }> {
+export function parseExportGrep(
+  output: string,
+): Array<{ name: string; file: string }> {
   const results: Array<{ name: string; file: string }> = [];
   for (const line of output.trim().split("\n")) {
-    const match = line.match(/^(.+?):\d+:export (?:function|const|class|interface|type|enum|async function) (\w+)/);
+    const match = line.match(
+      /^(.+?):\d+:export (?:function|const|class|interface|type|enum|async function) (\w+)/,
+    );
     if (match) {
       results.push({ file: match[1], name: match[2] });
     }
@@ -993,7 +789,7 @@ export function parseExportGrep(output: string): Array<{ name: string; file: str
   return results;
 }
 
-function truncate(text: string, maxLen: number): string {
+export function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen - 3) + "...";
 }
