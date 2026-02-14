@@ -19,7 +19,7 @@ export interface AgentOptions extends QueryOptions {
 }
 
 /** CLI が利用不可の場合に返されるエラーの種類 */
-export type CliUnavailableReason = "not_logged_in" | "rate_limit";
+export type CliUnavailableReason = "not_logged_in" | "rate_limit" | "transient";
 
 /**
  * Max Plan 利用時、CLI のヘルスチェックを行う。
@@ -75,9 +75,10 @@ export async function checkCliHealth(): Promise<CliUnavailableReason | null> {
     if (msg.includes("hit your limit") || msg.includes("rate limit")) {
       return "rate_limit";
     }
-    // タイムアウトやその他のエラーは「ログインしていない可能性」として扱う
-    console.warn("[agent-core] CLI health check failed:", error);
-    return "not_logged_in";
+    // タイムアウト・ネストエラー等の一時的障害は transient として返す
+    // （not_logged_in を返すとバッチ全体が中断されてしまう）
+    console.warn("[agent-core] CLI health check failed (transient):", error);
+    return "transient";
   }
 }
 

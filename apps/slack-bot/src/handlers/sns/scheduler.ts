@@ -3,8 +3,22 @@ import type { ScheduledTask } from "node-cron";
 import { generateXPost } from "./generator.js";
 import { generateArticle } from "./article-generator.js";
 import { validateXPost, validateThread, validateArticle } from "./validator.js";
-import { buildXPostBlocks, buildArticlePostBlocks, buildVideoPostBlocks, buildPublishedBlocks, buildScheduledBlocks, buildGitHubPostBlocks, buildPodcastPostBlocks, buildTikTokPostBlocks } from "./reporter.js";
-import { getNextOptimalTime, getDailyOptimalTimes, formatScheduledTime, POSTS_PER_DAY } from "./optimal-time.js";
+import {
+  buildXPostBlocks,
+  buildArticlePostBlocks,
+  buildVideoPostBlocks,
+  buildPublishedBlocks,
+  buildScheduledBlocks,
+  buildGitHubPostBlocks,
+  buildPodcastPostBlocks,
+  buildTikTokPostBlocks,
+} from "./reporter.js";
+import {
+  getNextOptimalTime,
+  getDailyOptimalTimes,
+  formatScheduledTime,
+  POSTS_PER_DAY,
+} from "./optimal-time.js";
 import type { Platform } from "./optimal-time.js";
 import { db, snsPosts } from "@argus/db";
 import { eq, and, lte, gte, sql } from "drizzle-orm";
@@ -21,9 +35,17 @@ import { publishToTikTok } from "./tiktok-publisher.js";
 import { publishToGitHub } from "./github-publisher.js";
 import { publishToInstagram } from "./instagram-publisher.js";
 import { PhasedGenerator, CliUnavailableError } from "./phased-generator.js";
-import { threadsConfig, githubConfig, podcastConfig } from "./platform-configs.js";
+import {
+  threadsConfig,
+  githubConfig,
+  podcastConfig,
+} from "./platform-configs.js";
 import { checkCliHealth } from "@argus/agent-core";
-import { createGeneratingPost, createSaveCallback, finalizePost } from "./phase-tracker.js";
+import {
+  createGeneratingPost,
+  createSaveCallback,
+  finalizePost,
+} from "./phase-tracker.js";
 import { addReaction } from "../../utils/reactions.js";
 import type { SnsContentUnion } from "./types.js";
 import { updateSnsCanvas } from "../../canvas/sns-canvas.js";
@@ -32,12 +54,12 @@ const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
 
 const DAY_CATEGORIES = [
   "discussion", // 日
-  "tips",       // 月
-  "news",       // 火
+  "tips", // 月
+  "news", // 火
   "experience", // 水
-  "code",       // 木
-  "summary",    // 金
-  "tips",       // 土
+  "code", // 木
+  "summary", // 金
+  "tips", // 土
 ];
 
 let suggestionTask: ScheduledTask | null = null;
@@ -51,10 +73,20 @@ export function getCategoryForDay(dayOfWeek: number): string {
  * 1日に複数投稿する場合のカテゴリリストを返す。
  * primary カテゴリ + 曜日ベースでローテーションした補助カテゴリ。
  */
-export function getCategoriesForDay(dayOfWeek: number, count: number): string[] {
+export function getCategoriesForDay(
+  dayOfWeek: number,
+  count: number,
+): string[] {
   const primary = DAY_CATEGORIES[dayOfWeek] || "tips";
   if (count <= 1) return [primary];
-  const allCategories = ["discussion", "tips", "news", "experience", "code", "summary"];
+  const allCategories = [
+    "discussion",
+    "tips",
+    "news",
+    "experience",
+    "code",
+    "summary",
+  ];
   const remaining = allCategories.filter((c) => c !== primary);
   const result = [primary];
   for (let i = 0; result.length < count && i < remaining.length; i++) {
@@ -74,7 +106,9 @@ export function getYouTubeFormat(dayOfWeek: number): "standard" | "short" {
 
 export function startSnsScheduler(client: any): void {
   if (!SNS_CHANNEL) {
-    console.warn("[sns-scheduler] SLACK_SNS_CHANNEL not set, scheduler disabled");
+    console.warn(
+      "[sns-scheduler] SLACK_SNS_CHANNEL not set, scheduler disabled",
+    );
     return;
   }
 
@@ -105,7 +139,9 @@ export function startSnsScheduler(client: any): void {
     { timezone: "Asia/Tokyo" },
   );
 
-  console.log("[sns-scheduler] Scheduled daily suggestions at 04:00 JST + publish poller every minute");
+  console.log(
+    "[sns-scheduler] Scheduled daily suggestions at 04:00 JST + publish poller every minute",
+  );
 
   // 起動時キャッチアップ: 今日の SNS 提案がまだ生成されていなければ即座に実行
   // Mac スリープ等で 4:00 AM の cron を逃した場合のフォールバック
@@ -137,7 +173,9 @@ export function stopSnsScheduler(): void {
  */
 export async function catchUpIfNeeded(client: any): Promise<void> {
   const now = new Date();
-  const jstHour = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" })).getHours();
+  const jstHour = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }),
+  ).getHours();
 
   // 4:00 JST 以前の起動では発動しない（cronが後で自然に発火するため）
   if (jstHour < 4) {
@@ -146,7 +184,9 @@ export async function catchUpIfNeeded(client: any): Promise<void> {
   }
 
   // 今日の JST 0:00 を計算
-  const todayJST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  const todayJST = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }),
+  );
   todayJST.setHours(0, 0, 0, 0);
   // JST → UTC に戻す（JST は UTC+9）
   const todayStart = new Date(todayJST.getTime() - 9 * 60 * 60 * 1000);
@@ -159,11 +199,15 @@ export async function catchUpIfNeeded(client: any): Promise<void> {
   const count = Number(todayPosts[0]?.count ?? 0);
 
   if (count > 0) {
-    console.log(`[sns-scheduler] Today already has ${count} posts, skipping catch-up`);
+    console.log(
+      `[sns-scheduler] Today already has ${count} posts, skipping catch-up`,
+    );
     return;
   }
 
-  console.log("[sns-scheduler] No posts found for today, running catch-up generation...");
+  console.log(
+    "[sns-scheduler] No posts found for today, running catch-up generation...",
+  );
   await client.chat.postMessage({
     channel: SNS_CHANNEL,
     text: "🔄 起動時キャッチアップ: 本日の SNS 提案がまだ生成されていないため、今から生成を開始します。",
@@ -180,20 +224,30 @@ export async function catchUpIfNeeded(client: any): Promise<void> {
  * 全プラットフォームをスキップして Slack に通知する。
  * 実行中に CliUnavailableError が発生した場合も残りをスキップする。
  */
-export async function generateAllPlatformSuggestions(client: any): Promise<void> {
+export async function generateAllPlatformSuggestions(
+  client: any,
+): Promise<void> {
   // バッチ開始前の CLI ヘルスチェック
   const healthIssue = await checkCliHealth();
   if (healthIssue) {
-    const message = healthIssue === "not_logged_in"
-      ? "⚠️ Claude CLI にログインしていないため、本日の SNS 投稿案生成をスキップしました。\n`~/.local/bin/claude /login` でログインしてから、Slack で「全SNS提案」と送信して手動実行してください。"
-      : "⚠️ Max Plan の使用制限に達しているため、本日の SNS 投稿案生成をスキップしました。\n制限リセット後に「全SNS提案」と送信して手動実行してください。";
+    if (healthIssue === "transient") {
+      // 一時的障害（タイムアウト・ネストエラー等）は警告のみで続行
+      console.warn(
+        "[sns-scheduler] CLI health check transient error, proceeding anyway",
+      );
+    } else {
+      const message =
+        healthIssue === "not_logged_in"
+          ? "⚠️ Claude CLI にログインしていないため、本日の SNS 投稿案生成をスキップしました。\n`~/.local/bin/claude /login` でログインしてから、Slack で「全SNS提案」と送信して手動実行してください。"
+          : "⚠️ Max Plan の使用制限に達しているため、本日の SNS 投稿案生成をスキップしました。\n制限リセット後に「全SNS提案」と送信して手動実行してください。";
 
-    console.error(`[sns-scheduler] CLI health check failed: ${healthIssue}`);
-    await client.chat.postMessage({
-      channel: SNS_CHANNEL,
-      text: message,
-    });
-    return;
+      console.error(`[sns-scheduler] CLI health check failed: ${healthIssue}`);
+      await client.chat.postMessage({
+        channel: SNS_CHANNEL,
+        text: message,
+      });
+      return;
+    }
   }
 
   const now = new Date();
@@ -209,7 +263,9 @@ export async function generateAllPlatformSuggestions(client: any): Promise<void>
       return false; // 正常
     } catch (error) {
       if (error instanceof CliUnavailableError) {
-        console.error(`[sns-scheduler] CLI unavailable during batch: ${error.reason} - ${error.message}`);
+        console.error(
+          `[sns-scheduler] CLI unavailable during batch: ${error.reason} - ${error.message}`,
+        );
         await client.chat.postMessage({
           channel: SNS_CHANNEL,
           text: `⚠️ ${error.message}\n残りのプラットフォームの生成をスキップします。`,
@@ -229,17 +285,42 @@ export async function generateAllPlatformSuggestions(client: any): Promise<void>
   for (let i = 0; i < xCount; i++) {
     const category = xCategories[i] || xCategories[0];
     const suggestedAt = xTimes[i];
-    if (await runWithCliCheck(() => generateXSuggestion(client, category, suggestedAt))) return;
+    if (
+      await runWithCliCheck(() =>
+        generateXSuggestion(client, category, suggestedAt),
+      )
+    )
+      return;
   }
 
   // Qiita / Zenn / note: 各1投稿
   const baseCategory = getCategoryForDay(dayOfWeek);
-  if (await runWithCliCheck(() => generateArticleSuggestion(client, "qiita", baseCategory))) return;
-  if (await runWithCliCheck(() => generateArticleSuggestion(client, "zenn", baseCategory))) return;
-  if (await runWithCliCheck(() => generateArticleSuggestion(client, "note", baseCategory))) return;
+  if (
+    await runWithCliCheck(() =>
+      generateArticleSuggestion(client, "qiita", baseCategory),
+    )
+  )
+    return;
+  if (
+    await runWithCliCheck(() =>
+      generateArticleSuggestion(client, "zenn", baseCategory),
+    )
+  )
+    return;
+  if (
+    await runWithCliCheck(() =>
+      generateArticleSuggestion(client, "note", baseCategory),
+    )
+  )
+    return;
 
   // YouTube: 1投稿
-  if (await runWithCliCheck(() => generateYouTubeSuggestion(client, baseCategory, dayOfWeek))) return;
+  if (
+    await runWithCliCheck(() =>
+      generateYouTubeSuggestion(client, baseCategory, dayOfWeek),
+    )
+  )
+    return;
 
   // Threads: 1日2投稿
   const threadsCount = POSTS_PER_DAY.threads;
@@ -248,35 +329,61 @@ export async function generateAllPlatformSuggestions(client: any): Promise<void>
     const threadsTimes = getDailyOptimalTimes("threads", now);
     for (let i = 0; i < threadsCount; i++) {
       const category = threadsCategories[i] || threadsCategories[0];
-      if (await runWithCliCheck(() => generateThreadsSuggestion(client, category, threadsTimes[i]))) return;
+      if (
+        await runWithCliCheck(() =>
+          generateThreadsSuggestion(client, category, threadsTimes[i]),
+        )
+      )
+        return;
     }
   }
 
   // TikTok: 毎日
   const tiktokCount = POSTS_PER_DAY.tiktok;
   if (tiktokCount > 0) {
-    if (await runWithCliCheck(() => generateTikTokSuggestion(client, baseCategory))) return;
+    if (
+      await runWithCliCheck(() =>
+        generateTikTokSuggestion(client, baseCategory),
+      )
+    )
+      return;
   }
 
   // GitHub: 平日のみ
   const githubCount = POSTS_PER_DAY.github;
   if (githubCount > 0 && dayOfWeek >= 1 && dayOfWeek <= 5) {
-    if (await runWithCliCheck(() => generateGitHubSuggestion(client, baseCategory))) return;
+    if (
+      await runWithCliCheck(() =>
+        generateGitHubSuggestion(client, baseCategory),
+      )
+    )
+      return;
   }
 
   // Podcast: 月曜のみ
   const podcastCount = POSTS_PER_DAY.podcast;
   if (podcastCount > 0 && dayOfWeek === 1) {
-    if (await runWithCliCheck(() => generatePodcastSuggestion(client, baseCategory))) return;
+    if (
+      await runWithCliCheck(() =>
+        generatePodcastSuggestion(client, baseCategory),
+      )
+    )
+      return;
   }
 
   // Instagram: TikTok動画生成完了時に actions.ts から自動作成されるため、スケジューラからは生成しない
 
   // Canvas 更新
-  updateSnsCanvas().catch((e) => console.error("[sns-scheduler] Canvas update error:", e));
+  updateSnsCanvas().catch((e) =>
+    console.error("[sns-scheduler] Canvas update error:", e),
+  );
 }
 
-async function generateXSuggestion(client: any, category: string, suggestedAt?: Date): Promise<void> {
+async function generateXSuggestion(
+  client: any,
+  category: string,
+  suggestedAt?: Date,
+): Promise<void> {
   try {
     const postId = await createGeneratingPost("x", "single", SNS_CHANNEL);
     const result = await generateXPost(
@@ -315,7 +422,14 @@ async function generateXSuggestion(client: any, category: string, suggestedAt?: 
     const scheduledAt = suggestedAt || getNextOptimalTime("x");
     const scheduledTime = formatScheduledTime(scheduledAt);
 
-    await finalizePost(postId, { ...content, text: postText, category, isThread, threadCount: content.posts.length, suggestedScheduledAt: scheduledAt.toISOString() });
+    await finalizePost(postId, {
+      ...content,
+      text: postText,
+      category,
+      isThread,
+      threadCount: content.posts.length,
+      suggestedScheduledAt: scheduledAt.toISOString(),
+    });
 
     const blocks = buildXPostBlocks({
       id: postId,
@@ -333,7 +447,10 @@ async function generateXSuggestion(client: any, category: string, suggestedAt?: 
       text: `[自動] X 投稿案 (${category})`,
     });
     if (msgResult.ts) {
-      await db.update(snsPosts).set({ slackMessageTs: msgResult.ts }).where(eq(snsPosts.id, postId));
+      await db
+        .update(snsPosts)
+        .set({ slackMessageTs: msgResult.ts })
+        .where(eq(snsPosts.id, postId));
     }
 
     console.log(`[sns-scheduler] Posted X suggestion: ${category}`);
@@ -362,7 +479,10 @@ async function generateArticleSuggestion(
     );
 
     if (!result.success || !result.content) {
-      console.error(`[sns-scheduler] ${platform} generation failed:`, result.error);
+      console.error(
+        `[sns-scheduler] ${platform} generation failed:`,
+        result.error,
+      );
       await client.chat.postMessage({
         channel: SNS_CHANNEL,
         text: `[自動] ${platform} 記事案の生成に失敗しました: ${result.error || "不明なエラー"}`,
@@ -373,7 +493,9 @@ async function generateArticleSuggestion(
     const content = result.content;
     // JSON修復で欠損する可能性があるフィールドにデフォルト値を設定
     if (!content.title || !content.body) {
-      console.error(`[sns-scheduler] ${platform} generation returned incomplete content`);
+      console.error(
+        `[sns-scheduler] ${platform} generation returned incomplete content`,
+      );
       await client.chat.postMessage({
         channel: SNS_CHANNEL,
         text: `[自動] ${platform} 記事案の生成に失敗しました: コンテンツが不完全です`,
@@ -381,7 +503,12 @@ async function generateArticleSuggestion(
       return;
     }
     const tags = content.tags || [];
-    const validation = validateArticle(content.title, content.body, tags, platform);
+    const validation = validateArticle(
+      content.title,
+      content.body,
+      tags,
+      platform,
+    );
 
     const scheduledAt = getNextOptimalTime(platform as Platform);
     const scheduledTime = formatScheduledTime(scheduledAt);
@@ -391,7 +518,11 @@ async function generateArticleSuggestion(
       title: content.title,
       body: content.body,
       tags,
-      metadata: content.metadata || { wordCount: content.body.length, category, platform },
+      metadata: content.metadata || {
+        wordCount: content.body.length,
+        category,
+        platform,
+      },
     });
 
     const blocks = buildArticlePostBlocks({
@@ -410,7 +541,10 @@ async function generateArticleSuggestion(
       text: `[自動] ${platform} 記事案: ${content.title}`,
     });
     if (mainMsg.ts) {
-      await db.update(snsPosts).set({ slackMessageTs: mainMsg.ts }).where(eq(snsPosts.id, postId));
+      await db
+        .update(snsPosts)
+        .set({ slackMessageTs: mainMsg.ts })
+        .where(eq(snsPosts.id, postId));
     }
 
     // スレッドに全文投稿
@@ -422,7 +556,10 @@ async function generateArticleSuggestion(
           channel: SNS_CHANNEL,
           thread_ts: mainMsg.ts,
           blocks: [
-            { type: "section", text: { type: "mrkdwn", text: `*${content.title}*\n\n${body}` } },
+            {
+              type: "section",
+              text: { type: "mrkdwn", text: `*${content.title}*\n\n${body}` },
+            },
           ],
           text: `${content.title} (全文)`,
         });
@@ -435,14 +572,23 @@ async function generateArticleSuggestion(
             channel: SNS_CHANNEL,
             thread_ts: mainMsg.ts,
             blocks: [
-              { type: "section", text: { type: "mrkdwn", text: part === 1 ? `*${content.title}*\n\n${chunk}` : chunk } },
+              {
+                type: "section",
+                text: {
+                  type: "mrkdwn",
+                  text: part === 1 ? `*${content.title}*\n\n${chunk}` : chunk,
+                },
+              },
             ],
             text: `${content.title} (${part}/${total})`,
           });
         }
       }
     } catch (err) {
-      console.warn(`[sns-scheduler] Failed to post full ${platform} article to thread:`, err);
+      console.warn(
+        `[sns-scheduler] Failed to post full ${platform} article to thread:`,
+        err,
+      );
     }
 
     console.log(`[sns-scheduler] Posted ${platform} suggestion`);
@@ -465,7 +611,11 @@ async function generateYouTubeSuggestion(
     const format = getYouTubeFormat(dayOfWeek);
     const formatLabel = format === "short" ? "Shorts" : "通常動画";
 
-    const postId = await createGeneratingPost("youtube", format === "short" ? "short" : "video", SNS_CHANNEL);
+    const postId = await createGeneratingPost(
+      "youtube",
+      format === "short" ? "short" : "video",
+      SNS_CHANNEL,
+    );
     const result = await generateYouTubeMetadata(
       `今日の${category}カテゴリの${formatLabel}のメタデータを作ってください`,
       category,
@@ -505,7 +655,10 @@ async function generateYouTubeSuggestion(
       text: `[自動] YouTube ${formatLabel}案: ${content.title}`,
     });
     if (msgResult.ts) {
-      await db.update(snsPosts).set({ slackMessageTs: msgResult.ts }).where(eq(snsPosts.id, postId));
+      await db
+        .update(snsPosts)
+        .set({ slackMessageTs: msgResult.ts })
+        .where(eq(snsPosts.id, postId));
     }
 
     console.log(`[sns-scheduler] Posted YouTube suggestion: ${content.title}`);
@@ -519,10 +672,16 @@ async function generateYouTubeSuggestion(
   }
 }
 
-async function generateThreadsSuggestion(client: any, category: string, suggestedAt?: Date): Promise<void> {
+async function generateThreadsSuggestion(
+  client: any,
+  category: string,
+  suggestedAt?: Date,
+): Promise<void> {
   try {
     const postId = await createGeneratingPost("threads", "single", SNS_CHANNEL);
-    const generator = new PhasedGenerator({ onPhaseComplete: createSaveCallback(postId) });
+    const generator = new PhasedGenerator({
+      onPhaseComplete: createSaveCallback(postId),
+    });
 
     const result = await generator.run(
       threadsConfig,
@@ -552,7 +711,11 @@ async function generateThreadsSuggestion(client: any, category: string, suggeste
     const scheduledAt = suggestedAt || getNextOptimalTime("threads");
     const scheduledTime = formatScheduledTime(scheduledAt);
 
-    await finalizePost(postId, { text: postText, category, suggestedScheduledAt: scheduledAt.toISOString() });
+    await finalizePost(postId, {
+      text: postText,
+      category,
+      suggestedScheduledAt: scheduledAt.toISOString(),
+    });
 
     const blocks = buildXPostBlocks({
       id: postId,
@@ -568,7 +731,10 @@ async function generateThreadsSuggestion(client: any, category: string, suggeste
       text: `[自動] Threads 投稿案 (${category})`,
     });
     if (msgResult.ts) {
-      await db.update(snsPosts).set({ slackMessageTs: msgResult.ts }).where(eq(snsPosts.id, postId));
+      await db
+        .update(snsPosts)
+        .set({ slackMessageTs: msgResult.ts })
+        .where(eq(snsPosts.id, postId));
     }
 
     console.log(`[sns-scheduler] Posted Threads suggestion: ${category}`);
@@ -582,7 +748,10 @@ async function generateThreadsSuggestion(client: any, category: string, suggeste
   }
 }
 
-async function generateTikTokSuggestion(client: any, category: string): Promise<void> {
+async function generateTikTokSuggestion(
+  client: any,
+  category: string,
+): Promise<void> {
   try {
     const postId = await createGeneratingPost("tiktok", "short", SNS_CHANNEL);
     const result = await generateTikTokScript(
@@ -619,7 +788,10 @@ async function generateTikTokSuggestion(client: any, category: string): Promise<
       text: `[自動] TikTok & Instagram 動画案: ${content.title}`,
     });
     if (msgResult.ts) {
-      await db.update(snsPosts).set({ slackMessageTs: msgResult.ts }).where(eq(snsPosts.id, postId));
+      await db
+        .update(snsPosts)
+        .set({ slackMessageTs: msgResult.ts })
+        .where(eq(snsPosts.id, postId));
     }
 
     console.log(`[sns-scheduler] Posted TikTok suggestion: ${content.title}`);
@@ -633,10 +805,15 @@ async function generateTikTokSuggestion(client: any, category: string): Promise<
   }
 }
 
-async function generateGitHubSuggestion(client: any, category: string): Promise<void> {
+async function generateGitHubSuggestion(
+  client: any,
+  category: string,
+): Promise<void> {
   try {
     const postId = await createGeneratingPost("github", "single", SNS_CHANNEL);
-    const generator = new PhasedGenerator({ onPhaseComplete: createSaveCallback(postId) });
+    const generator = new PhasedGenerator({
+      onPhaseComplete: createSaveCallback(postId),
+    });
 
     const result = await generator.run(
       githubConfig,
@@ -654,10 +831,18 @@ async function generateGitHubSuggestion(client: any, category: string): Promise<
     }
 
     const content = result.content as any;
-    const repoName = content.name || content.repository?.name || `ai-${category}-tool`;
-    const description = content.description || content.repository?.description || "";
-    const readme = content.readme || content.repository?.readme || `# ${repoName}\n\n${description}`;
-    const topics = content.topics || content.repository?.topics || ["ai", "claude-code", category].filter(Boolean);
+    const repoName =
+      content.name || content.repository?.name || `ai-${category}-tool`;
+    const description =
+      content.description || content.repository?.description || "";
+    const readme =
+      content.readme ||
+      content.repository?.readme ||
+      `# ${repoName}\n\n${description}`;
+    const topics =
+      content.topics ||
+      content.repository?.topics ||
+      ["ai", "claude-code", category].filter(Boolean);
 
     if (!repoName) {
       await client.chat.postMessage({
@@ -694,7 +879,10 @@ async function generateGitHubSuggestion(client: any, category: string): Promise<
       text: `[自動] GitHub リポジトリ案: ${repoName}`,
     });
     if (msgResult.ts) {
-      await db.update(snsPosts).set({ slackMessageTs: msgResult.ts }).where(eq(snsPosts.id, postId));
+      await db
+        .update(snsPosts)
+        .set({ slackMessageTs: msgResult.ts })
+        .where(eq(snsPosts.id, postId));
     }
 
     console.log(`[sns-scheduler] Posted GitHub suggestion: ${repoName}`);
@@ -708,10 +896,15 @@ async function generateGitHubSuggestion(client: any, category: string): Promise<
   }
 }
 
-async function generatePodcastSuggestion(client: any, category: string): Promise<void> {
+async function generatePodcastSuggestion(
+  client: any,
+  category: string,
+): Promise<void> {
   try {
     const postId = await createGeneratingPost("podcast", "single", SNS_CHANNEL);
-    const generator = new PhasedGenerator({ onPhaseComplete: createSaveCallback(postId) });
+    const generator = new PhasedGenerator({
+      onPhaseComplete: createSaveCallback(postId),
+    });
 
     const result = await generator.run(
       podcastConfig,
@@ -729,8 +922,14 @@ async function generatePodcastSuggestion(client: any, category: string): Promise
     }
 
     const content = result.content as any;
-    const title = content.title || content.episode?.title || `${category}に関するエピソード`;
-    const description = content.description || content.episode?.description || JSON.stringify(content);
+    const title =
+      content.title ||
+      content.episode?.title ||
+      `${category}に関するエピソード`;
+    const description =
+      content.description ||
+      content.episode?.description ||
+      JSON.stringify(content);
     const chapters = content.chapters || content.episode?.chapters || [];
 
     if (!title) {
@@ -766,7 +965,10 @@ async function generatePodcastSuggestion(client: any, category: string): Promise
       text: `[自動] Podcast エピソード案: ${title}`,
     });
     if (msgResult.ts) {
-      await db.update(snsPosts).set({ slackMessageTs: msgResult.ts }).where(eq(snsPosts.id, postId));
+      await db
+        .update(snsPosts)
+        .set({ slackMessageTs: msgResult.ts })
+        .where(eq(snsPosts.id, postId));
     }
 
     console.log(`[sns-scheduler] Posted Podcast suggestion: ${title}`);
@@ -790,10 +992,7 @@ async function pollScheduledPosts(client: any): Promise<void> {
     .select()
     .from(snsPosts)
     .where(
-      and(
-        eq(snsPosts.status, "scheduled"),
-        lte(snsPosts.scheduledAt, now),
-      ),
+      and(eq(snsPosts.status, "scheduled"), lte(snsPosts.scheduledAt, now)),
     );
 
   for (const post of scheduledPosts) {
@@ -819,23 +1018,38 @@ async function pollScheduledPosts(client: any): Promise<void> {
             await client.chat.update({
               channel: post.slackChannel,
               ts: post.slackMessageTs,
-              blocks: buildPublishedBlocks(platformLabel, result.url || "") as any[],
+              blocks: buildPublishedBlocks(
+                platformLabel,
+                result.url || "",
+              ) as any[],
               text: `${platformLabel} のスケジュール投稿が完了しました`,
             });
-            await addReaction(client as any, post.slackChannel, post.slackMessageTs, "rocket");
+            await addReaction(
+              client as any,
+              post.slackChannel,
+              post.slackMessageTs,
+              "rocket",
+            );
           } else {
             // フォールバック: チャンネル直接投稿
             await client.chat.postMessage({
               channel: post.slackChannel,
-              blocks: buildPublishedBlocks(platformLabel, result.url || "") as any[],
+              blocks: buildPublishedBlocks(
+                platformLabel,
+                result.url || "",
+              ) as any[],
               text: `${platformLabel} のスケジュール投稿が完了しました`,
             });
           }
         }
 
-        console.log(`[sns-scheduler] Published scheduled post: ${post.id} (${post.platform})`);
+        console.log(
+          `[sns-scheduler] Published scheduled post: ${post.id} (${post.platform})`,
+        );
         // Canvas 更新
-        updateSnsCanvas().catch((e) => console.error("[sns-scheduler] Canvas update error:", e));
+        updateSnsCanvas().catch((e) =>
+          console.error("[sns-scheduler] Canvas update error:", e),
+        );
       } else {
         // 失敗 → proposed に戻す
         await db
@@ -855,7 +1069,12 @@ async function pollScheduledPosts(client: any): Promise<void> {
               thread_ts: post.slackMessageTs,
               text: `${platformLabel} のスケジュール投稿に失敗しました: ${result.error || "不明なエラー"}\nステータスを「提案」に戻しました。`,
             });
-            await addReaction(client as any, post.slackChannel, post.slackMessageTs, "x");
+            await addReaction(
+              client as any,
+              post.slackChannel,
+              post.slackMessageTs,
+              "x",
+            );
           } else {
             await client.chat.postMessage({
               channel: post.slackChannel,
@@ -864,10 +1083,16 @@ async function pollScheduledPosts(client: any): Promise<void> {
           }
         }
 
-        console.error(`[sns-scheduler] Scheduled publish failed: ${post.id}`, result.error);
+        console.error(
+          `[sns-scheduler] Scheduled publish failed: ${post.id}`,
+          result.error,
+        );
       }
     } catch (error) {
-      console.error(`[sns-scheduler] Publish error for post ${post.id}:`, error);
+      console.error(
+        `[sns-scheduler] Publish error for post ${post.id}:`,
+        error,
+      );
 
       // 失敗 → proposed に戻す
       await db
@@ -885,8 +1110,11 @@ async function pollScheduledPosts(client: any): Promise<void> {
 /**
  * プラットフォーム別にパブリッシャーを呼び出すヘルパー
  */
-export async function publishPost(post: any): Promise<{ success: boolean; url?: string; error?: string }> {
-  const content = post.content as unknown as SnsContentUnion & Record<string, any>;
+export async function publishPost(
+  post: any,
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const content = post.content as unknown as SnsContentUnion &
+    Record<string, any>;
 
   switch (post.platform) {
     case "x": {
@@ -896,7 +1124,11 @@ export async function publishPost(post: any): Promise<{ success: boolean; url?: 
 
       if (isThread) {
         const result = await publishThread(parts);
-        return { success: result.success, url: result.urls?.[0], error: result.error };
+        return {
+          success: result.success,
+          url: result.urls?.[0],
+          error: result.error,
+        };
       } else {
         return publishToX(text);
       }
@@ -906,7 +1138,9 @@ export async function publishPost(post: any): Promise<{ success: boolean; url?: 
       const result = await publishToQiita({
         title: content.title,
         body: content.body,
-        tags: (content.tags || []).map((t: any) => typeof t === "string" ? { name: t } : t),
+        tags: (content.tags || []).map((t: any) =>
+          typeof t === "string" ? { name: t } : t,
+        ),
       });
       return { success: result.success, url: result.url, error: result.error };
     }
@@ -986,7 +1220,11 @@ export async function publishPost(post: any): Promise<{ success: boolean; url?: 
         caption: `${content.caption || ""}\n\n${(content.hashtags || []).join(" ")}`,
         mediaType: content.type === "reels" ? "REELS" : "IMAGE",
       });
-      return { success: igResult.success, url: igResult.url, error: igResult.error };
+      return {
+        success: igResult.success,
+        url: igResult.url,
+        error: igResult.error,
+      };
     }
 
     case "podcast": {
@@ -1007,16 +1245,27 @@ export async function publishPost(post: any): Promise<{ success: boolean; url?: 
 
 function getPlatformLabel(platform: string): string {
   switch (platform) {
-    case "x": return "X";
-    case "qiita": return "Qiita";
-    case "zenn": return "Zenn";
-    case "note": return "note";
-    case "youtube": return "YouTube";
-    case "threads": return "Threads";
-    case "tiktok": return "TikTok";
-    case "github": return "GitHub";
-    case "instagram": return "Instagram";
-    case "podcast": return "Podcast";
-    default: return platform;
+    case "x":
+      return "X";
+    case "qiita":
+      return "Qiita";
+    case "zenn":
+      return "Zenn";
+    case "note":
+      return "note";
+    case "youtube":
+      return "YouTube";
+    case "threads":
+      return "Threads";
+    case "tiktok":
+      return "TikTok";
+    case "github":
+      return "GitHub";
+    case "instagram":
+      return "Instagram";
+    case "podcast":
+      return "Podcast";
+    default:
+      return platform;
   }
 }

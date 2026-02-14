@@ -26,7 +26,17 @@ vi.mock("./optimal-time.js", () => ({
     new Date("2026-02-10T09:00:00Z"), // 18:00 JST
   ]),
   formatScheduledTime: vi.fn(() => "今日 07:30"),
-  POSTS_PER_DAY: { x: 3, qiita: 1, zenn: 1, note: 1, youtube: 1, threads: 2, tiktok: 1, github: 0, podcast: 0 },
+  POSTS_PER_DAY: {
+    x: 3,
+    qiita: 1,
+    zenn: 1,
+    note: 1,
+    youtube: 1,
+    threads: 2,
+    tiktok: 1,
+    github: 0,
+    podcast: 0,
+  },
 }));
 
 vi.mock("./x-publisher.js", () => ({
@@ -114,9 +124,24 @@ vi.mock("@argus/agent-core", () => ({
 }));
 
 vi.mock("./platform-configs.js", () => ({
-  threadsConfig: { platform: "threads", phases: [], systemPromptPath: "test", outputKey: "post" },
-  githubConfig: { platform: "github", phases: [], systemPromptPath: "test", outputKey: "repository" },
-  podcastConfig: { platform: "podcast", phases: [], systemPromptPath: "test", outputKey: "episode" },
+  threadsConfig: {
+    platform: "threads",
+    phases: [],
+    systemPromptPath: "test",
+    outputKey: "post",
+  },
+  githubConfig: {
+    platform: "github",
+    phases: [],
+    systemPromptPath: "test",
+    outputKey: "repository",
+  },
+  podcastConfig: {
+    platform: "podcast",
+    phases: [],
+    systemPromptPath: "test",
+    outputKey: "episode",
+  },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -182,12 +207,12 @@ describe("getCategoryForDay", () => {
     const { getCategoryForDay } = await import("./scheduler.js");
 
     expect(getCategoryForDay(0)).toBe("discussion"); // Sunday
-    expect(getCategoryForDay(1)).toBe("tips");       // Monday
-    expect(getCategoryForDay(2)).toBe("news");       // Tuesday
+    expect(getCategoryForDay(1)).toBe("tips"); // Monday
+    expect(getCategoryForDay(2)).toBe("news"); // Tuesday
     expect(getCategoryForDay(3)).toBe("experience"); // Wednesday
-    expect(getCategoryForDay(4)).toBe("code");       // Thursday
-    expect(getCategoryForDay(5)).toBe("summary");    // Friday
-    expect(getCategoryForDay(6)).toBe("tips");       // Saturday
+    expect(getCategoryForDay(4)).toBe("code"); // Thursday
+    expect(getCategoryForDay(5)).toBe("summary"); // Friday
+    expect(getCategoryForDay(6)).toBe("tips"); // Saturday
   });
 
   it("should return 'tips' for out-of-range day numbers", async () => {
@@ -219,8 +244,8 @@ describe("getCategoriesForDay", () => {
     const { getCategoriesForDay } = await import("./scheduler.js");
 
     expect(getCategoriesForDay(0, 3)[0]).toBe("discussion"); // Sunday
-    expect(getCategoriesForDay(2, 3)[0]).toBe("news");       // Tuesday
-    expect(getCategoriesForDay(4, 3)[0]).toBe("code");       // Thursday
+    expect(getCategoriesForDay(2, 3)[0]).toBe("news"); // Tuesday
+    expect(getCategoriesForDay(4, 3)[0]).toBe("code"); // Thursday
   });
 
   it("should return different supplementary categories for different days", async () => {
@@ -240,7 +265,8 @@ describe("startSnsScheduler", () => {
 
   it("should schedule two cron jobs (suggestion at 4am + publish poller)", async () => {
     process.env.SLACK_SNS_CHANNEL = "C_SNS_TEST";
-    const { startSnsScheduler, stopSnsScheduler } = await import("./scheduler.js");
+    const { startSnsScheduler, stopSnsScheduler } =
+      await import("./scheduler.js");
 
     const mockClient = { chat: { postMessage: vi.fn() } };
     startSnsScheduler(mockClient);
@@ -282,7 +308,8 @@ describe("stopSnsScheduler", () => {
 
   it("should stop the scheduled task", async () => {
     process.env.SLACK_SNS_CHANNEL = "C_SNS_TEST";
-    const { startSnsScheduler, stopSnsScheduler } = await import("./scheduler.js");
+    const { startSnsScheduler, stopSnsScheduler } =
+      await import("./scheduler.js");
 
     const mockClient = { chat: { postMessage: vi.fn() } };
     startSnsScheduler(mockClient);
@@ -408,7 +435,9 @@ describe("publishPost for Threads", () => {
 
     expect(result.success).toBe(true);
     expect(result.url).toContain("threads.net");
-    expect(publishToThreads).toHaveBeenCalledWith({ text: "テストスレッズ投稿" });
+    expect(publishToThreads).toHaveBeenCalledWith({
+      text: "テストスレッズ投稿",
+    });
   });
 });
 
@@ -467,10 +496,12 @@ describe("publishPost for GitHub", () => {
 
     expect(result.success).toBe(true);
     expect(result.url).toContain("github.com");
-    expect(publishToGitHub).toHaveBeenCalledWith(expect.objectContaining({
-      name: "test-repo",
-      visibility: "public",
-    }));
+    expect(publishToGitHub).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "test-repo",
+        visibility: "public",
+      }),
+    );
   });
 });
 
@@ -495,10 +526,12 @@ describe("publishPost for Podcast", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("No audio path provided");
-    expect(publishPodcast).toHaveBeenCalledWith(expect.objectContaining({
-      title: "テスト",
-      audioPath: "",
-    }));
+    expect(publishPodcast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "テスト",
+        audioPath: "",
+      }),
+    );
   });
 
   it("should return success with url when podcast is published", async () => {
@@ -521,14 +554,18 @@ describe("publishPost for Podcast", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.url).toBe("http://localhost:3150/api/files/podcast/episodes/20260211-test.mp3");
-    expect(publishPodcast).toHaveBeenCalledWith(expect.objectContaining({
-      title: "テスト",
-      description: "テスト説明",
-      chapters: [],
-      category: "tech",
-      audioPath: "/tmp/test.mp3",
-    }));
+    expect(result.url).toBe(
+      "http://localhost:3150/api/files/podcast/episodes/20260211-test.mp3",
+    );
+    expect(publishPodcast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "テスト",
+        description: "テスト説明",
+        chapters: [],
+        category: "tech",
+        audioPath: "/tmp/test.mp3",
+      }),
+    );
   });
 });
 
@@ -553,10 +590,15 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
 
-    const { generateYouTubeMetadata } = await import("./youtube-metadata-generator.js");
+    const { generateYouTubeMetadata } =
+      await import("./youtube-metadata-generator.js");
     (generateYouTubeMetadata as any).mockResolvedValue({
       success: true,
-      content: { title: "テスト動画", description: "概要", metadata: { category: "tech", estimatedDuration: "10:00" } },
+      content: {
+        title: "テスト動画",
+        description: "概要",
+        metadata: { category: "tech", estimatedDuration: "10:00" },
+      },
     });
 
     mockPhasedRun.mockResolvedValue({
@@ -573,7 +615,9 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
-    const mockClient = { chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) } };
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
 
     await generateAllPlatformSuggestions(mockClient);
 
@@ -600,15 +644,25 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
-    const { generateYouTubeMetadata } = await import("./youtube-metadata-generator.js");
+    const { generateYouTubeMetadata } =
+      await import("./youtube-metadata-generator.js");
     (generateYouTubeMetadata as any).mockResolvedValue({
       success: true,
-      content: { title: "テスト動画", description: "概要", metadata: { category: "tech", estimatedDuration: "10:00" } },
+      content: {
+        title: "テスト動画",
+        description: "概要",
+        metadata: { category: "tech", estimatedDuration: "10:00" },
+      },
     });
 
     mockPhasedRun.mockResolvedValue({
       success: true,
-      content: { name: "ai-tool-kit", description: "AI用ツールキット", readme: "# ai-tool-kit", topics: ["ai"] },
+      content: {
+        name: "ai-tool-kit",
+        description: "AI用ツールキット",
+        readme: "# ai-tool-kit",
+        topics: ["ai"],
+      },
       phaseResults: [],
     });
 
@@ -620,7 +674,9 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
-    const mockClient = { chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) } };
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
 
     // Simulate a weekday (Monday in JST: 2026-02-09 13:00 JST = 04:00 UTC)
     vi.useFakeTimers();
@@ -652,15 +708,24 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
-    const { generateYouTubeMetadata } = await import("./youtube-metadata-generator.js");
+    const { generateYouTubeMetadata } =
+      await import("./youtube-metadata-generator.js");
     (generateYouTubeMetadata as any).mockResolvedValue({
       success: true,
-      content: { title: "テスト動画", description: "概要", metadata: { category: "tech", estimatedDuration: "10:00" } },
+      content: {
+        title: "テスト動画",
+        description: "概要",
+        metadata: { category: "tech", estimatedDuration: "10:00" },
+      },
     });
 
     mockPhasedRun.mockResolvedValue({
       success: true,
-      content: { title: "AIコーディングの未来", description: "Claude Codeの最新動向", chapters: [] },
+      content: {
+        title: "AIコーディングの未来",
+        description: "Claude Codeの最新動向",
+        chapters: [],
+      },
       phaseResults: [],
     });
 
@@ -672,7 +737,9 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
-    const mockClient = { chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) } };
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
 
     // Simulate Monday in JST (2026-02-09 13:00 JST = 2026-02-09 04:00 UTC)
     vi.useFakeTimers();
@@ -700,15 +767,20 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
-    const { generateYouTubeMetadata } = await import("./youtube-metadata-generator.js");
+    const { generateYouTubeMetadata } =
+      await import("./youtube-metadata-generator.js");
     (generateYouTubeMetadata as any).mockResolvedValue({
       success: true,
-      content: { title: "テスト動画", description: "概要", metadata: { category: "tech", estimatedDuration: "10:00" } },
+      content: {
+        title: "テスト動画",
+        description: "概要",
+        metadata: { category: "tech", estimatedDuration: "10:00" },
+      },
     });
 
     mockPhasedRun.mockResolvedValue({
       success: false,
-      error: "Phase \"research\" failed: SDK connection error",
+      error: 'Phase "research" failed: SDK connection error',
       phaseResults: [],
     });
 
@@ -720,14 +792,20 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
-    const mockClient = { chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) } };
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
 
     // Should not throw even if PhasedGenerator fails
-    await expect(generateAllPlatformSuggestions(mockClient)).resolves.toBeUndefined();
+    await expect(
+      generateAllPlatformSuggestions(mockClient),
+    ).resolves.toBeUndefined();
 
     // Should have posted error messages for the Threads failures
     const errorCalls = mockClient.chat.postMessage.mock.calls.filter(
-      (call: any[]) => typeof call[0]?.text === "string" && call[0].text.includes("Threads 投稿案の生成に失敗しました"),
+      (call: any[]) =>
+        typeof call[0]?.text === "string" &&
+        call[0].text.includes("Threads 投稿案の生成に失敗しました"),
     );
     expect(errorCalls.length).toBeGreaterThanOrEqual(1);
   });
@@ -792,10 +870,15 @@ describe("catchUpIfNeeded", () => {
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
-    const { generateYouTubeMetadata } = await import("./youtube-metadata-generator.js");
+    const { generateYouTubeMetadata } =
+      await import("./youtube-metadata-generator.js");
     (generateYouTubeMetadata as any).mockResolvedValue({
       success: true,
-      content: { title: "テスト動画", description: "概要", metadata: { category: "tech", estimatedDuration: "10:00" } },
+      content: {
+        title: "テスト動画",
+        description: "概要",
+        metadata: { category: "tech", estimatedDuration: "10:00" },
+      },
     });
     mockPhasedRun.mockResolvedValue({
       success: true,
@@ -811,15 +894,123 @@ describe("catchUpIfNeeded", () => {
     });
 
     const { catchUpIfNeeded } = await import("./scheduler.js");
-    const mockClient = { chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) } };
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
 
     await catchUpIfNeeded(mockClient);
 
     // Should have posted catch-up notification
     const catchUpCalls = mockClient.chat.postMessage.mock.calls.filter(
-      (call: any[]) => typeof call[0]?.text === "string" && call[0].text.includes("起動時キャッチアップ"),
+      (call: any[]) =>
+        typeof call[0]?.text === "string" &&
+        call[0].text.includes("起動時キャッチアップ"),
     );
     expect(catchUpCalls).toHaveLength(1);
     vi.useRealTimers();
+  });
+});
+
+describe("generateAllPlatformSuggestions — CLI health check", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    process.env.SLACK_SNS_CHANNEL = "C_SNS_TEST";
+  });
+
+  it("should proceed with generation when health check returns transient", async () => {
+    const { checkCliHealth } = await import("@argus/agent-core");
+    (checkCliHealth as any).mockResolvedValue("transient");
+
+    const { generateXPost } = await import("./generator.js");
+    (generateXPost as any).mockResolvedValue({
+      success: true,
+      content: { format: "single", posts: [{ text: "テスト" }] },
+    });
+
+    const { generateArticle } = await import("./article-generator.js");
+    (generateArticle as any).mockResolvedValue({
+      success: true,
+      content: { title: "テスト", body: "本文", tags: ["test"] },
+    });
+
+    const { generateYouTubeMetadata } =
+      await import("./youtube-metadata-generator.js");
+    (generateYouTubeMetadata as any).mockResolvedValue({
+      success: true,
+      content: {
+        title: "動画",
+        description: "概要",
+        metadata: { category: "tech", estimatedDuration: "10:00" },
+      },
+    });
+
+    mockPhasedRun.mockResolvedValue({
+      success: true,
+      content: { text: "テスト投稿" },
+      phaseResults: [],
+    });
+
+    const { db } = await import("@argus/db");
+    (db.insert as any).mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: "post-test" }]),
+      }),
+    });
+
+    const { generateAllPlatformSuggestions } = await import("./scheduler.js");
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
+
+    await generateAllPlatformSuggestions(mockClient);
+
+    // transient error should NOT skip generation — X posts should have been generated
+    expect(generateXPost).toHaveBeenCalled();
+  });
+
+  it("should skip generation when health check returns not_logged_in", async () => {
+    const { checkCliHealth } = await import("@argus/agent-core");
+    (checkCliHealth as any).mockResolvedValue("not_logged_in");
+
+    const { generateXPost } = await import("./generator.js");
+
+    const { generateAllPlatformSuggestions } = await import("./scheduler.js");
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
+
+    await generateAllPlatformSuggestions(mockClient);
+
+    // not_logged_in should skip all generation
+    expect(generateXPost).not.toHaveBeenCalled();
+    // Should have posted a skip message
+    expect(mockClient.chat.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("ログインしていない"),
+      }),
+    );
+  });
+
+  it("should skip generation when health check returns rate_limit", async () => {
+    const { checkCliHealth } = await import("@argus/agent-core");
+    (checkCliHealth as any).mockResolvedValue("rate_limit");
+
+    const { generateXPost } = await import("./generator.js");
+
+    const { generateAllPlatformSuggestions } = await import("./scheduler.js");
+    const mockClient = {
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: "123" }) },
+    };
+
+    await generateAllPlatformSuggestions(mockClient);
+
+    // rate_limit should skip all generation
+    expect(generateXPost).not.toHaveBeenCalled();
+    expect(mockClient.chat.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("使用制限"),
+      }),
+    );
   });
 });

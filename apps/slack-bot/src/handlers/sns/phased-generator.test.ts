@@ -66,28 +66,24 @@ const fourPhaseConfig: PlatformConfig = {
   phases: [
     {
       name: "research",
-      promptPath:
-        ".claude/skills/sns-qiita-writer/phases/phase1-research.md",
+      promptPath: ".claude/skills/sns-qiita-writer/phases/phase1-research.md",
       allowWebSearch: true,
     },
     {
       name: "structure",
-      promptPath:
-        ".claude/skills/sns-qiita-writer/phases/phase2-structure.md",
+      promptPath: ".claude/skills/sns-qiita-writer/phases/phase2-structure.md",
       allowWebSearch: false,
       inputFromPhase: "research",
     },
     {
       name: "content",
-      promptPath:
-        ".claude/skills/sns-qiita-writer/phases/phase3-content.md",
+      promptPath: ".claude/skills/sns-qiita-writer/phases/phase3-content.md",
       allowWebSearch: false,
       inputFromPhase: "structure",
     },
     {
       name: "optimize",
-      promptPath:
-        ".claude/skills/sns-qiita-writer/phases/phase4-optimize.md",
+      promptPath: ".claude/skills/sns-qiita-writer/phases/phase4-optimize.md",
       allowWebSearch: false,
       inputFromPhase: "content",
     },
@@ -124,12 +120,10 @@ describe("PhasedGenerator", () => {
     vi.clearAllMocks();
     // リトライの指数バックオフ待機を即時実行にして高速化
     originalSetTimeout = globalThis.setTimeout;
-    vi.spyOn(globalThis, "setTimeout").mockImplementation(
-      ((fn: () => void) => {
-        fn();
-        return 0 as unknown as ReturnType<typeof setTimeout>;
-      }) as typeof setTimeout,
-    );
+    vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void) => {
+      fn();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
   });
 
   afterEach(() => {
@@ -261,7 +255,9 @@ describe("PhasedGenerator", () => {
       .mockResolvedValueOnce(buildMockResult(researchOutput))
       .mockResolvedValueOnce(buildMockResult(generateOutput));
 
-    const onPhaseComplete: SavePhaseCallback = vi.fn().mockResolvedValue(undefined);
+    const onPhaseComplete: SavePhaseCallback = vi
+      .fn()
+      .mockResolvedValue(undefined);
 
     const generator = new PhasedGenerator({ onPhaseComplete });
     await generator.run(twoPhaseConfig, "投稿を作って");
@@ -500,9 +496,9 @@ describe("PhasedGenerator", () => {
     (query as Mock).mockResolvedValueOnce(notLoggedInResult);
 
     const generator = new PhasedGenerator();
-    await expect(
-      generator.run(twoPhaseConfig, "テスト"),
-    ).rejects.toThrow(CliUnavailableError);
+    await expect(generator.run(twoPhaseConfig, "テスト")).rejects.toThrow(
+      CliUnavailableError,
+    );
   });
 
   it("should re-throw CliUnavailableError from executePhase (rate limit)", async () => {
@@ -513,15 +509,16 @@ describe("PhasedGenerator", () => {
     (query as Mock).mockResolvedValueOnce(rateLimitResult);
 
     const generator = new PhasedGenerator();
-    await expect(
-      generator.run(twoPhaseConfig, "テスト"),
-    ).rejects.toThrow(CliUnavailableError);
+    await expect(generator.run(twoPhaseConfig, "テスト")).rejects.toThrow(
+      CliUnavailableError,
+    );
   });
 
   it("should not retry CliUnavailableError even with maxRetries set", async () => {
     const retryConfig: PlatformConfig = {
       platform: "x",
-      systemPromptPath: ".claude/skills/sns-x-poster/prompts/x-post-generator.md",
+      systemPromptPath:
+        ".claude/skills/sns-x-poster/prompts/x-post-generator.md",
       outputKey: "post",
       phases: [
         {
@@ -540,11 +537,110 @@ describe("PhasedGenerator", () => {
     (query as Mock).mockResolvedValueOnce(notLoggedInResult);
 
     const generator = new PhasedGenerator();
-    await expect(
-      generator.run(retryConfig, "テスト"),
-    ).rejects.toThrow(CliUnavailableError);
+    await expect(generator.run(retryConfig, "テスト")).rejects.toThrow(
+      CliUnavailableError,
+    );
     // Should only call once - no retries for CLI errors
     expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  // -----------------------------------------------------------------------
+  // Truncated JSON repair tests
+  // -----------------------------------------------------------------------
+
+  it("should repair truncated JSON from code block (missing closing braces)", async () => {
+    // トークン制限で切り詰められたJSON — 閉じカッコなし
+    const truncatedResult = buildMockResultWithText(
+      '```json\n{"title": "AI記事", "body": "本文...", "tags": ["AI", "LLM"\n```',
+    );
+
+    const singlePhaseConfig: PlatformConfig = {
+      platform: "x",
+      systemPromptPath:
+        ".claude/skills/sns-x-poster/prompts/x-post-generator.md",
+      outputKey: "post",
+      phases: [
+        {
+          name: "generate",
+          promptPath: ".claude/skills/sns-x-poster/phases/phase1-research.md",
+          allowWebSearch: false,
+        },
+      ],
+    };
+
+    (query as Mock).mockResolvedValueOnce(truncatedResult);
+
+    const generator = new PhasedGenerator();
+    const result = await generator.run(singlePhaseConfig, "テスト");
+
+    expect(result.success).toBe(true);
+    expect(result.content).toEqual({
+      title: "AI記事",
+      body: "本文...",
+      tags: ["AI", "LLM"],
+    });
+  });
+
+  it("should repair truncated JSON with unclosed string", async () => {
+    // 文字列の途中で切れたJSON
+    const truncatedResult = buildMockResultWithText(
+      '```json\n{"title": "AI記事", "body": "途中で切れた本文...\n```',
+    );
+
+    const singlePhaseConfig: PlatformConfig = {
+      platform: "x",
+      systemPromptPath:
+        ".claude/skills/sns-x-poster/prompts/x-post-generator.md",
+      outputKey: "post",
+      phases: [
+        {
+          name: "generate",
+          promptPath: ".claude/skills/sns-x-poster/phases/phase1-research.md",
+          allowWebSearch: false,
+        },
+      ],
+    };
+
+    (query as Mock).mockResolvedValueOnce(truncatedResult);
+
+    const generator = new PhasedGenerator();
+    const result = await generator.run(singlePhaseConfig, "テスト");
+
+    expect(result.success).toBe(true);
+    const content = result.content as any;
+    expect(content.title).toBe("AI記事");
+    expect(content.body).toContain("途中で切れた本文");
+  });
+
+  it("should repair raw JSON without code block markers", async () => {
+    // コードブロックなしで切り詰められたJSON
+    const truncatedResult = buildMockResultWithText(
+      '{"name": "repo", "description": "テスト", "topics": ["ai",',
+    );
+
+    const singlePhaseConfig: PlatformConfig = {
+      platform: "github",
+      systemPromptPath:
+        ".claude/skills/sns-x-poster/prompts/x-post-generator.md",
+      outputKey: "post",
+      phases: [
+        {
+          name: "generate",
+          promptPath: ".claude/skills/sns-x-poster/phases/phase1-research.md",
+          allowWebSearch: false,
+        },
+      ],
+    };
+
+    (query as Mock).mockResolvedValueOnce(truncatedResult);
+
+    const generator = new PhasedGenerator();
+    const result = await generator.run(singlePhaseConfig, "テスト");
+
+    expect(result.success).toBe(true);
+    const content = result.content as any;
+    expect(content.name).toBe("repo");
+    expect(content.description).toBe("テスト");
   });
 
   it("should include response preview in error log on JSON extraction failure", async () => {

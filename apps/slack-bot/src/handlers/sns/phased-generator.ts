@@ -330,7 +330,10 @@ function checkForCliErrors(responseText: string): void {
       "Claude CLI にログインしていません。`claude /login` を実行してください。",
     );
   }
-  if (lower.includes("hit your limit") || lower.includes("you've hit your limit")) {
+  if (
+    lower.includes("hit your limit") ||
+    lower.includes("you've hit your limit")
+  ) {
     // リセット日時を抽出
     const resetMatch = responseText.match(/resets?\s+(.+?)(?:\s*\(|$)/i);
     const resetInfo = resetMatch ? ` (リセット: ${resetMatch[1].trim()})` : "";
@@ -366,6 +369,14 @@ function extractJsonFromResult(result: AgentResult): unknown {
     try {
       return JSON.parse(jsonStr) as unknown;
     } catch {
+      // トークン制限で切り詰められた JSON を修復して再試行
+      const repaired = tryRepairJson(jsonStr);
+      if (repaired !== null) {
+        console.warn(
+          "[phased-generator] Repaired truncated JSON from code block",
+        );
+        return repaired;
+      }
       const preview = responseText.slice(0, 500);
       console.error(
         `[phased-generator] JSON parse failed from code block. Response preview: ${preview}`,
@@ -374,12 +385,19 @@ function extractJsonFromResult(result: AgentResult): unknown {
     }
   }
 
-  // フォールバック: コードブロック外の JSON オブジェクトを検出
-  const objectMatch = responseText.match(/(\{[\s\S]*\})/);
+  // フォールバック: コードブロック外の JSON オブジェクトを検出（閉じカッコなしも許容）
+  const objectMatch = responseText.match(/(\{[\s\S]*\}?)/);
   if (objectMatch) {
     try {
       return JSON.parse(objectMatch[1]) as unknown;
     } catch {
+      const repaired = tryRepairJson(objectMatch[1]);
+      if (repaired !== null) {
+        console.warn(
+          "[phased-generator] Repaired truncated JSON from raw object",
+        );
+        return repaired;
+      }
       const preview = responseText.slice(0, 500);
       console.error(
         `[phased-generator] JSON parse failed from raw object. Response preview: ${preview}`,
@@ -393,6 +411,88 @@ function extractJsonFromResult(result: AgentResult): unknown {
     `[phased-generator] No JSON found in response. Response preview: ${preview}`,
   );
   throw new Error("No JSON found in response");
+}
+
+/**
+ * トークン制限で切り詰められた JSON を修復する。
+ * 未閉じの文字列・配列・オブジェクトを閉じて JSON.parse を試みる。
+ * 修復不能なら null を返す。
+ */
+function tryRepairJson(jsonStr: string): unknown | null {
+  let s = jsonStr.trim();
+
+  // 末尾のカンマを除去
+  s = s.replace(/,\s*$/, "");
+
+  // 切り詰められた文字列を閉じる: 未閉じの " を検出
+  // バックスラッシュエスケープを考慮して未閉じ引用符を数える
+  let inString = false;
+  let lastStringStart = -1;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && inString) {
+      i++; // エスケープ文字をスキップ
+      continue;
+    }
+    if (s[i] === '"') {
+      if (!inString) {
+        inString = true;
+        lastStringStart = i;
+      } else {
+        inString = false;
+      }
+    }
+  }
+
+  // 未閉じの文字列があれば閉じる
+  if (inString) {
+    s += '"';
+  }
+
+  // 未閉じのブラケットを閉じる
+  const openBrackets: string[] = [];
+  inString = false;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && inString) {
+      i++;
+      continue;
+    }
+    if (s[i] === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (s[i] === "{" || s[i] === "[") {
+      openBrackets.push(s[i]);
+    } else if (s[i] === "}") {
+      if (
+        openBrackets.length > 0 &&
+        openBrackets[openBrackets.length - 1] === "{"
+      ) {
+        openBrackets.pop();
+      }
+    } else if (s[i] === "]") {
+      if (
+        openBrackets.length > 0 &&
+        openBrackets[openBrackets.length - 1] === "["
+      ) {
+        openBrackets.pop();
+      }
+    }
+  }
+
+  // 末尾のカンマを再除去（文字列閉じ後に露出する可能性）
+  s = s.replace(/,\s*$/, "");
+
+  // 逆順で閉じカッコを追加
+  for (let i = openBrackets.length - 1; i >= 0; i--) {
+    s += openBrackets[i] === "{" ? "}" : "]";
+  }
+
+  try {
+    return JSON.parse(s) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 /**
