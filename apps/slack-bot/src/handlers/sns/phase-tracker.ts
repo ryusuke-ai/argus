@@ -67,7 +67,7 @@ export async function finalizePost(
   await db
     .update(snsPosts)
     .set({
-      content: finalContent as any,
+      content: finalContent as Record<string, unknown>,
       status: "proposed",
       currentPhase: "completed",
       updatedAt: new Date(),

@@ -1,3 +1,5 @@
+import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { generateXPost } from "./generator.js";
 import { generateArticle } from "./article-generator.js";
 import { validateXPost, validateThread, validateArticle } from "./validator.js";
@@ -31,7 +33,7 @@ import { getCategoryForDay, getYouTubeFormat } from "./scheduler-utils.js";
 const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
 
 export async function generateXSuggestion(
-  client: any,
+  client: WebClient,
   category: string,
   suggestedAt?: Date,
 ): Promise<void> {
@@ -63,11 +65,11 @@ export async function generateXSuggestion(
     }
     const isThread = content.format === "thread" && content.posts.length > 1;
     const postText = isThread
-      ? content.posts.map((p: any) => p.text).join("\n---\n")
+      ? content.posts.map((p) => p.text).join("\n---\n")
       : content.posts[0]?.text || "";
 
     const validation = isThread
-      ? validateThread(content.posts.map((p: any) => p.text))
+      ? validateThread(content.posts.map((p) => p.text))
       : validateXPost(postText);
 
     const scheduledAt = suggestedAt || getNextOptimalTime("x");
@@ -94,7 +96,7 @@ export async function generateXSuggestion(
 
     const msgResult = await client.chat.postMessage({
       channel: SNS_CHANNEL,
-      blocks: blocks as any[],
+      blocks: blocks as KnownBlock[],
       text: `[自動] X 投稿案 (${category})`,
     });
     if (msgResult.ts) {
@@ -116,7 +118,7 @@ export async function generateXSuggestion(
 }
 
 export async function generateArticleSuggestion(
-  client: any,
+  client: WebClient,
   platform: "qiita" | "zenn" | "note",
   category: string,
 ): Promise<void> {
@@ -188,7 +190,7 @@ export async function generateArticleSuggestion(
 
     const mainMsg = await client.chat.postMessage({
       channel: SNS_CHANNEL,
-      blocks: blocks as any[],
+      blocks: blocks as KnownBlock[],
       text: `[自動] ${platform} 記事案: ${content.title}`,
     });
     if (mainMsg.ts) {
@@ -254,7 +256,7 @@ export async function generateArticleSuggestion(
 }
 
 export async function generateYouTubeSuggestion(
-  client: any,
+  client: WebClient,
   category: string,
   dayOfWeek: number,
 ): Promise<void> {
@@ -302,7 +304,7 @@ export async function generateYouTubeSuggestion(
 
     const msgResult = await client.chat.postMessage({
       channel: SNS_CHANNEL,
-      blocks: blocks as any[],
+      blocks: blocks as KnownBlock[],
       text: `[自動] YouTube ${formatLabel}案: ${content.title}`,
     });
     if (msgResult.ts) {
@@ -324,7 +326,7 @@ export async function generateYouTubeSuggestion(
 }
 
 export async function generateThreadsSuggestion(
-  client: any,
+  client: WebClient,
   category: string,
   suggestedAt?: Date,
 ): Promise<void> {
@@ -349,8 +351,11 @@ export async function generateThreadsSuggestion(
       return;
     }
 
-    const content = result.content as any;
-    const postText = content.text || content.posts?.[0]?.text || "";
+    const content = result.content as Record<string, unknown>;
+    const postText =
+      (content.text as string) ||
+      (content.posts as Array<{ text: string }> | undefined)?.[0]?.text ||
+      "";
     if (!postText) {
       await client.chat.postMessage({
         channel: SNS_CHANNEL,
@@ -378,7 +383,7 @@ export async function generateThreadsSuggestion(
 
     const msgResult = await client.chat.postMessage({
       channel: SNS_CHANNEL,
-      blocks: blocks as any[],
+      blocks: blocks as KnownBlock[],
       text: `[自動] Threads 投稿案 (${category})`,
     });
     if (msgResult.ts) {
@@ -400,7 +405,7 @@ export async function generateThreadsSuggestion(
 }
 
 export async function generateTikTokSuggestion(
-  client: any,
+  client: WebClient,
   category: string,
 ): Promise<void> {
   try {
@@ -435,7 +440,7 @@ export async function generateTikTokSuggestion(
 
     const msgResult = await client.chat.postMessage({
       channel: SNS_CHANNEL,
-      blocks: blocks as any[],
+      blocks: blocks as KnownBlock[],
       text: `[自動] TikTok & Instagram 動画案: ${content.title}`,
     });
     if (msgResult.ts) {
@@ -457,7 +462,7 @@ export async function generateTikTokSuggestion(
 }
 
 export async function generateGitHubSuggestion(
-  client: any,
+  client: WebClient,
   category: string,
 ): Promise<void> {
   try {
@@ -481,18 +486,21 @@ export async function generateGitHubSuggestion(
       return;
     }
 
-    const content = result.content as any;
+    const content = result.content as Record<string, unknown>;
+    const repo = content.repository as Record<string, unknown> | undefined;
     const repoName =
-      content.name || content.repository?.name || `ai-${category}-tool`;
+      (content.name as string) ||
+      (repo?.name as string) ||
+      `ai-${category}-tool`;
     const description =
-      content.description || content.repository?.description || "";
+      (content.description as string) || (repo?.description as string) || "";
     const readme =
-      content.readme ||
-      content.repository?.readme ||
+      (content.readme as string) ||
+      (repo?.readme as string) ||
       `# ${repoName}\n\n${description}`;
     const topics =
-      content.topics ||
-      content.repository?.topics ||
+      (content.topics as string[]) ||
+      (repo?.topics as string[]) ||
       ["ai", "claude-code", category].filter(Boolean);
 
     if (!repoName) {
@@ -526,7 +534,7 @@ export async function generateGitHubSuggestion(
 
     const msgResult = await client.chat.postMessage({
       channel: SNS_CHANNEL,
-      blocks: blocks as any[],
+      blocks: blocks as KnownBlock[],
       text: `[自動] GitHub リポジトリ案: ${repoName}`,
     });
     if (msgResult.ts) {
@@ -548,7 +556,7 @@ export async function generateGitHubSuggestion(
 }
 
 export async function generatePodcastSuggestion(
-  client: any,
+  client: WebClient,
   category: string,
 ): Promise<void> {
   try {
@@ -572,16 +580,18 @@ export async function generatePodcastSuggestion(
       return;
     }
 
-    const content = result.content as any;
+    const content = result.content as Record<string, unknown>;
+    const episode = content.episode as Record<string, unknown> | undefined;
     const title =
-      content.title ||
-      content.episode?.title ||
+      (content.title as string) ||
+      (episode?.title as string) ||
       `${category}に関するエピソード`;
     const description =
-      content.description ||
-      content.episode?.description ||
+      (content.description as string) ||
+      (episode?.description as string) ||
       JSON.stringify(content);
-    const chapters = content.chapters || content.episode?.chapters || [];
+    const chapters =
+      (content.chapters as unknown[]) || (episode?.chapters as unknown[]) || [];
 
     if (!title) {
       await client.chat.postMessage({
@@ -612,7 +622,7 @@ export async function generatePodcastSuggestion(
 
     const msgResult = await client.chat.postMessage({
       channel: SNS_CHANNEL,
-      blocks: blocks as any[],
+      blocks: blocks as KnownBlock[],
       text: `[自動] Podcast エピソード案: ${title}`,
     });
     if (msgResult.ts) {
