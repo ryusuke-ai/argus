@@ -297,7 +297,7 @@ export class SessionManager {
     dbSessionId: string,
     onProgress?: ProgressCallback,
   ): ArgusHooks {
-    const obsDB: ObservationDB = { db, tasks, lessons, eq };
+    const obsDB = { db, tasks, lessons, eq } as ObservationDB;
     const baseHooks = createDBObservationHooks(
       obsDB,
       dbSessionId,

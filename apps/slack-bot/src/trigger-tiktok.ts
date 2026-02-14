@@ -3,9 +3,14 @@
  * Slack Bot の内部関数を直接呼び出す
  */
 import { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { generateTikTokScript } from "./handlers/sns/tiktok-script-generator.js";
 import { buildTikTokPostBlocks } from "./handlers/sns/reporter.js";
-import { createGeneratingPost, createSaveCallback, finalizePost } from "./handlers/sns/phase-tracker.js";
+import {
+  createGeneratingPost,
+  createSaveCallback,
+  finalizePost,
+} from "./handlers/sns/phase-tracker.js";
 
 const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL;
 if (!SNS_CHANNEL) {
@@ -45,7 +50,7 @@ const blocks = buildTikTokPostBlocks({
 
 await client.chat.postMessage({
   channel: SNS_CHANNEL,
-  blocks: blocks as any[],
+  blocks: blocks as KnownBlock[],
   text: `TikTok 動画案: ${content.title}`,
 });
 

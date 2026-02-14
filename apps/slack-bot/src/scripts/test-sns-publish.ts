@@ -10,6 +10,7 @@
  */
 
 import { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { db, snsPosts } from "@argus/db";
 import {
   buildXPostBlocks,
@@ -90,7 +91,9 @@ function createTestPosts(media: {
   videoPath16x9: string;
   audioPath: string;
 }): TestPost[] {
-  const timestamp = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+  const timestamp = new Date().toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+  });
 
   return [
     // 1. X (Twitter)
@@ -105,7 +108,11 @@ function createTestPosts(media: {
         category: "tips",
         isThread: false,
         threadCount: 1,
-        posts: [{ text: `Argus SNS 自動化テスト投稿 - ${timestamp}\n\nこれはテスト投稿です。正常に表示されていれば X API との疎通は成功です。` }],
+        posts: [
+          {
+            text: `Argus SNS 自動化テスト投稿 - ${timestamp}\n\nこれはテスト投稿です。正常に表示されていれば X API との疎通は成功です。`,
+          },
+        ],
         metadata: { category: "tips" },
       },
       buildBlocks: (id: string) =>
@@ -238,9 +245,19 @@ function createTestPosts(media: {
         description: "SNS 自動投稿の疎通確認用テスト動画です",
         videoPath: media.videoPath9x16,
         script: {
-          hook: { duration: "2s", narration: "テスト", textOverlay: "テスト", visualDirection: "テスト" },
+          hook: {
+            duration: "2s",
+            narration: "テスト",
+            textOverlay: "テスト",
+            visualDirection: "テスト",
+          },
           body: [],
-          cta: { duration: "2s", narration: "テスト", textOverlay: "テスト", visualDirection: "テスト" },
+          cta: {
+            duration: "2s",
+            narration: "テスト",
+            textOverlay: "テスト",
+            visualDirection: "テスト",
+          },
         },
         metadata: {
           category: "tips",
@@ -269,7 +286,8 @@ function createTestPosts(media: {
         type: "youtube_video",
         format: "standard",
         title: "Argus テスト動画 - YouTube 疎通確認",
-        description: "Argus SNS 自動投稿機能のテスト動画です。確認後に削除してください。",
+        description:
+          "Argus SNS 自動投稿機能のテスト動画です。確認後に削除してください。",
         tags: ["test", "argus"],
         thumbnailText: "テスト",
         chapters: [],
@@ -304,7 +322,7 @@ function createTestPosts(media: {
         type: "image",
         caption: `Argus SNS テスト投稿 (${timestamp})`,
         hashtags: ["#test", "#argus"],
-        imageUrl: "",  // テスト時に要設定
+        imageUrl: "", // テスト時に要設定
       },
       buildBlocks: (id: string) =>
         buildInstagramPostBlocks({
@@ -345,12 +363,18 @@ async function main() {
 
   // テスト用メディア生成
   console.log("[1/3] テスト用メディアファイルを生成中...");
-  let media: { videoPath9x16: string; videoPath16x9: string; audioPath: string };
+  let media: {
+    videoPath9x16: string;
+    videoPath16x9: string;
+    audioPath: string;
+  };
   try {
     media = ensureTestMedia();
     console.log("  OK: メディアファイル生成完了\n");
   } catch (err) {
-    console.warn("  WARN: ffmpeg がない、またはメディア生成に失敗。メディア系テストはスキップされます。");
+    console.warn(
+      "  WARN: ffmpeg がない、またはメディア生成に失敗。メディア系テストはスキップされます。",
+    );
     media = {
       videoPath9x16: "/tmp/argus-test-media/test-vertical.mp4",
       videoPath16x9: "/tmp/argus-test-media/test-horizontal.mp4",
@@ -368,7 +392,11 @@ async function main() {
     blocks: [
       {
         type: "header",
-        text: { type: "plain_text", text: "SNS テスト投稿 - 全プラットフォーム疎通確認", emoji: true },
+        text: {
+          type: "plain_text",
+          text: "SNS テスト投稿 - 全プラットフォーム疎通確認",
+          emoji: true,
+        },
       },
       {
         type: "section",
@@ -406,7 +434,7 @@ async function main() {
       await client.chat.postMessage({
         channel: CHANNEL!,
         thread_ts: headerMsg.ts,
-        blocks: blocks as any[],
+        blocks: blocks as KnownBlock[],
         text: `${testPost.label} テスト投稿`,
       });
 
@@ -417,12 +445,20 @@ async function main() {
   }
 
   console.log("\n=== 完了 ===");
-  console.log(`Slack の #argus-sns チャンネルにテスト投稿カードが送信されました。`);
-  console.log("スレッドを開いて、各プラットフォームの投稿ボタンをテストしてください。");
+  console.log(
+    `Slack の #argus-sns チャンネルにテスト投稿カードが送信されました。`,
+  );
+  console.log(
+    "スレッドを開いて、各プラットフォームの投稿ボタンをテストしてください。",
+  );
   console.log("\n注意:");
-  console.log("- ボタンが動作するには slack-bot が起動している必要があります (pnpm dev)");
+  console.log(
+    "- ボタンが動作するには slack-bot が起動している必要があります (pnpm dev)",
+  );
   console.log("- TikTok/YouTube は実際の動画ファイルを使用します");
-  console.log("- Instagram は画像URLが空のため、投稿は失敗します（認証テストのみ）");
+  console.log(
+    "- Instagram は画像URLが空のため、投稿は失敗します（認証テストのみ）",
+  );
   console.log("- Podcast は「音声生成」ボタンで AI 生成が開始されます");
 
   process.exit(0);
