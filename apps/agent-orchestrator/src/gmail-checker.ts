@@ -15,55 +15,106 @@ import { updateGmailCanvas } from "./canvas/gmail-canvas.js";
 
 const anthropic = new Anthropic();
 
+/**
+ * Urgent subject patterns — emails matching these bypass the pre-filter
+ * so that security alerts from no-reply@ etc. still reach Claude classification.
+ */
+const URGENT_SUBJECT_PATTERNS = [
+  /セキュリティ|不正|security|unauthorized|suspicious/i,
+  /障害|outage|incident|emergency/i,
+  /アカウント.{0,10}(ロック|停止|制限)|locked|suspended|compromised/i,
+  /CI.{0,5}fail|build.{0,5}fail|deploy.{0,5}fail/i,
+  /urgent|critical|重要.{0,5}警告/i,
+];
+
 /** Patterns for pre-filtering emails before Claude classification */
 const SKIP_PATTERNS = {
   senders: [
     /^no-?reply@/i,
     /^noreply@/i,
-    /^notification@/i,
+    /^notification[s]?@/i,
+    /[-.]notification[s]?@/i,
     /^info@/i,
     /^news@/i,
     /^marketing@/i,
+    /^support@/i,
+    /^hello@/i,
+    /^calendar-/i,
+    /^mailer-daemon@/i,
   ],
   domains: [
     "amazonses.com",
+    "ses.amazonaws.com",
     "sendgrid.net",
     "mailchimp.com",
-    "contact.vpass.ne.jp",
+    "mandrillapp.com",
+    "postmarkapp.com",
+    "vpass.ne.jp",
   ],
   subjects: [
     /ご利用のお知らせ/,
+    /ご利用完了/,
+    /利用通知/,
+    /ご利用い?ただき/,
     /ポイント/,
     /セール/,
     /キャンペーン/,
     /newsletter/i,
     /unsubscribe/i,
+    /リマインダー/,
+    /明細/,
+    /お支払い/,
+    /配送|出荷/,
+    /注文確認/,
+    /アップデート通知/,
+    /領収書|receipt/i,
   ],
 };
 
 /**
+ * Check if the subject contains urgent keywords that should bypass the pre-filter.
+ * Security alerts, outage notifications etc. from automated senders still need attention.
+ */
+export function isUrgentSubject(subject: string): boolean {
+  return URGENT_SUBJECT_PATTERNS.some((pattern) => pattern.test(subject));
+}
+
+export interface SkipResult {
+  skipped: boolean;
+  reason: string | null;
+}
+
+/**
  * Pre-filter: skip emails that are clearly not important
  * based on sender address, domain, or subject patterns.
+ * Emails with urgent subjects bypass this filter entirely.
+ * Returns the matched reason for debugging and DB recording.
  */
-export function shouldSkipEmail(from: string, subject: string): boolean {
+export function shouldSkipEmail(from: string, subject: string): SkipResult {
+  // Urgent subjects always pass through to Claude classification
+  if (isUrgentSubject(subject)) return { skipped: false, reason: null };
+
   // Extract email address from "Name <email>" format
   const emailMatch = from.match(/<([^>]+)>/);
   const email = emailMatch ? emailMatch[1] : from;
   const domain = email.split("@")[1]?.toLowerCase() ?? "";
 
   for (const pattern of SKIP_PATTERNS.senders) {
-    if (pattern.test(email)) return true;
+    if (pattern.test(email))
+      return { skipped: true, reason: `sender:${pattern.source}` };
   }
 
   for (const d of SKIP_PATTERNS.domains) {
-    if (domain === d || domain.endsWith(`.${d}`)) return true;
+    if (domain === d || domain.endsWith(`.${d}`))
+      return { skipped: true, reason: `domain:${d}` };
   }
 
   for (const pattern of SKIP_PATTERNS.subjects) {
-    if (pattern.test(subject)) return true;
+    if (pattern.test(subject))
+      return { skipped: true, reason: `subject:${pattern.source}` };
   }
 
-  return false;
+  return { skipped: false, reason: null };
 }
 
 /**
@@ -71,7 +122,7 @@ export function shouldSkipEmail(from: string, subject: string): boolean {
  *
  * Flow per message:
  * 1. Check for duplicate (already processed)
- * 2. Pre-filter by sender/subject patterns
+ * 2. Pre-filter by sender/subject patterns (urgent subjects bypass)
  * 3. Classify with Claude (needs_reply / needs_attention / other)
  * 4. Insert into DB (get UUID)
  * 5. Post to Slack with UUID in button values (if not "other")
@@ -110,8 +161,24 @@ export async function checkGmail(): Promise<void> {
     }
 
     // プレフィルタ: 明らかに不要なメールをスキップ
-    if (shouldSkipEmail(msg.from, msg.subject)) {
-      console.log(`[Gmail Checker] Skipped by pre-filter: ${msg.subject}`);
+    const skipResult = shouldSkipEmail(msg.from, msg.subject);
+    if (skipResult.skipped) {
+      console.log(
+        `[Gmail Checker] Skipped by pre-filter (${skipResult.reason}): ${msg.subject}`,
+      );
+
+      // DB に記録（後から調査可能にする）
+      await db.insert(gmailMessages).values({
+        gmailId: msg.id,
+        threadId: msg.threadId,
+        fromAddress: msg.from,
+        subject: msg.subject,
+        classification: "skipped",
+        status: "skipped",
+        draftReply: null,
+        receivedAt: msg.receivedAt,
+      });
+
       await markAsRead(msg.id);
       continue;
     }
