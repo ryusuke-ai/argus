@@ -3,13 +3,31 @@ import { app } from "../../app.js";
 import { db, inboxTasks } from "@argus/db";
 import { eq, asc, and, or, desc } from "drizzle-orm";
 import { classifyMessage, summarizeText } from "./classifier.js";
-import { buildClassificationBlocks, buildResultBlocks, buildArtifactSummaryBlocks } from "./reporter.js";
-import { InboxExecutor, ESTIMATE_MINUTES_BY_INTENT, type ExecutionResult } from "./executor.js";
+import {
+  buildClassificationBlocks,
+  buildResultBlocks,
+  buildArtifactSummaryBlocks,
+} from "./reporter.js";
+import {
+  InboxExecutor,
+  ESTIMATE_MINUTES_BY_INTENT,
+  type ExecutionResult,
+} from "./executor.js";
 import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { ProgressReporter } from "../../utils/progress-reporter.js";
 import { addReaction, removeReaction } from "../../utils/reactions.js";
-import { handleTodoCreate, handleTodoComplete, handleTodoCheck, handleTodoReaction } from "./todo-handler.js";
-import { scanOutputDir, findNewArtifacts, uploadArtifactsToSlack } from "@argus/agent-core";
+import {
+  handleTodoCreate,
+  handleTodoComplete,
+  handleTodoCheck,
+  handleTodoReaction,
+} from "./todo-handler.js";
+import {
+  scanOutputDir,
+  findNewArtifacts,
+  uploadArtifactsToSlack,
+} from "@argus/agent-core";
 import * as path from "node:path";
 
 const INBOX_CHANNEL = process.env.SLACK_INBOX_CHANNEL || "";
@@ -44,29 +62,40 @@ export function setupInboxHandler(): void {
     if (message.channel !== INBOX_CHANNEL) return;
 
     const text =
-      "text" in message && typeof message.text === "string"
-        ? message.text
-        : "";
+      "text" in message && typeof message.text === "string" ? message.text : "";
 
     // 添付ファイル（画像等）の情報を取得
-    const files = "files" in message
-      ? ((message as any).files as Array<{ name?: string; mimetype?: string }>) || []
-      : [];
+    const files =
+      "files" in message
+        ? (message as { files?: Array<{ name?: string; mimetype?: string }> })
+            .files || []
+        : [];
     const hasFiles = files.length > 0;
 
     // スレッド返信かどうか判定
-    const parentThreadTs = "thread_ts" in message ? (message as any).thread_ts as string : undefined;
+    const parentThreadTs =
+      "thread_ts" in message
+        ? (message as { thread_ts?: string }).thread_ts
+        : undefined;
     const isThreadReply = parentThreadTs && parentThreadTs !== message.ts;
 
     // スレッド返信: テキストが空でもファイルがあれば処理する
     if (isThreadReply) {
-      const effectiveText = text.trim().length > 0
-        ? text
-        : hasFiles
-          ? files.map((f) => `[添付ファイル: ${f.name || "ファイル"}]`).join("\n")
-          : "";
+      const effectiveText =
+        text.trim().length > 0
+          ? text
+          : hasFiles
+            ? files
+                .map((f) => `[添付ファイル: ${f.name || "ファイル"}]`)
+                .join("\n")
+            : "";
       if (effectiveText.length === 0) return;
-      await handleThreadReply(client, parentThreadTs, effectiveText, message.ts);
+      await handleThreadReply(
+        client,
+        parentThreadTs,
+        effectiveText,
+        message.ts,
+      );
       return;
     }
 
@@ -86,7 +115,14 @@ export function setupInboxHandler(): void {
 
       // todo 系 intent は軽量処理（SDK 不要）
       if (classification.intent === "todo") {
-        await handleTodoCreate(client, INBOX_CHANNEL, message.ts, threadTs, classification, text);
+        await handleTodoCreate(
+          client,
+          INBOX_CHANNEL,
+          message.ts,
+          threadTs,
+          classification,
+          text,
+        );
         await removeReaction(client, INBOX_CHANNEL, message.ts, "eyes");
         await addReaction(client, INBOX_CHANNEL, message.ts, "memo");
         // Daily Plan を再生成して投稿（非同期・失敗しても TODO 処理には影響しない）
@@ -139,7 +175,7 @@ export function setupInboxHandler(): void {
         channel: INBOX_CHANNEL,
         thread_ts: threadTs,
         text: `${classification.summary} (${classification.intent})`,
-        blocks: blocks as any[],
+        blocks: blocks as unknown as KnownBlock[],
       });
 
       // 4. clarifyQuestion がある → 質問待ち, なければ → キュー処理開始
@@ -167,15 +203,19 @@ export function setupInboxHandler(): void {
   // リアクションリスナー: 👎(却下)
   app.event("reaction_added", async ({ event, client }) => {
     if (event.item.type !== "message") return;
-    if ((event.item as any).channel !== INBOX_CHANNEL) return;
+    const messageItem = event.item as {
+      type: "message";
+      channel: string;
+      ts: string;
+    };
+    if (messageItem.channel !== INBOX_CHANNEL) return;
 
     // ✅ リアクションで ToDo 完了
     if (event.reaction === "white_check_mark") {
       // Bot 自身のリアクションは無視
       const botInfo = await client.auth.test();
       if (event.user === botInfo.user_id) return;
-      const messageTs = (event.item as any).ts as string;
-      await handleTodoReaction(client, (event.item as any).channel, messageTs);
+      await handleTodoReaction(client, messageItem.channel, messageItem.ts);
       return;
     }
 
@@ -185,7 +225,7 @@ export function setupInboxHandler(): void {
     const botInfo = await client.auth.test();
     if (event.user === botInfo.user_id) return;
 
-    const messageTs = (event.item as any).ts as string;
+    const messageTs = messageItem.ts;
 
     // このメッセージに紐づく pending / queued / waiting タスクを検索
     const [task] = await db
@@ -257,7 +297,9 @@ export async function processQueue(client: WebClient): Promise<void> {
       continue;
     }
 
-    console.log(`[inbox] Executing task: ${task.id} (${task.intent}) "${task.summary}" [${runningTasks.size + 1}/${MAX_CONCURRENT}]`);
+    console.log(
+      `[inbox] Executing task: ${task.id} (${task.intent}) "${task.summary}" [${runningTasks.size + 1}/${MAX_CONCURRENT}]`,
+    );
     runningTasks.add(task.id);
 
     // 非同期で実行（await しない → 次のタスクもすぐ起動できる）
@@ -265,7 +307,10 @@ export async function processQueue(client: WebClient): Promise<void> {
       runningTasks.delete(task.id);
       // 完了後にキューに残りがあれば再起動
       processQueue(client).catch((err) =>
-        console.error("[inbox] Queue processing error after task completion:", err),
+        console.error(
+          "[inbox] Queue processing error after task completion:",
+          err,
+        ),
       );
     });
   }
@@ -280,7 +325,9 @@ async function executeAndReport(
 ): Promise<void> {
   try {
     // 進捗レポーター: 1メッセージ内にステップを累積表示
-    const estimate = ESTIMATE_MINUTES_BY_INTENT[task.intent] || ESTIMATE_MINUTES_BY_INTENT.other;
+    const estimate =
+      ESTIMATE_MINUTES_BY_INTENT[task.intent] ||
+      ESTIMATE_MINUTES_BY_INTENT.other;
     let reporter: ProgressReporter | undefined;
 
     if (task.slackThreadTs) {
@@ -343,19 +390,31 @@ async function executeAndReport(
       .where(eq(inboxTasks.id, task.id));
 
     // リアクションで状態を示す: 🔔(入力待ち) / ✅(完了) / ❌(失敗)
-    await removeReaction(client, task.slackChannel, task.slackMessageTs, "eyes");
+    await removeReaction(
+      client,
+      task.slackChannel,
+      task.slackMessageTs,
+      "eyes",
+    );
     const reactionName = result.needsInput
       ? "bell"
       : result.success
         ? "white_check_mark"
         : "x";
-    await addReaction(client, task.slackChannel, task.slackMessageTs, reactionName);
+    await addReaction(
+      client,
+      task.slackChannel,
+      task.slackMessageTs,
+      reactionName,
+    );
 
     // 成果物のSlackアップロード
     const snapshotAfter = scanOutputDir(outputDir);
     const newArtifacts = findNewArtifacts(snapshotBefore, snapshotAfter);
     if (newArtifacts.length > 0 && task.slackThreadTs) {
-      console.log(`[inbox] Found ${newArtifacts.length} new artifact(s), uploading to Slack`);
+      console.log(
+        `[inbox] Found ${newArtifacts.length} new artifact(s), uploading to Slack`,
+      );
       await uploadArtifactsToSlack({
         slackToken: process.env.SLACK_BOT_TOKEN!,
         channel: task.slackChannel,
@@ -392,7 +451,7 @@ async function executeAndReport(
         channel: task.slackChannel,
         thread_ts: task.slackThreadTs,
         text,
-        blocks: blocks as any[],
+        blocks: blocks as unknown as KnownBlock[],
       });
     }
 
@@ -406,7 +465,12 @@ async function executeAndReport(
       .update(inboxTasks)
       .set({ status: "failed", completedAt: new Date() })
       .where(eq(inboxTasks.id, task.id));
-    await removeReaction(client, task.slackChannel, task.slackMessageTs, "eyes");
+    await removeReaction(
+      client,
+      task.slackChannel,
+      task.slackMessageTs,
+      "eyes",
+    );
     await addReaction(client, task.slackChannel, task.slackMessageTs, "x");
   }
 }
@@ -423,7 +487,9 @@ async function recoverAndResumeQueue(): Promise<void> {
     .where(eq(inboxTasks.status, "running"));
 
   if (orphaned.length > 0) {
-    console.log(`[inbox] Recovering ${orphaned.length} orphaned running task(s)`);
+    console.log(
+      `[inbox] Recovering ${orphaned.length} orphaned running task(s)`,
+    );
     for (const task of orphaned) {
       await db
         .update(inboxTasks)
@@ -441,7 +507,9 @@ async function recoverAndResumeQueue(): Promise<void> {
     .limit(1);
 
   if (queued) {
-    console.log("[inbox] Found queued tasks at startup, starting queue processing");
+    console.log(
+      "[inbox] Found queued tasks at startup, starting queue processing",
+    );
     // app.client は Bolt が start() した後に利用可能
     setTimeout(() => {
       processQueue(app.client).catch((err) =>
@@ -477,7 +545,9 @@ async function handleThreadReply(
     .limit(1);
 
   if (pendingTask) {
-    console.log(`[inbox] Thread reply for task ${pendingTask.id}: "${replyText.slice(0, 80)}"`);
+    console.log(
+      `[inbox] Thread reply for task ${pendingTask.id}: "${replyText.slice(0, 80)}"`,
+    );
 
     const updatedPrompt = `${pendingTask.executionPrompt}\n\n補足: ${replyText}`;
 
@@ -489,8 +559,18 @@ async function handleThreadReply(
       })
       .where(eq(inboxTasks.id, pendingTask.id));
 
-    await removeReaction(client, INBOX_CHANNEL, pendingTask.slackMessageTs, "bell");
-    await addReaction(client, INBOX_CHANNEL, pendingTask.slackMessageTs, "eyes");
+    await removeReaction(
+      client,
+      INBOX_CHANNEL,
+      pendingTask.slackMessageTs,
+      "bell",
+    );
+    await addReaction(
+      client,
+      INBOX_CHANNEL,
+      pendingTask.slackMessageTs,
+      "eyes",
+    );
     await client.chat.postMessage({
       channel: INBOX_CHANNEL,
       thread_ts: parentThreadTs,
@@ -545,10 +625,22 @@ async function handleThreadReply(
 
   if (existingTask) {
     if (existingTask.sessionId) {
-      await resumeInThread(client, existingTask, parentThreadTs, replyText, replyTs);
+      await resumeInThread(
+        client,
+        existingTask,
+        parentThreadTs,
+        replyText,
+        replyTs,
+      );
     } else {
       // sessionId がない場合は新規 query で応答（コンテキストとして元メッセージを含める）
-      await newQueryInThread(client, existingTask, parentThreadTs, replyText, replyTs);
+      await newQueryInThread(
+        client,
+        existingTask,
+        parentThreadTs,
+        replyText,
+        replyTs,
+      );
     }
     return;
   }
@@ -565,7 +657,9 @@ async function resumeInThread(
   replyText: string,
   replyTs?: string,
 ): Promise<void> {
-  console.log(`[inbox] Resuming session for task ${task.id}: "${replyText.slice(0, 80)}"`);
+  console.log(
+    `[inbox] Resuming session for task ${task.id}: "${replyText.slice(0, 80)}"`,
+  );
 
   // フォローアップ質問に 👀 リアクションを付けて「見ました」を伝える
   const reactionTarget = replyTs || task.slackMessageTs;
@@ -585,7 +679,9 @@ async function resumeInThread(
 
     // 処理中メッセージを削除
     if (typingMsg.ts) {
-      await client.chat.delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts }).catch(() => {});
+      await client.chat
+        .delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts })
+        .catch(() => {});
     }
     await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
 
@@ -604,14 +700,18 @@ async function resumeInThread(
       channel: INBOX_CHANNEL,
       thread_ts: threadTs,
       text: result.resultText.slice(0, 200),
-      blocks: blocks as any[],
+      blocks: blocks as unknown as KnownBlock[],
     });
 
-    console.log(`[inbox] Resume done for task ${task.id} (${durationSec}s, $${result.costUsd.toFixed(4)})`);
+    console.log(
+      `[inbox] Resume done for task ${task.id} (${durationSec}s, $${result.costUsd.toFixed(4)})`,
+    );
   } catch (error) {
     console.error(`[inbox] Resume failed for task ${task.id}:`, error);
     if (typingMsg.ts) {
-      await client.chat.delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts }).catch(() => {});
+      await client.chat
+        .delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts })
+        .catch(() => {});
     }
     await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
     await client.chat.postMessage({
@@ -633,7 +733,9 @@ async function newQueryInThread(
   replyText: string,
   replyTs?: string,
 ): Promise<void> {
-  console.log(`[inbox] New query in thread for task ${task.id} (no sessionId): "${replyText.slice(0, 80)}"`);
+  console.log(
+    `[inbox] New query in thread for task ${task.id} (no sessionId): "${replyText.slice(0, 80)}"`,
+  );
 
   const reactionTarget = replyTs || task.slackMessageTs;
   await addReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
@@ -650,17 +752,17 @@ async function newQueryInThread(
       ? `以下の会話の続きです。\n\n元のリクエスト: ${task.originalMessage}\n\n${task.result ? `前回の回答: ${task.result.slice(0, 500)}\n\n` : ""}ユーザーの追加メッセージ: ${replyText}`
       : replyText;
 
-    const result = await executor.executeTask(
-      {
-        id: task.id,
-        executionPrompt: contextPrompt,
-        intent: task.intent,
-        originalMessage: task.originalMessage,
-      },
-    );
+    const result = await executor.executeTask({
+      id: task.id,
+      executionPrompt: contextPrompt,
+      intent: task.intent,
+      originalMessage: task.originalMessage,
+    });
 
     if (typingMsg.ts) {
-      await client.chat.delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts }).catch(() => {});
+      await client.chat
+        .delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts })
+        .catch(() => {});
     }
     await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
 
@@ -677,14 +779,19 @@ async function newQueryInThread(
       channel: INBOX_CHANNEL,
       thread_ts: threadTs,
       text: result.resultText.slice(0, 200),
-      blocks: blocks as any[],
+      blocks: blocks as unknown as KnownBlock[],
     });
 
     console.log(`[inbox] New query in thread done for task ${task.id}`);
   } catch (error) {
-    console.error(`[inbox] New query in thread failed for task ${task.id}:`, error);
+    console.error(
+      `[inbox] New query in thread failed for task ${task.id}:`,
+      error,
+    );
     if (typingMsg.ts) {
-      await client.chat.delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts }).catch(() => {});
+      await client.chat
+        .delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts })
+        .catch(() => {});
     }
     await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
     await client.chat.postMessage({
@@ -706,11 +813,7 @@ function detectTaskPhases(
   const msg = message.toLowerCase();
 
   // 動画作成タスク
-  if (
-    msg.includes("動画") ||
-    msg.includes("ビデオ") ||
-    msg.includes("video")
-  ) {
+  if (msg.includes("動画") || msg.includes("ビデオ") || msg.includes("video")) {
     return [
       { label: "Phase 1: シナリオ生成", estimateSec: 120 },
       { label: "Phase 2: ダイアログ生成", estimateSec: 180 },
@@ -720,10 +823,7 @@ function detectTaskPhases(
   }
 
   // ポッドキャスト作成タスク
-  if (
-    msg.includes("ポッドキャスト") ||
-    msg.includes("podcast")
-  ) {
+  if (msg.includes("ポッドキャスト") || msg.includes("podcast")) {
     return [
       { label: "Phase 1: リサーチ", estimateSec: 360 },
       { label: "Phase 2: スクリプト生成", estimateSec: 180 },
@@ -771,4 +871,12 @@ function triggerDailyPlanUpdate(): void {
 }
 
 // テスト用にエクスポート
-export { runningTasks, executor, INBOX_CHANNEL, MAX_CONCURRENT, handleThreadReply, newQueryInThread, resumeInThread };
+export {
+  runningTasks,
+  executor,
+  INBOX_CHANNEL,
+  MAX_CONCURRENT,
+  handleThreadReply,
+  newQueryInThread,
+  resumeInThread,
+};
