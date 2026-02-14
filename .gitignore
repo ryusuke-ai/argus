@@ -6,6 +6,7 @@
 !.claude/agent-workspace/.gitkeep
 .claude/agent-output/*
 !.claude/agent-output/.gitkeep
+**/.claude/agent-output/
 
 # Claude internal plans (contain local paths)
 .claude/.docs/plans/
