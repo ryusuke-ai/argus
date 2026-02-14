@@ -66,6 +66,7 @@ zenn-content/
 .claude/skills/video-explainer/remotion/public/sound_*.mp3
 .claude/skills/video-explainer/remotion/public/watermark_*.png
 .claude/skills/video-explainer/remotion/public/font_*.ttf
+.claude/skills/video-explainer/remotion/public/image_*.webp
 
 # Video assets (BGM, effects, backgrounds, characters)
 .claude/skills/video-explainer/assets/accent/
