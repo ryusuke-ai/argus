@@ -32,7 +32,7 @@ WebSearch で以下を調査:
 
 ### Step 4: 戦略 JSON 出力
 
-調査結果を `work/strategy.json` に保存。
+調査結果を JSON オブジェクトとして出力する（ファイルへの保存は不要）。
 
 ## 入力
 
@@ -40,5 +40,5 @@ WebSearch で以下を調査:
 
 ## 出力
 
-- ファイル: `work/strategy.json`
-- スキーマ: `schemas/strategy.schema.json`
+- JSON オブジェクト（```json ブロックで出力）
+- スキーマ: `schemas/strategy.schema.json` に準拠

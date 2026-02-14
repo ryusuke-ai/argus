@@ -4,8 +4,21 @@ import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { query } from "@argus/agent-core";
-import { addReaction, removeReaction, swapReaction } from "../../utils/reactions.js";
-import type { YouTubeMetadataContent, TikTokScript, ArticleContent, ThreadsContent, GitHubContent, InstagramContent, PodcastContent, SnsContentUnion } from "./types.js";
+import {
+  addReaction,
+  removeReaction,
+  swapReaction,
+} from "../../utils/reactions.js";
+import type {
+  YouTubeMetadataContent,
+  TikTokScript,
+  ArticleContent,
+  ThreadsContent,
+  GitHubContent,
+  InstagramContent,
+  PodcastContent,
+  SnsContentUnion,
+} from "./types.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "../../../../..");
@@ -19,7 +32,20 @@ import { publishToTikTok } from "./tiktok-publisher.js";
 import { publishToGitHub } from "./github-publisher.js";
 import { publishToInstagram } from "./instagram-publisher.js";
 import { generateVideoScript } from "./script-generator.js";
-import { buildXPostBlocks, buildVideoPostBlocks, buildPublishedBlocks, buildSkippedBlocks, buildScheduledBlocks, buildScriptProposalBlocks, buildScriptDetailBlocks, buildTikTokPostBlocks, buildRenderedBlocks, buildInstagramImageBlocks, buildPodcastAudioBlocks, buildInstagramPostBlocks } from "./reporter.js";
+import {
+  buildXPostBlocks,
+  buildVideoPostBlocks,
+  buildPublishedBlocks,
+  buildSkippedBlocks,
+  buildScheduledBlocks,
+  buildScriptProposalBlocks,
+  buildScriptDetailBlocks,
+  buildTikTokPostBlocks,
+  buildRenderedBlocks,
+  buildInstagramImageBlocks,
+  buildPodcastAudioBlocks,
+  buildInstagramPostBlocks,
+} from "./reporter.js";
 import { validateXPost, validateThread } from "./validator.js";
 import { getNextOptimalTime, formatScheduledTime } from "./optimal-time.js";
 import type { Platform } from "./optimal-time.js";
@@ -105,7 +131,13 @@ async function generateAndPostScript(
       });
     }
 
-    await swapReaction(client as any, channelId, messageTs, "eyes", "white_check_mark");
+    await swapReaction(
+      client as any,
+      channelId,
+      messageTs,
+      "eyes",
+      "white_check_mark",
+    );
   } catch (error) {
     console.error("[sns] Script generation failed:", error);
     await swapReaction(client as any, channelId, messageTs, "eyes", "x");
@@ -150,10 +182,7 @@ async function generatePodcastAudio(
 
   try {
     const { query: agentQuery } = await import("@argus/agent-core");
-    const dateStr = new Date()
-      .toISOString()
-      .slice(0, 10)
-      .replace(/-/g, "");
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const slug = (content.title || "podcast")
       .toLowerCase()
       .replace(/[^\w\s]/g, "")
@@ -187,13 +216,27 @@ async function generatePodcastAudio(
           .filter((b) => b.type === "text")
           .map((b) => b.text || "")
           .join("\n");
-        const pathMatch = resultText.match(/agent-output\/[^\s"]+\.mp3/);
-        if (pathMatch) {
-          audioPath = `.claude/${pathMatch[0]}`;
+        // 絶対パスを優先的に抽出
+        const absMatch = resultText.match(
+          /(\/[^\s`"']*agent-output\/[^\s`"']*\.mp3)/,
+        );
+        if (absMatch) {
+          audioPath = absMatch[1];
+        } else {
+          const relMatch = resultText.match(/agent-output\/[^\s"]+\.mp3/);
+          if (relMatch) {
+            audioPath = resolve(PROJECT_ROOT, `.claude/${relMatch[0]}`);
+          }
         }
       }
       if (!audioPath) {
-        audioPath = `.claude/agent-output/${outputDir}/podcast/podcast.mp3`;
+        audioPath = resolve(
+          PROJECT_ROOT,
+          `.claude/agent-output/${outputDir}/podcast/podcast.mp3`,
+        );
+        console.warn(
+          `[sns] Audio path not found in agent result, using fallback: ${audioPath}`,
+        );
       }
       return audioPath;
     });
@@ -234,7 +277,13 @@ async function generatePodcastAudio(
       text: `Podcast 音声生成完了: ${content.title}`,
     });
 
-    await swapReaction(client as any, channelId, messageTs, "eyes", "white_check_mark");
+    await swapReaction(
+      client as any,
+      channelId,
+      messageTs,
+      "eyes",
+      "white_check_mark",
+    );
   } catch (error) {
     clearInterval(progressTimer);
     console.error("[sns] Podcast audio generation failed:", error);
@@ -264,7 +313,10 @@ async function generateTikTokVideo(
 
   if (!post) return;
 
-  const content = post.content as unknown as TikTokScript & { videoPath?: string; videoUrl?: string };
+  const content = post.content as unknown as TikTokScript & {
+    videoPath?: string;
+    videoUrl?: string;
+  };
 
   const progressTimer = setInterval(async () => {
     try {
@@ -280,10 +332,7 @@ async function generateTikTokVideo(
 
   try {
     const { query: agentQuery } = await import("@argus/agent-core");
-    const dateStr = new Date()
-      .toISOString()
-      .slice(0, 10)
-      .replace(/-/g, "");
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const slug = (content.title || "tiktok")
       .toLowerCase()
       .replace(/[^\w\s]/g, "")
@@ -314,19 +363,18 @@ CTA: ${content.script?.cta?.narration || ""}
       model: "claude-opus-4-6",
       allowedSkills: ["video-planner", "video-explainer"],
     }).then((result) => {
-      let videoPath = "";
-      if (result.success) {
-        const resultText = result.message.content
-          .filter((b) => b.type === "text")
-          .map((b) => b.text || "")
-          .join("\n");
-        const pathMatch = resultText.match(/agent-output\/[^\s"]+\.mp4/);
-        if (pathMatch) {
-          videoPath = `.claude/${pathMatch[0]}`;
-        }
-      }
+      // extractVideoPath で絶対パスを抽出（ツール結果 → テキスト応答の順で検索）
+      let videoPath = result.success ? extractVideoPath(result) : "";
+
       if (!videoPath) {
-        videoPath = `.claude/agent-output/${outputDir}/output.mp4`;
+        // フォールバック: 絶対パスで構築
+        videoPath = resolve(
+          PROJECT_ROOT,
+          `.claude/agent-output/${outputDir}/output.mp4`,
+        );
+        console.warn(
+          `[sns] Video path not found in agent result, using fallback: ${videoPath}`,
+        );
       }
       return videoPath;
     });
@@ -347,7 +395,10 @@ CTA: ${content.script?.cta?.narration || ""}
       videoUrl = await r2Upload(videoPath);
       console.log(`[sns] Uploaded video to R2: ${videoUrl}`);
     } catch (r2Error) {
-      console.warn("[sns] R2 upload failed, continuing without public URL:", r2Error);
+      console.warn(
+        "[sns] R2 upload failed, continuing without public URL:",
+        r2Error,
+      );
     }
 
     // Update DB: metadata_approved → approved (with videoPath + videoUrl)
@@ -383,11 +434,20 @@ CTA: ${content.script?.cta?.narration || ""}
       try {
         await createInstagramReelProposal(videoUrl, content, channelId, client);
       } catch (igError) {
-        console.error("[sns] Instagram reel proposal creation failed:", igError);
+        console.error(
+          "[sns] Instagram reel proposal creation failed:",
+          igError,
+        );
       }
     }
 
-    await swapReaction(client as any, channelId, messageTs, "eyes", "white_check_mark");
+    await swapReaction(
+      client as any,
+      channelId,
+      messageTs,
+      "eyes",
+      "white_check_mark",
+    );
   } catch (error) {
     clearInterval(progressTimer);
     console.error("[sns] TikTok video generation failed:", error);
@@ -411,7 +471,8 @@ async function createInstagramReelProposal(
   const channel = SNS_CHANNEL_FOR_IG || channelId;
 
   // Instagram用キャプション・ハッシュタグをAI生成
-  const category = tiktokContent.metadata?.category || tiktokContent.category || "tips";
+  const category =
+    tiktokContent.metadata?.category || tiktokContent.category || "tips";
   const igResult = await generateInstagramContent(
     `TikTok動画の内容をInstagramリール用にキャプションとハッシュタグを生成してください。動画タイトル: ${tiktokContent.title || ""}`,
     category,
@@ -472,7 +533,12 @@ export function setupSnsActions(): void {
     const channelIdForReaction = (body as any).channel?.id;
     const messageTsForReaction = (body as any).message?.ts;
     if (channelIdForReaction && messageTsForReaction) {
-      await addReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes");
+      await addReaction(
+        client as any,
+        channelIdForReaction,
+        messageTsForReaction,
+        "eyes",
+      );
     }
 
     const [post] = await db
@@ -485,7 +551,10 @@ export function setupSnsActions(): void {
 
     try {
       if (post.platform === "youtube") {
-        const content = post.content as unknown as YouTubeMetadataContent & { videoPath?: string; thumbnailPath?: string };
+        const content = post.content as unknown as YouTubeMetadataContent & {
+          videoPath?: string;
+          thumbnailPath?: string;
+        };
         const result = await uploadToYouTube({
           videoPath: content.videoPath || "",
           title: content.title,
@@ -500,11 +569,25 @@ export function setupSnsActions(): void {
           const channelId = body.channel?.id || "";
           const messageTs = (body as any).message?.ts || "";
           if (channelId && messageTs) {
-            await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+            await swapReaction(
+              client as any,
+              channelId,
+              messageTs,
+              "eyes",
+              "x",
+            );
             await client.chat.update({
               channel: channelId,
               ts: messageTs,
-              blocks: [{ type: "section", text: { type: "mrkdwn", text: `*YouTube 投稿に失敗しました*\n${result.error}` } }],
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `*YouTube 投稿に失敗しました*\n${result.error}`,
+                  },
+                },
+              ],
               text: `YouTube 投稿に失敗しました: ${result.error}`,
             });
           }
@@ -530,22 +613,43 @@ export function setupSnsActions(): void {
         });
 
         if (channelIdForReaction && messageTsForReaction) {
-          await swapReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes", "rocket");
+          await swapReaction(
+            client as any,
+            channelIdForReaction,
+            messageTsForReaction,
+            "eyes",
+            "rocket",
+          );
         }
-      } else if (post.platform === "qiita" || post.platform === "zenn" || post.platform === "note") {
+      } else if (
+        post.platform === "qiita" ||
+        post.platform === "zenn" ||
+        post.platform === "note"
+      ) {
         const content = post.content as unknown as ArticleContent;
         const channelId = (body as any).channel?.id;
         const messageTs = (body as any).message?.ts;
 
-        let result: { success: boolean; url?: string; draftPath?: string; error?: string };
+        let result: {
+          success: boolean;
+          url?: string;
+          draftPath?: string;
+          error?: string;
+        };
 
         if (post.platform === "qiita") {
           const qiitaResult = await publishToQiita({
             title: content.title,
             body: content.body,
-            tags: content.tags.map((t: any) => typeof t === "string" ? { name: t } : t),
+            tags: content.tags.map((t: any) =>
+              typeof t === "string" ? { name: t } : t,
+            ),
           });
-          result = { success: qiitaResult.success, url: qiitaResult.url, error: qiitaResult.error };
+          result = {
+            success: qiitaResult.success,
+            url: qiitaResult.url,
+            error: qiitaResult.error,
+          };
         } else if (post.platform === "zenn") {
           const slug = content.title
             .toLowerCase()
@@ -562,7 +666,11 @@ export function setupSnsActions(): void {
             body: content.body,
             published: true,
           });
-          result = { success: zennResult.success, url: zennResult.url, error: zennResult.error };
+          result = {
+            success: zennResult.success,
+            url: zennResult.url,
+            error: zennResult.error,
+          };
         } else {
           const noteResult = await publishToNote({
             title: content.title,
@@ -570,17 +678,40 @@ export function setupSnsActions(): void {
             tags: content.tags,
             isPaid: false,
           });
-          result = { success: noteResult.success, draftPath: noteResult.draftPath, error: noteResult.error };
+          result = {
+            success: noteResult.success,
+            draftPath: noteResult.draftPath,
+            error: noteResult.error,
+          };
         }
 
         if (!result.success) {
           if (channelId && messageTs) {
-            const platformLabel = post.platform === "qiita" ? "Qiita" : post.platform === "zenn" ? "Zenn" : "note";
-            await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+            const platformLabel =
+              post.platform === "qiita"
+                ? "Qiita"
+                : post.platform === "zenn"
+                  ? "Zenn"
+                  : "note";
+            await swapReaction(
+              client as any,
+              channelId,
+              messageTs,
+              "eyes",
+              "x",
+            );
             await client.chat.update({
               channel: channelId,
               ts: messageTs,
-              blocks: [{ type: "section", text: { type: "mrkdwn", text: `*${platformLabel} 投稿に失敗しました*\n${result.error}` } }],
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `*${platformLabel} 投稿に失敗しました*\n${result.error}`,
+                  },
+                },
+              ],
               text: `${platformLabel} 投稿に失敗しました: ${result.error}`,
             });
           }
@@ -600,7 +731,12 @@ export function setupSnsActions(): void {
           .where(eq(snsPosts.id, post.id));
 
         if (channelId && messageTs) {
-          const platformLabel = post.platform === "qiita" ? "Qiita" : post.platform === "zenn" ? "Zenn" : "note";
+          const platformLabel =
+            post.platform === "qiita"
+              ? "Qiita"
+              : post.platform === "zenn"
+                ? "Zenn"
+                : "note";
           const blocks = buildPublishedBlocks(platformLabel, publishedUrl);
           await client.chat.update({
             channel: channelId,
@@ -608,7 +744,13 @@ export function setupSnsActions(): void {
             blocks,
             text: `${platformLabel} 投稿完了`,
           });
-          await swapReaction(client as any, channelId, messageTs, "eyes", "rocket");
+          await swapReaction(
+            client as any,
+            channelId,
+            messageTs,
+            "eyes",
+            "rocket",
+          );
         }
       } else if (post.platform === "threads") {
         const content = post.content as unknown as ThreadsContent;
@@ -618,23 +760,40 @@ export function setupSnsActions(): void {
           const channelId = body.channel?.id || "";
           const messageTs = (body as any).message?.ts || "";
           if (channelId && messageTs) {
-            await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+            await swapReaction(
+              client as any,
+              channelId,
+              messageTs,
+              "eyes",
+              "x",
+            );
             await client.chat.update({
               channel: channelId,
               ts: messageTs,
-              blocks: [{ type: "section", text: { type: "mrkdwn", text: `*Threads 投稿に失敗しました*\n${result.error}` } }],
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `*Threads 投稿に失敗しました*\n${result.error}`,
+                  },
+                },
+              ],
               text: `Threads 投稿に失敗しました: ${result.error}`,
             });
           }
           return;
         }
 
-        await db.update(snsPosts).set({
-          status: "published",
-          publishedUrl: result.url || "",
-          publishedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(eq(snsPosts.id, post.id));
+        await db
+          .update(snsPosts)
+          .set({
+            status: "published",
+            publishedUrl: result.url || "",
+            publishedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(snsPosts.id, post.id));
 
         await client.chat.update({
           channel: body.channel?.id || "",
@@ -644,10 +803,20 @@ export function setupSnsActions(): void {
         });
 
         if (channelIdForReaction && messageTsForReaction) {
-          await swapReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes", "rocket");
+          await swapReaction(
+            client as any,
+            channelIdForReaction,
+            messageTsForReaction,
+            "eyes",
+            "rocket",
+          );
         }
       } else if (post.platform === "tiktok") {
-        const content = post.content as unknown as TikTokScript & { videoUrl?: string; videoPath?: string; text?: string };
+        const content = post.content as unknown as TikTokScript & {
+          videoUrl?: string;
+          videoPath?: string;
+          text?: string;
+        };
         const result = await publishToTikTok({
           videoPath: content.videoPath || content.videoUrl || "",
           caption: content.title || content.text || "",
@@ -657,22 +826,39 @@ export function setupSnsActions(): void {
           const channelId = body.channel?.id || "";
           const messageTs = (body as any).message?.ts || "";
           if (channelId && messageTs) {
-            await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+            await swapReaction(
+              client as any,
+              channelId,
+              messageTs,
+              "eyes",
+              "x",
+            );
             await client.chat.update({
               channel: channelId,
               ts: messageTs,
-              blocks: [{ type: "section", text: { type: "mrkdwn", text: `*TikTok 投稿に失敗しました*\n${result.error}` } }],
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `*TikTok 投稿に失敗しました*\n${result.error}`,
+                  },
+                },
+              ],
               text: `TikTok 投稿に失敗しました: ${result.error}`,
             });
           }
           return;
         }
 
-        await db.update(snsPosts).set({
-          status: "published",
-          publishedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(eq(snsPosts.id, post.id));
+        await db
+          .update(snsPosts)
+          .set({
+            status: "published",
+            publishedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(snsPosts.id, post.id));
 
         const isSelfOnly = result.privacyLevel === "SELF_ONLY";
         const statusText = isSelfOnly
@@ -682,12 +868,20 @@ export function setupSnsActions(): void {
         await client.chat.update({
           channel: body.channel?.id || "",
           ts: (body as any).message?.ts || "",
-          blocks: [{ type: "section", text: { type: "mrkdwn", text: statusText } }],
+          blocks: [
+            { type: "section", text: { type: "mrkdwn", text: statusText } },
+          ],
           text: isSelfOnly ? "TikTok 投稿完了（非公開）" : "TikTok 投稿完了",
         });
 
         if (channelIdForReaction && messageTsForReaction) {
-          await swapReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes", "rocket");
+          await swapReaction(
+            client as any,
+            channelIdForReaction,
+            messageTsForReaction,
+            "eyes",
+            "rocket",
+          );
         }
       } else if (post.platform === "github") {
         const content = post.content as unknown as GitHubContent;
@@ -703,23 +897,40 @@ export function setupSnsActions(): void {
           const channelId = body.channel?.id || "";
           const messageTs = (body as any).message?.ts || "";
           if (channelId && messageTs) {
-            await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+            await swapReaction(
+              client as any,
+              channelId,
+              messageTs,
+              "eyes",
+              "x",
+            );
             await client.chat.update({
               channel: channelId,
               ts: messageTs,
-              blocks: [{ type: "section", text: { type: "mrkdwn", text: `*GitHub リポジトリ作成に失敗しました*\n${result.error}` } }],
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `*GitHub リポジトリ作成に失敗しました*\n${result.error}`,
+                  },
+                },
+              ],
               text: `GitHub リポジトリ作成に失敗しました: ${result.error}`,
             });
           }
           return;
         }
 
-        await db.update(snsPosts).set({
-          status: "published",
-          publishedUrl: result.url || "",
-          publishedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(eq(snsPosts.id, post.id));
+        await db
+          .update(snsPosts)
+          .set({
+            status: "published",
+            publishedUrl: result.url || "",
+            publishedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(snsPosts.id, post.id));
 
         await client.chat.update({
           channel: body.channel?.id || "",
@@ -729,10 +940,19 @@ export function setupSnsActions(): void {
         });
 
         if (channelIdForReaction && messageTsForReaction) {
-          await swapReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes", "rocket");
+          await swapReaction(
+            client as any,
+            channelIdForReaction,
+            messageTsForReaction,
+            "eyes",
+            "rocket",
+          );
         }
       } else if (post.platform === "instagram") {
-        const content = post.content as unknown as InstagramContent & { imageUrl?: string; videoUrl?: string };
+        const content = post.content as unknown as InstagramContent & {
+          imageUrl?: string;
+          videoUrl?: string;
+        };
         const caption = `${content.caption || ""}\n\n${(content.hashtags || []).join(" ")}`;
         const result = await publishToInstagram({
           imageUrl: content.imageUrl,
@@ -745,23 +965,40 @@ export function setupSnsActions(): void {
           const channelId = body.channel?.id || "";
           const messageTs = (body as any).message?.ts || "";
           if (channelId && messageTs) {
-            await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+            await swapReaction(
+              client as any,
+              channelId,
+              messageTs,
+              "eyes",
+              "x",
+            );
             await client.chat.update({
               channel: channelId,
               ts: messageTs,
-              blocks: [{ type: "section", text: { type: "mrkdwn", text: `*Instagram 投稿に失敗しました*\n${result.error}` } }],
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `*Instagram 投稿に失敗しました*\n${result.error}`,
+                  },
+                },
+              ],
               text: `Instagram 投稿に失敗しました: ${result.error}`,
             });
           }
           return;
         }
 
-        await db.update(snsPosts).set({
-          status: "published",
-          publishedUrl: result.url || "",
-          publishedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(eq(snsPosts.id, post.id));
+        await db
+          .update(snsPosts)
+          .set({
+            status: "published",
+            publishedUrl: result.url || "",
+            publishedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(snsPosts.id, post.id));
 
         await client.chat.update({
           channel: body.channel?.id || "",
@@ -771,10 +1008,19 @@ export function setupSnsActions(): void {
         });
 
         if (channelIdForReaction && messageTsForReaction) {
-          await swapReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes", "rocket");
+          await swapReaction(
+            client as any,
+            channelIdForReaction,
+            messageTsForReaction,
+            "eyes",
+            "rocket",
+          );
         }
       } else {
-        const content = post.content as unknown as { text: string; category?: string };
+        const content = post.content as unknown as {
+          text: string;
+          category?: string;
+        };
         const text = content.text;
         const parts = text.split("\n---\n").map((p: string) => p.trim());
         const isThread = parts.length > 1;
@@ -801,7 +1047,12 @@ export function setupSnsActions(): void {
           console.warn("[sns] Validation warnings:", validation.warnings);
         }
 
-        let result: { success: boolean; url?: string; urls?: string[]; error?: string };
+        let result: {
+          success: boolean;
+          url?: string;
+          urls?: string[];
+          error?: string;
+        };
 
         if (isThread) {
           const threadResult = await publishThread(parts);
@@ -820,11 +1071,25 @@ export function setupSnsActions(): void {
           const channelId = (body as any).channel?.id;
           const messageTs = (body as any).message?.ts;
           if (channelId && messageTs) {
-            await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+            await swapReaction(
+              client as any,
+              channelId,
+              messageTs,
+              "eyes",
+              "x",
+            );
             await client.chat.update({
               channel: channelId,
               ts: messageTs,
-              blocks: [{ type: "section", text: { type: "mrkdwn", text: `*X 投稿に失敗しました*\n${result.error}` } }],
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: `*X 投稿に失敗しました*\n${result.error}`,
+                  },
+                },
+              ],
               text: `X 投稿に失敗しました: ${result.error}`,
             });
           }
@@ -853,11 +1118,19 @@ export function setupSnsActions(): void {
             blocks,
             text: "X 投稿完了",
           });
-          await swapReaction(client as any, channelId, messageTs, "eyes", "rocket");
+          await swapReaction(
+            client as any,
+            channelId,
+            messageTs,
+            "eyes",
+            "rocket",
+          );
         }
       }
       // Canvas 更新
-      updateSnsCanvas().catch((e) => console.error("[sns] Canvas update error:", e));
+      updateSnsCanvas().catch((e) =>
+        console.error("[sns] Canvas update error:", e),
+      );
     } catch (error) {
       console.error("[sns] Publish error:", error);
     }
@@ -882,7 +1155,10 @@ export function setupSnsActions(): void {
     const triggerId = (body as any).trigger_id;
     if (!triggerId) return;
 
-    const content = post.content as unknown as { text: string; category?: string };
+    const content = post.content as unknown as {
+      text: string;
+      category?: string;
+    };
 
     await client.views.open({
       trigger_id: triggerId,
@@ -953,16 +1229,21 @@ export function setupSnsActions(): void {
           blocks: [
             {
               type: "section",
-              text: { type: "mrkdwn", text: "*YouTube 動画 — メタデータ承認済み*\n台本を生成中..." },
+              text: {
+                type: "mrkdwn",
+                text: "*YouTube 動画 — メタデータ承認済み*\n台本を生成中...",
+              },
             },
           ],
           text: "YouTube メタデータ承認済み。台本生成中...",
         });
 
         // 非同期で台本生成を開始
-        generateAndPostScript(postId, channelId, messageTs, client).catch((err) => {
-          console.error("[sns] Script generation error:", err);
-        });
+        generateAndPostScript(postId, channelId, messageTs, client).catch(
+          (err) => {
+            console.error("[sns] Script generation error:", err);
+          },
+        );
       }
     } catch (error) {
       console.error("[sns] Approve metadata error:", error);
@@ -976,7 +1257,12 @@ export function setupSnsActions(): void {
     const channelIdForReaction = (body as any).channel?.id;
     const messageTsForReaction = (body as any).message?.ts;
     if (channelIdForReaction && messageTsForReaction) {
-      await addReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes");
+      await addReaction(
+        client as any,
+        channelIdForReaction,
+        messageTsForReaction,
+        "eyes",
+      );
     }
 
     const action = (body as any).actions?.[0];
@@ -991,7 +1277,9 @@ export function setupSnsActions(): void {
 
     if (!post) return;
 
-    const content = post.content as unknown as YouTubeMetadataContent & { script?: any };
+    const content = post.content as unknown as YouTubeMetadataContent & {
+      script?: any;
+    };
     const channelId = (body as any).channel?.id;
     const messageTs = (body as any).message?.ts;
 
@@ -1008,16 +1296,21 @@ export function setupSnsActions(): void {
           blocks: [
             {
               type: "section",
-              text: { type: "mrkdwn", text: "*YouTube 動画 — 台本承認済み*\nレンダリングを開始します..." },
+              text: {
+                type: "mrkdwn",
+                text: "*YouTube 動画 — 台本承認済み*\nレンダリングを開始します...",
+              },
             },
           ],
           text: "YouTube 台本承認済み。レンダリング開始...",
         });
 
         // 非同期でレンダリングスキルを起動
-        renderWithSkill(postId, content, channelId, messageTs, client).catch((err) => {
-          console.error("[sns] Render skill error:", err);
-        });
+        renderWithSkill(postId, content, channelId, messageTs, client).catch(
+          (err) => {
+            console.error("[sns] Render skill error:", err);
+          },
+        );
       }
     } catch (error) {
       console.error("[sns] Approve script error:", error);
@@ -1079,7 +1372,12 @@ export function setupSnsActions(): void {
     const channelIdForReaction = (body as any).channel?.id;
     const messageTsForReaction = (body as any).message?.ts;
     if (channelIdForReaction && messageTsForReaction) {
-      await addReaction(client as any, channelIdForReaction, messageTsForReaction, "eyes");
+      await addReaction(
+        client as any,
+        channelIdForReaction,
+        messageTsForReaction,
+        "eyes",
+      );
     }
 
     const action = (body as any).actions?.[0];
@@ -1094,7 +1392,10 @@ export function setupSnsActions(): void {
 
     if (!post) return;
 
-    const content = post.content as unknown as InstagramContent & { imagePrompt?: string; imageUrl?: string };
+    const content = post.content as unknown as InstagramContent & {
+      imagePrompt?: string;
+      imageUrl?: string;
+    };
     const channelId = (body as any).channel?.id;
     const messageTs = (body as any).message?.ts;
 
@@ -1111,13 +1412,22 @@ export function setupSnsActions(): void {
           blocks: [
             {
               type: "section",
-              text: { type: "mrkdwn", text: "*Instagram — コンテンツ承認済み*\n画像を生成中..." },
+              text: {
+                type: "mrkdwn",
+                text: "*Instagram — コンテンツ承認済み*\n画像を生成中...",
+              },
             },
           ],
           text: "Instagram コンテンツ承認済み。画像生成中...",
         });
 
-        generateImageWithSkill(postId, content, channelId, messageTs, client).catch((err) => {
+        generateImageWithSkill(
+          postId,
+          content,
+          channelId,
+          messageTs,
+          client,
+        ).catch((err) => {
           console.error("[sns] Instagram image generation error:", err);
         });
       }
@@ -1200,7 +1510,9 @@ export function setupSnsActions(): void {
         await addReaction(client as any, channelId, messageTs, "fast_forward");
       }
       // Canvas 更新
-      updateSnsCanvas().catch((e) => console.error("[sns] Canvas update error:", e));
+      updateSnsCanvas().catch((e) =>
+        console.error("[sns] Canvas update error:", e),
+      );
     } catch (error) {
       console.error("[sns] Skip error:", error);
     }
@@ -1224,7 +1536,9 @@ export function setupSnsActions(): void {
 
     try {
       const platform = post.platform as Platform;
-      const content = post.content as unknown as { suggestedScheduledAt?: string };
+      const content = post.content as unknown as {
+        suggestedScheduledAt?: string;
+      };
       const scheduledAt = content?.suggestedScheduledAt
         ? new Date(content.suggestedScheduledAt)
         : getNextOptimalTime(platform);
@@ -1242,7 +1556,18 @@ export function setupSnsActions(): void {
       const channelId = (body as any).channel?.id;
       const messageTs = (body as any).message?.ts;
       if (channelId && messageTs) {
-        const platformLabels: Record<string, string> = { x: "X", qiita: "Qiita", zenn: "Zenn", note: "note", youtube: "YouTube", threads: "Threads", tiktok: "TikTok", github: "GitHub", podcast: "Podcast", instagram: "Instagram" };
+        const platformLabels: Record<string, string> = {
+          x: "X",
+          qiita: "Qiita",
+          zenn: "Zenn",
+          note: "note",
+          youtube: "YouTube",
+          threads: "Threads",
+          tiktok: "TikTok",
+          github: "GitHub",
+          podcast: "Podcast",
+          instagram: "Instagram",
+        };
         const platformLabel = platformLabels[platform] || platform;
         const blocks = buildScheduledBlocks(platformLabel, timeLabel);
         await client.chat.update({
@@ -1254,7 +1579,9 @@ export function setupSnsActions(): void {
         await addReaction(client as any, channelId, messageTs, "clock3");
       }
       // Canvas 更新
-      updateSnsCanvas().catch((e) => console.error("[sns] Canvas update error:", e));
+      updateSnsCanvas().catch((e) =>
+        console.error("[sns] Canvas update error:", e),
+      );
     } catch (error) {
       console.error("[sns] Schedule error:", error);
     }
@@ -1299,9 +1626,7 @@ export function setupSnsActions(): void {
         .where(eq(snsPosts.id, postId));
 
       // バリデーション実行
-      const validation = isThread
-        ? validateThread(parts)
-        : validateXPost(text);
+      const validation = isThread ? validateThread(parts) : validateXPost(text);
 
       // Slack メッセージを再レンダー
       if (channelId && messageTs) {
@@ -1338,8 +1663,13 @@ function extractVideoPath(result: AgentResult): string {
   // ① ツール実行結果（Bash の stdout）から output.mp4 パスを探す
   for (const call of result.toolCalls) {
     if (call.name === "Bash" && call.status === "success" && call.result) {
-      const resultStr = typeof call.result === "string" ? call.result : JSON.stringify(call.result);
-      const toolMatch = resultStr.match(/(\/[^\s"']*agent-output\/[^\s"']*output\.mp4)/);
+      const resultStr =
+        typeof call.result === "string"
+          ? call.result
+          : JSON.stringify(call.result);
+      const toolMatch = resultStr.match(
+        /(\/[^\s"']*agent-output\/[^\s"']*output\.mp4)/,
+      );
       if (toolMatch) return toolMatch[1];
     }
   }
@@ -1351,7 +1681,9 @@ function extractVideoPath(result: AgentResult): string {
     .join("\n");
 
   // agent-output 配下のパスを優先
-  const agentOutputMatch = responseText.match(/(\/[^\s`"']*agent-output\/[^\s`"']*output\.mp4)/);
+  const agentOutputMatch = responseText.match(
+    /(\/[^\s`"']*agent-output\/[^\s`"']*output\.mp4)/,
+  );
   if (agentOutputMatch) return agentOutputMatch[1];
 
   // 汎用: 任意の絶対パスの output.mp4
@@ -1364,8 +1696,13 @@ function extractVideoPath(result: AgentResult): string {
 function extractImagePath(result: AgentResult): string {
   for (const call of result.toolCalls) {
     if (call.name === "Bash" && call.status === "success" && call.result) {
-      const resultStr = typeof call.result === "string" ? call.result : JSON.stringify(call.result);
-      const toolMatch = resultStr.match(/(\/[^\s"']*agent-output\/[^\s"']*\.(png|webp|jpg))/);
+      const resultStr =
+        typeof call.result === "string"
+          ? call.result
+          : JSON.stringify(call.result);
+      const toolMatch = resultStr.match(
+        /(\/[^\s"']*agent-output\/[^\s"']*\.(png|webp|jpg))/,
+      );
       if (toolMatch) return toolMatch[1];
     }
   }
@@ -1375,7 +1712,9 @@ function extractImagePath(result: AgentResult): string {
     .map((b) => b.text || "")
     .join("\n");
 
-  const agentOutputMatch = responseText.match(/(\/[^\s`"']*agent-output\/[^\s`"']*\.(png|webp|jpg))/);
+  const agentOutputMatch = responseText.match(
+    /(\/[^\s`"']*agent-output\/[^\s`"']*\.(png|webp|jpg))/,
+  );
   if (agentOutputMatch) return agentOutputMatch[1];
 
   const generalMatch = responseText.match(/(\/[^\s`"']*\.(png|webp|jpg))/);
@@ -1414,7 +1753,8 @@ gen-ai-image スキルを使って画像を生成し、出力パスを報告し�
     const imagePath = extractImagePath(result);
 
     if (imagePath) {
-      const dashboardBase = process.env.DASHBOARD_BASE_URL || "http://localhost:3150";
+      const dashboardBase =
+        process.env.DASHBOARD_BASE_URL || "http://localhost:3150";
       const relativePath = imagePath.replace(/^.*\.claude\//, ".claude/");
       const imageUrl = `${dashboardBase}/api/files/${relativePath}`;
 

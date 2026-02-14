@@ -27,23 +27,25 @@ structure.json を入力に、Qiita 記事の本文を生成する。
 ### Step 3: コードブロック検証
 
 - コードブロックが構文的に正しいことを確認
-- 言語指定（```typescript, ```bash 等）が適切であること
+- 言語指定（`typescript, `bash 等）が適切であること
 - import 文やセットアップ手順が漏れていないこと
 
-### Step 4: content.json 出力
+### Step 4: content JSON 出力
 
-生成結果を `work/content.json` に保存。
+生成結果を JSON オブジェクトとして出力する（ファイルへの保存は不要）。
+
+**重要**: body フィールドにコードブロック（```）を含む場合、外側の JSON は 4 つ以上のバッククォート（````json）で囲むこと。
 
 ## 入力
 
-- ファイル: `work/structure.json`
+- 前フェーズの出力（structure JSON）
 - 参照: `prompts/qiita-article-generator.md`
 - 参照: `references/best-practices.md`
 
 ## 出力
 
-- ファイル: `work/content.json`
-- スキーマ: `schemas/qiita-article.schema.json`（既存）
+- JSON オブジェクト（```json ブロックで出力）
+- スキーマ: `schemas/qiita-article.schema.json` に準拠
 
 ## バリデーション
 

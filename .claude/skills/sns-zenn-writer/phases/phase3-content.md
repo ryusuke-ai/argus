@@ -28,20 +28,22 @@ structure.json を入力に、Zenn 記事の本文を生成する。
 - import 文・セットアップ手順の完備
 - 言語指定が適切であること
 
-### Step 4: content.json 出力
+### Step 4: content JSON 出力
 
-生成結果を `work/content.json` に保存。
+生成結果を JSON オブジェクトとして出力する（ファイルへの保存は不要）。
+
+**重要**: body フィールドにコードブロック（```）を含む場合、外側の JSON は 4 つ以上のバッククォート（````json）で囲むこと。
 
 ## 入力
 
-- ファイル: `work/structure.json`
+- 前フェーズの出力（structure JSON）
 - 参照: `prompts/zenn-article-generator.md`
 - 参照: `references/best-practices.md`
 
 ## 出力
 
-- ファイル: `work/content.json`
-- スキーマ: `schemas/zenn-article.schema.json`（既存）
+- JSON オブジェクト（```json ブロックで出力）
+- スキーマ: `schemas/zenn-article.schema.json` に準拠
 
 ## バリデーション
 

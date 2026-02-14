@@ -297,7 +297,10 @@ function buildUserPrompt(
 
   parts.push(
     "",
-    "JSON 形式のみで出力してください。それ以外のテキストは不要です。",
+    "## 出力形式",
+    "JSON オブジェクトのみを出力してください。それ以外のテキストは不要です。",
+    "重要: body フィールドにコードブロック（```）を含む場合、外側の JSON は 4 つ以上のバッククォート（````json）で囲んでください。",
+    "ファイルへの保存は不要です。JSON をそのまま出力してください。",
   );
 
   return parts.join("\n");
@@ -360,33 +363,52 @@ function extractJsonFromResult(result: AgentResult): unknown {
   checkForCliErrors(responseText);
 
   // 複数の ```json``` ブロックがある場合、最後のブロックを採用
-  const jsonBlockMatches = [
-    ...responseText.matchAll(/```json\s*([\s\S]*?)```/g),
-  ];
+  // ネストされたコードブロック（```typescript 等）を考慮して、
+  // 4+ backtick フェンスを先に試し、次に3 backtick フェンスを試す
+  const json4tick = [...responseText.matchAll(/````+json\s*([\s\S]*?)````+/g)];
+  const json3tick = [...responseText.matchAll(/```json\s*([\s\S]*?)```/g)];
+  const jsonBlockMatches = json4tick.length > 0 ? json4tick : json3tick;
+
   if (jsonBlockMatches.length > 0) {
-    const lastMatch = jsonBlockMatches[jsonBlockMatches.length - 1];
-    const jsonStr = lastMatch[1];
+    // 各マッチを後ろから試す（最後のブロックが最終出力である可能性が高い）
+    for (let i = jsonBlockMatches.length - 1; i >= 0; i--) {
+      const jsonStr = jsonBlockMatches[i][1];
+      try {
+        return JSON.parse(jsonStr) as unknown;
+      } catch {
+        const repaired = tryRepairJson(jsonStr);
+        if (repaired !== null) {
+          console.warn(
+            "[phased-generator] Repaired truncated JSON from code block",
+          );
+          return repaired;
+        }
+      }
+    }
+    // 全ブロックでパース失敗 — フォールバックの brace-matching に進む
+    console.warn(
+      "[phased-generator] All JSON code blocks failed to parse, trying brace-matching fallback",
+    );
+  }
+
+  // フォールバック: バランスドブレースで JSON オブジェクトを抽出
+  const extracted = extractBalancedJson(responseText);
+  if (extracted) {
     try {
-      return JSON.parse(jsonStr) as unknown;
+      return JSON.parse(extracted) as unknown;
     } catch {
-      // トークン制限で切り詰められた JSON を修復して再試行
-      const repaired = tryRepairJson(jsonStr);
+      const repaired = tryRepairJson(extracted);
       if (repaired !== null) {
         console.warn(
-          "[phased-generator] Repaired truncated JSON from code block",
+          "[phased-generator] Repaired truncated JSON from balanced extraction",
         );
         return repaired;
       }
-      const preview = responseText.slice(0, 500);
-      console.error(
-        `[phased-generator] JSON parse failed from code block. Response preview: ${preview}`,
-      );
-      throw new Error("JSON parse failed from code block");
     }
   }
 
-  // フォールバック: コードブロック外の JSON オブジェクトを検出（閉じカッコなしも許容）
-  const objectMatch = responseText.match(/(\{[\s\S]*\}?)/);
+  // 最終フォールバック: 単純な正規表現で JSON オブジェクトを検出
+  const objectMatch = responseText.match(/(\{[\s\S]*\})/);
   if (objectMatch) {
     try {
       return JSON.parse(objectMatch[1]) as unknown;
@@ -398,11 +420,6 @@ function extractJsonFromResult(result: AgentResult): unknown {
         );
         return repaired;
       }
-      const preview = responseText.slice(0, 500);
-      console.error(
-        `[phased-generator] JSON parse failed from raw object. Response preview: ${preview}`,
-      );
-      throw new Error("JSON parse failed from raw object");
     }
   }
 
@@ -411,6 +428,55 @@ function extractJsonFromResult(result: AgentResult): unknown {
     `[phased-generator] No JSON found in response. Response preview: ${preview}`,
   );
   throw new Error("No JSON found in response");
+}
+
+/**
+ * テキストからバランスの取れた JSON オブジェクトを抽出する。
+ * 文字列リテラル内のブレースやエスケープを正しく扱い、
+ * ネストされたコードブロックを含む記事本文でも正しく動作する。
+ */
+function extractBalancedJson(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let i = start;
+
+  while (i < text.length) {
+    const ch = text[i];
+
+    if (inString) {
+      if (ch === "\\" && i + 1 < text.length) {
+        i += 2; // エスケープ文字をスキップ
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+      }
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+    i++;
+  }
+
+  // 閉じられていない場合は tryRepairJson に任せるため切り詰めた文字列を返す
+  if (depth > 0) {
+    return text.slice(start);
+  }
+
+  return null;
 }
 
 /**
