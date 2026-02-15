@@ -308,6 +308,13 @@ describe("gmail-checker", () => {
       // DB insert should still happen
       expect(db.insert).toHaveBeenCalled();
 
+      // Should save with status "dismissed" (not "pending")
+      const insertMock = db.insert as ReturnType<typeof vi.fn>;
+      const valuesCall = insertMock.mock.results[0].value.values;
+      const insertedValues = valuesCall.mock.calls[0][0];
+      expect(insertedValues.status).toBe("dismissed");
+      expect(insertedValues.classification).toBe("other");
+
       // But Slack should NOT be called
       expect(mockFetchImpl).not.toHaveBeenCalled();
 
@@ -960,10 +967,18 @@ describe("gmail-checker", () => {
       expect(r.skipped).toBe(false);
     });
 
-    it("should let Google account security alert through", () => {
+    it("should skip login notification (not a real security alert)", () => {
       const r = shouldSkipEmail(
         "Google <no-reply@accounts.google.com>",
         "セキュリティ通知: 新しいデバイスからのログイン",
+      );
+      expect(r.skipped).toBe(true);
+    });
+
+    it("should let real security alert through", () => {
+      const r = shouldSkipEmail(
+        "Google <no-reply@accounts.google.com>",
+        "セキュリティ警告: 不正アクセスの試行を検出",
       );
       expect(r.skipped).toBe(false);
     });

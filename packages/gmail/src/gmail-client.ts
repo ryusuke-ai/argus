@@ -93,9 +93,16 @@ export function decodeHeader(value: string): string {
     try {
       const decoded = value.replace(
         /=\?([^?]+)\?(B|Q)\?([^?]*)\?=/gi,
-        (_match, _charset: string, encoding: string, text: string) => {
+        (_match, charset: string, encoding: string, text: string) => {
           if (encoding.toUpperCase() === "B") {
-            return Buffer.from(text, "base64").toString("utf-8");
+            const bytes = Buffer.from(text, "base64");
+            try {
+              return new TextDecoder(charset.toLowerCase(), {
+                fatal: true,
+              }).decode(bytes);
+            } catch {
+              return bytes.toString("utf-8");
+            }
           }
           // Quoted-Printable: _ → space, =XX → byte
           const bytes = text
@@ -103,7 +110,14 @@ export function decodeHeader(value: string): string {
             .replace(/=([0-9A-Fa-f]{2})/g, (_m: string, hex: string) =>
               String.fromCharCode(parseInt(hex, 16)),
             );
-          return Buffer.from(bytes, "latin1").toString("utf-8");
+          const buf = Buffer.from(bytes, "latin1");
+          try {
+            return new TextDecoder(charset.toLowerCase(), {
+              fatal: true,
+            }).decode(buf);
+          } catch {
+            return buf.toString("utf-8");
+          }
         },
       );
       if (decoded !== value) return decoded;

@@ -4,13 +4,13 @@
  */
 import { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";
-import { generateTikTokScript } from "./handlers/sns/tiktok-script-generator.js";
-import { buildTikTokPostBlocks } from "./handlers/sns/reporter.js";
+import { generateTikTokScript } from "./handlers/sns/generation/tiktok-script-generator.js";
+import { buildTikTokPostBlocks } from "./handlers/sns/ui/reporter.js";
 import {
   createGeneratingPost,
   createSaveCallback,
   finalizePost,
-} from "./handlers/sns/phase-tracker.js";
+} from "./handlers/sns/ui/phase-tracker.js";
 
 const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL;
 if (!SNS_CHANNEL) {

@@ -39,6 +39,61 @@ const EMAIL_PRIORITY_ORDER: Record<string, number> = {
   needs_attention: 1,
 };
 
+// --- Automated notification detection ---
+
+const AUTOMATED_SENDERS = [
+  "notifications@github.com",
+  "noreply@github.com",
+  "no-reply@",
+  "noreply@",
+  "mailer-daemon@",
+  "postmaster@",
+];
+
+function isAutomatedNotification(from: string): boolean {
+  const lower = from.toLowerCase();
+  return AUTOMATED_SENDERS.some((s) => lower.includes(s));
+}
+
+interface EmailBreakdown {
+  needsReply: PendingEmailSummary[];
+  needsAttention: PendingEmailSummary[];
+  notifications: PendingEmailSummary[];
+}
+
+function classifyEmails(emails: PendingEmailSummary[]): EmailBreakdown {
+  const needsReply: PendingEmailSummary[] = [];
+  const needsAttention: PendingEmailSummary[] = [];
+  const notifications: PendingEmailSummary[] = [];
+
+  for (const e of emails) {
+    if (e.classification === "needs_reply") {
+      needsReply.push(e);
+    } else if (isAutomatedNotification(e.from)) {
+      notifications.push(e);
+    } else {
+      needsAttention.push(e);
+    }
+  }
+
+  return { needsReply, needsAttention, notifications };
+}
+
+function emailSummaryParts(breakdown: EmailBreakdown): string {
+  const parts: string[] = [];
+  if (breakdown.needsReply.length > 0)
+    parts.push(`要返信 ${breakdown.needsReply.length}件`);
+  if (breakdown.needsAttention.length > 0)
+    parts.push(`要確認 ${breakdown.needsAttention.length}件`);
+  if (breakdown.notifications.length > 0)
+    parts.push(`通知 ${breakdown.notifications.length}件`);
+  const total =
+    breakdown.needsReply.length +
+    breakdown.needsAttention.length +
+    breakdown.notifications.length;
+  return `メール ${total}件（${parts.join("・")}）`;
+}
+
 function truncateText(text: string, max: number = MAX_TEXT_LENGTH): string {
   return text.length > max ? text.slice(0, max) + "..." : text;
 }
@@ -67,86 +122,7 @@ function formatDateJa(dateStr: string): string {
 
 // --- Block Kit building ---
 
-/**
- * Build event lines for vertical list display.
- */
-function buildEventLines(
-  events: CalendarEventSummary[],
-  max: number,
-): string[] {
-  const display = events.slice(0, max);
-  return display.map((e) => {
-    const start = e.start.includes("T") ? formatTime(e.start) : "終日";
-    const end = e.end && e.end.includes("T") ? ` - ${formatTime(e.end)}` : "";
-    const loc = e.location ? `  _${e.location}_` : "";
-    return `• *${start}${end}*  ${e.title}${loc}`;
-  });
-}
-
-/**
- * Build email lines grouped by classification for vertical list display.
- */
-function buildEmailLines(emails: PendingEmailSummary[], max: number): string[] {
-  const sorted = [...emails].sort(
-    (a, b) =>
-      (EMAIL_PRIORITY_ORDER[a.classification] ?? 9) -
-      (EMAIL_PRIORITY_ORDER[b.classification] ?? 9),
-  );
-  const display = sorted.slice(0, max);
-
-  const groups: Record<string, PendingEmailSummary[]> = {};
-  for (const e of display) {
-    const key = e.classification === "needs_reply" ? "要返信" : "要確認";
-    (groups[key] ??= []).push(e);
-  }
-
-  const lines: string[] = [];
-  let first = true;
-  for (const [label, items] of Object.entries(groups)) {
-    if (!first) lines.push("");
-    first = false;
-    lines.push(`*${label}*`);
-    for (const e of items) {
-      lines.push(`  • ${truncateText(e.subject)} — _${e.from}_`);
-    }
-  }
-  return lines;
-}
-
-/**
- * Build task lines grouped by status for vertical list display.
- */
-function buildTaskLines(tasks: PendingTaskSummary[], max: number): string[] {
-  const sorted = [...tasks].sort(
-    (a, b) =>
-      (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9),
-  );
-  const display = sorted.slice(0, max);
-
-  const statusLabels: Record<string, string> = {
-    running: "実行中",
-    queued: "待機中",
-    pending: "未着手",
-  };
-
-  const groups: Record<string, PendingTaskSummary[]> = {};
-  for (const t of display) {
-    const key = statusLabels[t.status] ?? t.status;
-    (groups[key] ??= []).push(t);
-  }
-
-  const lines: string[] = [];
-  let first = true;
-  for (const [label, items] of Object.entries(groups)) {
-    if (!first) lines.push("");
-    first = false;
-    lines.push(`*${label}*`);
-    for (const t of items) {
-      lines.push(`  • ${truncateText(t.summary)}`);
-    }
-  }
-  return lines;
-}
+// buildEventLines, buildEmailLines, buildTaskLines were unused — removed
 
 const CATEGORY_EMOJI: Record<string, string> = {
   仕事: ":briefcase:",
@@ -193,6 +169,7 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     (t) => t.intent !== "code_change",
   );
   const totalTaskCount = inboxTasksFiltered.length + pendingTodos.length;
+  const emailBreakdown = classifyEmails(data.pendingEmails);
   const hasAnyData =
     data.events.length > 0 ||
     data.pendingEmails.length > 0 ||
@@ -212,7 +189,7 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
   const parts: string[] = [];
   if (data.events.length > 0) parts.push(`予定 ${data.events.length}件`);
   if (data.pendingEmails.length > 0)
-    parts.push(`メール ${data.pendingEmails.length}件`);
+    parts.push(emailSummaryParts(emailBreakdown));
   if (totalTaskCount > 0) parts.push(`タスク ${totalTaskCount}件`);
   blocks.push({
     type: "context",
@@ -260,7 +237,7 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     }
   }
 
-  // --- Pending emails ---
+  // --- Pending emails (prioritized: 要返信 > 要確認 > 通知) ---
   if (data.pendingEmails.length > 0) {
     blocks.push({ type: "divider" });
     blocks.push({
@@ -272,40 +249,78 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
       },
     });
 
-    const sorted = [...data.pendingEmails].sort(
-      (a, b) =>
-        (EMAIL_PRIORITY_ORDER[a.classification] ?? 9) -
-        (EMAIL_PRIORITY_ORDER[b.classification] ?? 9),
-    );
-    const display = sorted.slice(0, MAX_EMAILS);
-
-    let currentLabel = "";
-    for (const e of display) {
-      const label = e.classification === "needs_reply" ? "要返信" : "要確認";
-      if (label !== currentLabel) {
-        currentLabel = label;
+    // 要返信
+    if (emailBreakdown.needsReply.length > 0) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `:rotating_light: *要返信* (${emailBreakdown.needsReply.length}件)`,
+        },
+      });
+      for (const e of emailBreakdown.needsReply.slice(0, MAX_EMAILS)) {
+        const sender = formatSender(e.from);
+        blocks.push(
+          checkboxItem(
+            `${truncateText(e.subject)} — _${sender}_`,
+            `dp_check_email_${e.id}`,
+            { type: "email", id: e.id },
+          ),
+        );
+      }
+      if (emailBreakdown.needsReply.length > MAX_EMAILS) {
         blocks.push({
-          type: "section",
-          text: { type: "mrkdwn", text: `*${label}*` },
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `_他 ${emailBreakdown.needsReply.length - MAX_EMAILS} 件_`,
+            },
+          ],
         });
       }
-      const sender = formatSender(e.from);
-      blocks.push(
-        checkboxItem(
-          `${truncateText(e.subject)} — _${sender}_`,
-          `dp_check_email_${e.id}`,
-          { type: "email", id: e.id },
-        ),
-      );
     }
 
-    if (data.pendingEmails.length > MAX_EMAILS) {
+    // 要確認（人間からのメール）
+    if (emailBreakdown.needsAttention.length > 0) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*要確認* (${emailBreakdown.needsAttention.length}件)`,
+        },
+      });
+      for (const e of emailBreakdown.needsAttention.slice(0, MAX_EMAILS)) {
+        const sender = formatSender(e.from);
+        blocks.push(
+          checkboxItem(
+            `${truncateText(e.subject)} — _${sender}_`,
+            `dp_check_email_${e.id}`,
+            { type: "email", id: e.id },
+          ),
+        );
+      }
+      if (emailBreakdown.needsAttention.length > MAX_EMAILS) {
+        blocks.push({
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `_他 ${emailBreakdown.needsAttention.length - MAX_EMAILS} 件_`,
+            },
+          ],
+        });
+      }
+    }
+
+    // 通知（自動メール — 折りたたみ表示）
+    if (emailBreakdown.notifications.length > 0) {
       blocks.push({
         type: "context",
         elements: [
           {
             type: "mrkdwn",
-            text: `_他 ${data.pendingEmails.length - MAX_EMAILS} 件_`,
+            text: `:bell: 自動通知 ${emailBreakdown.notifications.length}件（GitHub CI 等）`,
           },
         ],
       });
@@ -434,6 +449,7 @@ export function buildCanvasMarkdown(data: DailyData): string {
     (t) => t.intent !== "code_change",
   );
   const totalTaskCount = inboxTasksFiltered.length + pendingTodos.length;
+  const emailBreakdown = classifyEmails(data.pendingEmails);
   const hasAnyData =
     data.events.length > 0 ||
     data.pendingEmails.length > 0 ||
@@ -448,7 +464,7 @@ export function buildCanvasMarkdown(data: DailyData): string {
   const parts: string[] = [];
   if (data.events.length > 0) parts.push(`予定 ${data.events.length}件`);
   if (data.pendingEmails.length > 0)
-    parts.push(`メール ${data.pendingEmails.length}件`);
+    parts.push(emailSummaryParts(emailBreakdown));
   if (totalTaskCount > 0) parts.push(`タスク ${totalTaskCount}件`);
   lines.push(parts.length > 0 ? parts.join(" · ") : "予定なし");
   lines.push("");
@@ -470,29 +486,42 @@ export function buildCanvasMarkdown(data: DailyData): string {
     lines.push("");
   }
 
-  // Pending emails
+  // Pending emails (prioritized: 要返信 > 要確認 > 通知)
   if (data.pendingEmails.length > 0) {
     lines.push("---");
     lines.push("## ✉️ 未対応メール");
-    const sorted = [...data.pendingEmails].sort(
-      (a, b) =>
-        (EMAIL_PRIORITY_ORDER[a.classification] ?? 9) -
-        (EMAIL_PRIORITY_ORDER[b.classification] ?? 9),
-    );
-    const display = sorted.slice(0, MAX_EMAILS);
 
-    let currentLabel = "";
-    for (const e of display) {
-      const label = e.classification === "needs_reply" ? "要返信" : "要確認";
-      if (label !== currentLabel) {
-        currentLabel = label;
-        lines.push(`**${label}**`);
+    // 要返信
+    if (emailBreakdown.needsReply.length > 0) {
+      lines.push(`**🚨 要返信** (${emailBreakdown.needsReply.length}件)`);
+      for (const e of emailBreakdown.needsReply.slice(0, MAX_EMAILS)) {
+        const sender = formatSender(e.from);
+        lines.push(`- [ ] ${truncateText(e.subject)} — _${sender}_`);
       }
-      const sender = formatSender(e.from);
-      lines.push(`- [ ] ${truncateText(e.subject)} — _${sender}_`);
+      if (emailBreakdown.needsReply.length > MAX_EMAILS) {
+        lines.push(`_他 ${emailBreakdown.needsReply.length - MAX_EMAILS} 件_`);
+      }
     }
-    if (data.pendingEmails.length > MAX_EMAILS) {
-      lines.push(`_他 ${data.pendingEmails.length - MAX_EMAILS} 件_`);
+
+    // 要確認（人間からのメール）
+    if (emailBreakdown.needsAttention.length > 0) {
+      lines.push(`**要確認** (${emailBreakdown.needsAttention.length}件)`);
+      for (const e of emailBreakdown.needsAttention.slice(0, MAX_EMAILS)) {
+        const sender = formatSender(e.from);
+        lines.push(`- [ ] ${truncateText(e.subject)} — _${sender}_`);
+      }
+      if (emailBreakdown.needsAttention.length > MAX_EMAILS) {
+        lines.push(
+          `_他 ${emailBreakdown.needsAttention.length - MAX_EMAILS} 件_`,
+        );
+      }
+    }
+
+    // 通知（自動メール — 折りたたみ）
+    if (emailBreakdown.notifications.length > 0) {
+      lines.push(
+        `_🔔 自動通知 ${emailBreakdown.notifications.length}件（GitHub CI 等）_`,
+      );
     }
     lines.push("");
   }

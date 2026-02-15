@@ -1,6 +1,6 @@
 # Argus
 
-[![Tests](https://img.shields.io/badge/tests-1%2C083%2B_passing-brightgreen?style=flat-square)](https://github.com/ryusuke-ai/argus)
+[![Tests](https://img.shields.io/badge/tests-1%2C192_passing-brightgreen?style=flat-square)](https://github.com/ryusuke-ai/argus)
 [![Packages](https://img.shields.io/badge/packages-12-blue?style=flat-square)](https://github.com/ryusuke-ai/argus)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://github.com/ryusuke-ai/argus)
 [![Claude Agent SDK](https://img.shields.io/badge/Claude_Agent_SDK-v0.2.34-black?style=flat-square&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)
@@ -188,16 +188,16 @@ pnpm test
 pnpm dev
 ```
 
-| Command                 | Description                               |
-| ----------------------- | ----------------------------------------- |
-| `pnpm dev`              | Build + start all 3 apps in parallel      |
-| `pnpm build`            | Build all packages                        |
-| `pnpm test`             | Run all tests (1,165+ across 12 packages) |
-| `pnpm dev:slack`        | Start Slack bot only                      |
-| `pnpm dev:dashboard`    | Start Dashboard only                      |
-| `pnpm dev:orchestrator` | Start Orchestrator only                   |
-| `pnpm db:push`          | Push schema changes to database           |
-| `pnpm lint`             | Run ESLint                                |
+| Command                 | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `pnpm dev`              | Build + start all 3 apps in parallel     |
+| `pnpm build`            | Build all packages                       |
+| `pnpm test`             | Run all tests (1,192 across 12 packages) |
+| `pnpm dev:slack`        | Start Slack bot only                     |
+| `pnpm dev:dashboard`    | Start Dashboard only                     |
+| `pnpm dev:orchestrator` | Start Orchestrator only                  |
+| `pnpm db:push`          | Push schema changes to database          |
+| `pnpm lint`             | Run ESLint                               |
 
 ## Design Decisions
 
@@ -220,7 +220,7 @@ Argus runs on **Railway VPS** with a single Docker container managed by PM2:
 - **Authentication**: Cloudflare Access with email-based one-time PIN
 - **Database**: Supabase PostgreSQL (managed)
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for the complete deployment guide.
+See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the complete deployment guide.
 
 ## Testing
 
@@ -228,7 +228,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for the complete deployment guide.
 pnpm test
 ```
 
-The test suite includes **1,165+ tests** across 12 packages, covering:
+The test suite includes **1,192 tests** across 12 packages, covering:
 
 - Agent core execution and hook injection
 - Database service layers with Drizzle ORM mocks
@@ -241,9 +241,11 @@ The test suite includes **1,165+ tests** across 12 packages, covering:
 
 Technical deep-dives into Argus's architecture and design decisions:
 
-- [Claude Agent SDK でマルチエージェントシステムを作った話 ― CLI spawn からの脱却](https://zenn.dev/ryusuke_ai/articles/claude-agent-sdk-migration)
-- [MCP サーバーで AI エージェントにナレッジベースを持たせる方法](https://zenn.dev/ryusuke_ai/articles/mcp-knowledge-base-design)
-- [AI エージェントの全行動を記録する ─ Observation-First アーキテクチャの設計と実装](https://zenn.dev/ryusuke_ai/articles/observation-first-architecture)
+- [Claude Agent SDK でマルチエージェントシステムを作った話 ― CLI spawn からの脱却](https://zenn.dev/42316/articles/claude-agent-sdk-migration)
+- [MCP サーバーで AI エージェントにナレッジベースを持たせる方法](https://zenn.dev/42316/articles/mcp-knowledge-base-design)
+- [AI エージェントの全行動を記録する ─ Observation-First アーキテクチャの設計と実装](https://zenn.dev/42316/articles/observation-first-architecture)
+- [12パッケージの pnpm monorepo を Turborepo なしで運用する](https://zenn.dev/42316/articles/pnpm-monorepo-agent-sdk-)
+- [Claude Code を10倍使いこなす実践Tips 7選【2026年版】](https://zenn.dev/42316/articles/claude-code-10tips-72026)
 
 ## Security
 

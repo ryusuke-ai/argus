@@ -20,7 +20,7 @@ const anthropic = new Anthropic();
  * so that security alerts from no-reply@ etc. still reach Claude classification.
  */
 const URGENT_SUBJECT_PATTERNS = [
-  /セキュリティ|不正|security|unauthorized|suspicious/i,
+  /セキュリティ.{0,5}警告|不正.{0,5}(アクセス|利用|ログイン)|security.{0,5}alert|unauthorized|suspicious/i,
   /障害|outage|incident|emergency/i,
   /アカウント.{0,10}(ロック|停止|制限)|locked|suspended|compromised/i,
   /CI.{0,5}fail|build.{0,5}fail|deploy.{0,5}fail/i,
@@ -50,6 +50,8 @@ const SKIP_PATTERNS = {
     "mandrillapp.com",
     "postmarkapp.com",
     "vpass.ne.jp",
+    "onamae.com",
+    "amazon.co.jp",
   ],
   subjects: [
     /ご利用のお知らせ/,
@@ -190,6 +192,9 @@ export async function checkGmail(): Promise<void> {
       continue;
     }
 
+    // "other" 分類のメールは dismissed として記録し、Slack通知・Canvas表示をスキップ
+    const isActionable = classification.classification !== "other";
+
     // DB に先に insert して UUID を取得
     const [inserted] = await db
       .insert(gmailMessages)
@@ -199,7 +204,7 @@ export async function checkGmail(): Promise<void> {
         fromAddress: msg.from,
         subject: msg.subject,
         classification: classification.classification,
-        status: "pending",
+        status: isActionable ? "pending" : "dismissed",
         draftReply: classification.draftReply,
         receivedAt: msg.receivedAt,
       })
@@ -207,7 +212,7 @@ export async function checkGmail(): Promise<void> {
 
     // Slack 投稿 (要返信 or 要確認のみ) - ボタンの value に DB の UUID を使用
     let slackTs: string | null = null;
-    if (classification.classification !== "other") {
+    if (isActionable) {
       slackTs = await postToSlack(msg, classification, inserted.id);
     }
 
@@ -223,7 +228,7 @@ export async function checkGmail(): Promise<void> {
     await markAsRead(msg.id);
 
     // Slack の連続メッセージグループ化を防ぐための遅延
-    if (classification.classification !== "other") {
+    if (isActionable) {
       await new Promise((r) => setTimeout(r, 1500));
     }
   }
@@ -257,6 +262,9 @@ Body: ${body.slice(0, 3000)}
   - ニュースレター、メルマガ、製品アップデート
   - 広告、プロモーション、キャンペーン
   - SNS通知（いいね、フォロー、コメント）
+  - ログイン通知（自分のログイン確認、IPアドレス通知）
+  - 支払い方法の更新依頼、サブスク更新通知
+  - ドメイン管理・サーバー管理の定期通知
   - 自動生成のシステム通知全般
 
 迷ったらotherに分類してください。

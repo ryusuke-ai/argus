@@ -3,10 +3,17 @@
  * Usage: tsx --env-file=../../.env scripts/test-instagram.ts
  */
 import { WebClient } from "@slack/web-api";
-import { generateInstagramContent } from "../src/handlers/sns/instagram-content-generator.js";
-import { buildInstagramPostBlocks } from "../src/handlers/sns/reporter.js";
-import { createGeneratingPost, createSaveCallback, finalizePost } from "../src/handlers/sns/phase-tracker.js";
-import { getNextOptimalTime, formatScheduledTime } from "../src/handlers/sns/optimal-time.js";
+import { generateInstagramContent } from "../src/handlers/sns/generation/instagram-content-generator.js";
+import { buildInstagramPostBlocks } from "../src/handlers/sns/ui/reporter.js";
+import {
+  createGeneratingPost,
+  createSaveCallback,
+  finalizePost,
+} from "../src/handlers/sns/ui/phase-tracker.js";
+import {
+  getNextOptimalTime,
+  formatScheduledTime,
+} from "../src/handlers/sns/scheduling/optimal-time.js";
 
 const client = new WebClient(process.env.SLACK_BOT_TOKEN);
 const channel = process.env.SLACK_SNS_CHANNEL;

@@ -3,7 +3,7 @@
  * Usage: tsx --env-file=../../.env scripts/trigger-sns.ts
  */
 import { WebClient } from "@slack/web-api";
-import { generateAllPlatformSuggestions } from "../src/handlers/sns/scheduler.js";
+import { generateAllPlatformSuggestions } from "../src/handlers/sns/scheduling/scheduler.js";
 
 const token = process.env.SLACK_BOT_TOKEN;
 const channel = process.env.SLACK_SNS_CHANNEL;
@@ -17,7 +17,9 @@ if (!channel) {
   process.exit(1);
 }
 
-console.log(`[trigger-sns] Starting daily suggestion generation for channel ${channel}`);
+console.log(
+  `[trigger-sns] Starting daily suggestion generation for channel ${channel}`,
+);
 
 const client = new WebClient(token);
 

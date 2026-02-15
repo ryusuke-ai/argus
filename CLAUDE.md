@@ -14,18 +14,18 @@ pnpm build        # 全パッケージビルド
 
 pnpm monorepo (`@argus/` スコープ):
 
-| レイヤー | コンポーネント | 役割 |
-|---|---|---|
-| Frontend | `apps/dashboard` (Next.js 16, Port 3150) | セッション監視、ナレッジ管理UI |
-| Backend | `apps/agent-orchestrator` (Port 3950) | エージェント実行・スケジューリング |
-| Backend | `apps/slack-bot` (Port 3939) | Slack連携・メッセージ処理 |
-| Core | `packages/agent-core` | Claude SDK ラッパー（session + hooks + text-utils） |
-| Core | `packages/db` | Drizzle ORM (PostgreSQL) |
-| Knowledge | `packages/knowledge` | Knowledge MCP Server |
-| Knowledge | `packages/knowledge-personal` | Personal Knowledge MCP Server |
-| Integration | `packages/gmail` | Google API（OAuth2 + Gmail） |
-| Integration | `packages/google-calendar` | Google Calendar MCP Server |
-| Config | `.claude/` | ルール / skills / permissions |
+| レイヤー    | コンポーネント                           | 役割                                                |
+| ----------- | ---------------------------------------- | --------------------------------------------------- |
+| Frontend    | `apps/dashboard` (Next.js 16, Port 3150) | セッション監視、ナレッジ管理UI                      |
+| Backend     | `apps/agent-orchestrator` (Port 3950)    | エージェント実行・スケジューリング                  |
+| Backend     | `apps/slack-bot` (Port 3939)             | Slack連携・メッセージ処理                           |
+| Core        | `packages/agent-core`                    | Claude SDK ラッパー（session + hooks + text-utils） |
+| Core        | `packages/db`                            | Drizzle ORM (PostgreSQL)                            |
+| Knowledge   | `packages/knowledge`                     | Knowledge MCP Server                                |
+| Knowledge   | `packages/knowledge-personal`            | Personal Knowledge MCP Server                       |
+| Integration | `packages/gmail`                         | Google API（OAuth2 + Gmail）                        |
+| Integration | `packages/google-calendar`               | Google Calendar MCP Server                          |
+| Config      | `.claude/`                               | ルール / skills / permissions                       |
 
 依存: `slack-bot` → `agent-core`, `db`, `gmail`, `google-calendar` / `dashboard` → `agent-core`, `db` / `orchestrator` → `agent-core`, `db`, `knowledge`, `gmail`, `google-calendar` / `knowledge` → `db` / `google-calendar` → `gmail`
 
@@ -71,4 +71,4 @@ Slack にはファイルパスではなく URL を貼る。
 ## Deploy
 
 Railway VPS (GitHub連携自動デプロイ) + Cloudflare Tunnel + Access (メール認証)
-詳細: @DEPLOYMENT.md
+詳細: @docs/DEPLOYMENT.md
