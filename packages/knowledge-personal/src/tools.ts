@@ -23,14 +23,14 @@ export function getReadTools(): Tool[] {
     {
       name: "personal_read",
       description:
-        "Read a specific personal note by path (relative to data directory, e.g. 'personality/value.md').",
+        "Read a specific personal note by path (relative to data directory, e.g. 'self/values.md').",
       inputSchema: {
         type: "object",
         properties: {
           path: {
             type: "string",
             description:
-              "Relative path to the note file (e.g. 'personality/value.md')",
+              "Relative path to the note file (e.g. 'self/values.md')",
           },
         },
         required: ["path"],
@@ -39,14 +39,13 @@ export function getReadTools(): Tool[] {
     {
       name: "personal_list",
       description:
-        "List all personal notes, optionally filtered by category (e.g. 'personality', 'areas', 'ideas', 'todo').",
+        "List all personal notes, optionally filtered by category (e.g. 'self').",
       inputSchema: {
         type: "object",
         properties: {
           category: {
             type: "string",
-            description:
-              "Optional category to filter by (e.g. 'personality', 'areas', 'ideas', 'todo')",
+            description: "Optional category to filter by (e.g. 'self')",
           },
         },
       },
@@ -54,7 +53,7 @@ export function getReadTools(): Tool[] {
     {
       name: "personal_context",
       description:
-        "Get personality context for AI personalization. Returns specific section or summary. Sections: values, strengths, weaknesses, habits, thinking, likes, dislikes.",
+        "Get personal context for AI personalization. Sections: identity, values, strengths, thinking, preferences, routines.",
       inputSchema: {
         type: "object",
         properties: {
@@ -62,13 +61,12 @@ export function getReadTools(): Tool[] {
             type: "string",
             description: "Specific personality section to retrieve",
             enum: [
+              "identity",
               "values",
               "strengths",
-              "weaknesses",
-              "habits",
               "thinking",
-              "likes",
-              "dislikes",
+              "preferences",
+              "routines",
             ],
           },
         },
@@ -90,13 +88,11 @@ export function getWriteTools(): Tool[] {
         properties: {
           category: {
             type: "string",
-            description:
-              "Category directory for the note (e.g. 'personality', 'areas', 'ideas', 'todo')",
+            description: "Category directory for the note (e.g. 'self')",
           },
           name: {
             type: "string",
-            description:
-              "Name of the note file (without .md extension)",
+            description: "Name of the note file (without .md extension)",
           },
           content: {
             type: "string",
@@ -116,7 +112,7 @@ export function getWriteTools(): Tool[] {
           path: {
             type: "string",
             description:
-              "Relative path to the note file (e.g. 'personality/value.md')",
+              "Relative path to the note file (e.g. 'self/values.md')",
           },
           content: {
             type: "string",

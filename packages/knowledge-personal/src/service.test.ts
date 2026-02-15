@@ -132,19 +132,7 @@ describe("PersonalServiceImpl", () => {
   const allRows = [
     makeRow("areas/habits/index.md", "areas", "index", habitsIndexContent),
     makeRow("areas/habits/value.md", "areas", "value", habitsValueContent),
-    makeRow(
-      "ideas/idea.md",
-      "ideas",
-      "idea",
-      "# My Idea\n\nSome idea content here.\n",
-    ),
     makeRow("personality/value.md", "personality", "value", personalityContent),
-    makeRow(
-      "todo/today.md",
-      "todo",
-      "today",
-      "# Today\n\n- Task 1\n- Task 2\n",
-    ),
   ];
 
   // Helper to set up db.select() mock for full-row select (no column arg)
@@ -192,7 +180,7 @@ describe("PersonalServiceImpl", () => {
     mockSelectProjected(projected);
 
     const items = await service.list();
-    expect(items.length).toBe(5);
+    expect(items.length).toBe(3);
     expect(items.every((item) => item.path.endsWith(".md"))).toBe(true);
     // Verify db.select was called
     expect(db.select).toHaveBeenCalled();
@@ -217,19 +205,18 @@ describe("PersonalServiceImpl", () => {
   // 3. read() returns note content
   it("read() returns note content", async () => {
     const row = makeRow(
-      "ideas/idea.md",
-      "ideas",
-      "idea",
-      "# My Idea\n\nSome idea content here.\n",
+      "personality/value.md",
+      "personality",
+      "value",
+      personalityContent,
     );
     mockSelectFull([row]);
 
-    const entry = await service.read("ideas/idea.md");
-    expect(entry.path).toBe("ideas/idea.md");
-    expect(entry.name).toBe("idea");
-    expect(entry.category).toBe("ideas");
-    expect(entry.content).toContain("# My Idea");
-    expect(entry.content).toContain("Some idea content here.");
+    const entry = await service.read("personality/value.md");
+    expect(entry.path).toBe("personality/value.md");
+    expect(entry.name).toBe("value");
+    expect(entry.category).toBe("personality");
+    expect(entry.content).toContain("# 特性・傾向・指針");
   });
 
   // 4. read() throws for missing note
@@ -243,23 +230,25 @@ describe("PersonalServiceImpl", () => {
 
   // 5. search() finds matching lines with context
   it("search() finds matching lines with context", async () => {
-    const todoRow = makeRow(
-      "todo/today.md",
-      "todo",
-      "today",
-      "# Today\n\n- Task 1\n- Task 2\n",
+    const habitsRow = makeRow(
+      "areas/habits/value.md",
+      "areas",
+      "value",
+      habitsValueContent,
     );
-    mockSelectFull([todoRow]);
+    mockSelectFull([habitsRow]);
 
-    const results = await service.search("Task 1");
+    const results = await service.search("メールチェック");
     expect(results.length).toBeGreaterThanOrEqual(1);
 
-    const todoResult = results.find((r) => r.path === "todo/today.md");
-    expect(todoResult).toBeDefined();
-    expect(todoResult!.matches.length).toBeGreaterThanOrEqual(1);
+    const habitsResult = results.find(
+      (r) => r.path === "areas/habits/value.md",
+    );
+    expect(habitsResult).toBeDefined();
+    expect(habitsResult!.matches.length).toBeGreaterThanOrEqual(1);
 
-    const match = todoResult!.matches[0];
-    expect(match.text).toContain("Task 1");
+    const match = habitsResult!.matches[0];
+    expect(match.text).toContain("メールチェック");
     expect(match.line).toBeGreaterThan(0);
     expect(Array.isArray(match.context)).toBe(true);
   });
@@ -392,20 +381,21 @@ describe("PersonalServiceImpl", () => {
     } as any);
 
     await expect(
-      service.add("ideas", "idea", "duplicate content"),
-    ).rejects.toThrow("Note already exists: ideas/idea.md");
+      service.add("personality", "value", "duplicate content"),
+    ).rejects.toThrow("Note already exists: personality/value.md");
   });
 
   // 13. update("append") appends to note
   it('update("append") appends to note', async () => {
     const existingRow = makeRow(
-      "todo/today.md",
-      "todo",
-      "today",
-      "# Today\n\n- Task 1\n- Task 2\n",
+      "areas/habits/value.md",
+      "areas",
+      "value",
+      "# 朝のルーティン\n\n- まずメールチェックから始める\n",
     );
 
-    const appendedContent = "# Today\n\n- Task 1\n- Task 2\n\n- Task 3";
+    const appendedContent =
+      "# 朝のルーティン\n\n- まずメールチェックから始める\n\n- 散歩する";
 
     // First: db.select() for reading existing content (append mode)
     vi.mocked(db.select).mockReturnValue({
@@ -420,9 +410,9 @@ describe("PersonalServiceImpl", () => {
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockResolvedValue([
             {
-              path: "todo/today.md",
-              category: "todo",
-              name: "today",
+              path: "areas/habits/value.md",
+              category: "areas",
+              name: "value",
               content: appendedContent,
             },
           ]),
@@ -430,25 +420,28 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    const entry = await service.update("todo/today.md", "- Task 3", "append");
-    expect(entry.content).toContain("- Task 1");
-    expect(entry.content).toContain("- Task 2");
-    expect(entry.content).toContain("- Task 3");
-    expect(entry.path).toBe("todo/today.md");
+    const entry = await service.update(
+      "areas/habits/value.md",
+      "- 散歩する",
+      "append",
+    );
+    expect(entry.content).toContain("メールチェック");
+    expect(entry.content).toContain("散歩する");
+    expect(entry.path).toBe("areas/habits/value.md");
   });
 
   // 14. update("replace") replaces note content
   it('update("replace") replaces note content', async () => {
-    const replacedContent = "# Replaced\n\n- New task only";
+    const replacedContent = "# 新しいルーティン\n\n- 朝ランニング";
 
     vi.mocked(db.update).mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockResolvedValue([
             {
-              path: "todo/today.md",
-              category: "todo",
-              name: "today",
+              path: "areas/habits/value.md",
+              category: "areas",
+              name: "value",
               content: replacedContent,
             },
           ]),
@@ -457,12 +450,12 @@ describe("PersonalServiceImpl", () => {
     } as any);
 
     const entry = await service.update(
-      "todo/today.md",
-      "# Replaced\n\n- New task only",
+      "areas/habits/value.md",
+      "# 新しいルーティン\n\n- 朝ランニング",
       "replace",
     );
-    expect(entry.content).toBe("# Replaced\n\n- New task only");
-    expect(entry.content).not.toContain("Task 1");
+    expect(entry.content).toBe("# 新しいルーティン\n\n- 朝ランニング");
+    expect(entry.content).not.toContain("メールチェック");
   });
 
   // 15. update() throws for missing note

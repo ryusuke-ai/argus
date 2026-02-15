@@ -122,34 +122,33 @@ export class PersonalServiceImpl implements PersonalService {
   }
 
   async getPersonalityContext(section?: PersonalitySection): Promise<string> {
-    if (section === "habits") {
-      return this.getHabitsContent();
+    if (section) {
+      // 特定セクション: self/{section}.md を直接読む
+      const path = `self/${section}.md`;
+      const rows = await db
+        .select()
+        .from(personalNotes)
+        .where(eq(personalNotes.path, path));
+
+      if (rows.length === 0) {
+        throw new Error(`Personal note not found: ${path}`);
+      }
+
+      return rows[0].content;
     }
 
+    // セクション指定なし: self/ カテゴリの全ファイルを取得してサマリー
     const rows = await db
       .select()
       .from(personalNotes)
-      .where(eq(personalNotes.path, "personality/value.md"));
+      .where(eq(personalNotes.category, "self"))
+      .orderBy(asc(personalNotes.path));
 
     if (rows.length === 0) {
-      throw new Error("personality/value.md not found");
+      throw new Error("No personal notes found in self/ category");
     }
 
-    const content = rows[0].content;
-    const sections = this.splitByH2(content);
-
-    if (!section) {
-      return this.buildSummary(sections);
-    }
-
-    const matched = this.findSection(sections, section);
-    if (!matched) {
-      throw new Error(
-        `Personality section "${section}" not found in personality/value.md`,
-      );
-    }
-
-    return matched;
+    return this.buildSummary(rows);
   }
 
   async add(
@@ -228,111 +227,18 @@ export class PersonalServiceImpl implements PersonalService {
 
   // --- Private helpers ---
 
-  private splitByH2(content: string): { heading: string; body: string }[] {
-    const lines = content.split("\n");
-    const sections: { heading: string; body: string }[] = [];
-    let currentHeading = "";
-    let currentBody: string[] = [];
-
-    for (const line of lines) {
-      if (line.startsWith("## ")) {
-        if (currentHeading || currentBody.length > 0) {
-          sections.push({
-            heading: currentHeading,
-            body: currentBody.join("\n").trim(),
-          });
-        }
-        currentHeading = line.replace("## ", "").trim();
-        currentBody = [];
-      } else {
-        currentBody.push(line);
-      }
-    }
-
-    // Push the last section
-    if (currentHeading || currentBody.length > 0) {
-      sections.push({
-        heading: currentHeading,
-        body: currentBody.join("\n").trim(),
-      });
-    }
-
-    return sections;
-  }
-
-  private findSection(
-    sections: { heading: string; body: string }[],
-    section: PersonalitySection,
-  ): string | null {
-    const matchers: Record<PersonalitySection, string[]> = {
-      values: ["価値観"],
-      strengths: ["強み", "得意"],
-      weaknesses: ["落とし穴", "苦手"],
-      thinking: ["思考スタイル"],
-      likes: ["好きなこと"],
-      dislikes: ["嫌いなこと", "やらないこと"],
-      habits: [], // handled separately
-    };
-
-    const keywords = matchers[section];
-    const matched = sections.filter((s) =>
-      keywords.some((kw) => s.heading.includes(kw)),
-    );
-
-    if (matched.length === 0) return null;
-
-    return matched
-      .map((s) => `## ${s.heading}\n\n${s.body}`)
-      .join("\n\n---\n\n");
-  }
-
-  private async getHabitsContent(): Promise<string> {
-    const parts: string[] = [];
-
-    const indexRows = await db
-      .select()
-      .from(personalNotes)
-      .where(eq(personalNotes.path, "areas/habits/index.md"));
-
-    if (indexRows.length > 0) {
-      parts.push(indexRows[0].content.trim());
-    }
-
-    const valueRows = await db
-      .select()
-      .from(personalNotes)
-      .where(eq(personalNotes.path, "areas/habits/value.md"));
-
-    if (valueRows.length > 0) {
-      parts.push(valueRows[0].content.trim());
-    }
-
-    if (parts.length === 0) {
-      throw new Error("Habits data not found in areas/habits/");
-    }
-
-    return parts.join("\n\n---\n\n");
-  }
-
   private buildSummary(
-    sections: { heading: string; body: string }[],
+    rows: { path: string; name: string; content: string }[],
   ): string {
     const parts: string[] = [];
 
-    // First section (一言で表すと) in full
-    if (sections.length > 0 && sections[0].heading) {
-      parts.push(`## ${sections[0].heading}\n\n${sections[0].body}`);
-    }
-
-    // One-line summary from each remaining section
-    for (let i = 1; i < sections.length; i++) {
-      const s = sections[i];
-      if (!s.heading) continue;
-
-      // Take the first non-empty line of the body as the summary
-      const bodyLines = s.body.split("\n").filter((l) => l.trim().length > 0);
-      const firstLine = bodyLines.length > 0 ? bodyLines[0] : "";
-      parts.push(`- **${s.heading}**: ${firstLine}`);
+    for (const row of rows) {
+      // ファイル名をセクション名として使い、先頭の非空行をサマリーにする
+      const lines = row.content.split("\n").filter((l) => l.trim().length > 0);
+      // H1見出しをスキップして最初の実質行を取得
+      const contentLines = lines.filter((l) => !l.startsWith("# "));
+      const firstLine = contentLines.length > 0 ? contentLines[0] : "";
+      parts.push(`- **${row.name}**: ${firstLine}`);
     }
 
     return parts.join("\n");

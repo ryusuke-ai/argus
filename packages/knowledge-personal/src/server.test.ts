@@ -123,15 +123,15 @@ describe("PersonalMcpServer", () => {
 
     it("should execute personal_add tool", async () => {
       const result = await server.handleToolCall("personal_add", {
-        category: "ideas",
-        name: "new-idea",
-        content: "# New Idea\n\nContent here",
+        category: "personality",
+        name: "new-note",
+        content: "# New Note\n\nContent here",
       });
 
       expect(mockService.add).toHaveBeenCalledWith(
-        "ideas",
-        "new-idea",
-        "# New Idea\n\nContent here",
+        "personality",
+        "new-note",
+        "# New Note\n\nContent here",
       );
       expect(result).toEqual(mockNote);
     });
@@ -152,9 +152,9 @@ describe("PersonalMcpServer", () => {
     });
 
     it("should throw error for unknown tool", async () => {
-      await expect(
-        server.handleToolCall("unknown_tool", {}),
-      ).rejects.toThrow("Unknown tool: unknown_tool");
+      await expect(server.handleToolCall("unknown_tool", {})).rejects.toThrow(
+        "Unknown tool: unknown_tool",
+      );
     });
   });
 });

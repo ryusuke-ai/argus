@@ -1,6 +1,6 @@
 export interface NoteEntry {
-  path: string; // relative to data/ (e.g. "personality/value.md")
-  category: string; // top-level directory (e.g. "personality")
+  path: string; // relative to data/ (e.g. "self/values.md")
+  category: string; // top-level directory (e.g. "self")
   name: string; // filename without extension
   content: string;
 }
@@ -18,13 +18,12 @@ export interface MatchLine {
 }
 
 export type PersonalitySection =
+  | "identity"
   | "values"
   | "strengths"
-  | "weaknesses"
-  | "habits"
   | "thinking"
-  | "likes"
-  | "dislikes";
+  | "preferences"
+  | "routines";
 
 export interface PersonalService {
   search(query: string): Promise<SearchResult[]>;
