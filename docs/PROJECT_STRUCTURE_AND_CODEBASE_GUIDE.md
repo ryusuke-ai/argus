@@ -38,7 +38,7 @@
 
 ### 前提知識
 
-- TypeScript の基本文法（型、インターフェース、ジェネリクス）
+- TypeScript の基本文法（型、インターフェース、ジェネリクス（型を引数として受け取り、汎用的に使える仕組み））
 - Node.js のモジュールシステム（ESM の `import` / `export`）
 - Git の基本操作
 
@@ -135,7 +135,7 @@ packages/agent-core/src/
 ├── lessons.ts            # 教訓（Lesson）のプロンプト注入用フォーマッタ
 ├── artifact-uploader.ts  # Before/After スナップショットで成果物検出
 ├── types.ts              # AgentResult, Block, ToolCall, QueryOptions
-└── index.ts              # 公開 API の選択的 re-export
+└── index.ts              # 公開 API の選択的 re-export（他のファイルからインポートしたものを、まとめて外部に再公開すること）
 ```
 
 ### 核心: `agent.ts` の実行パイプライン
@@ -314,11 +314,13 @@ export const db: PostgresJsDatabase = new Proxy({} as PostgresJsDatabase, {
 
 > **平たく言うと**: `db` をインポートしただけではデータベースに接続しない。実際にクエリを実行しようとした瞬間に初めて接続する。これにより、Next.js のビルド時（DB 不要）でもエラーにならない。
 
-**学ぶべきポイント**:
+**学ぶべきポイント（Proxy パターンの 3 つの利点）**:
 
-- `new Proxy()` の `get` トラップで初回アクセス時のみ初期化
-- モジュールスコープの `_db` でシングルトンパターン
-- `Reflect.get(_db, prop, receiver)` でプロトタイプチェーンも含めた完全な委譲
+1. **遅延初期化**: `new Proxy()` の `get` トラップで初回アクセス時のみ DB 接続を行う。Next.js のビルド時など、DB 不要な場面でインポートしてもエラーにならない
+2. **シングルトン保証**: モジュールスコープの `_db` に一度だけインスタンスを格納し、以降は同じ接続を再利用する
+3. **環境変数チェックの適切なタイミング**: `DATABASE_URL` の検証は実際に DB を利用する瞬間まで遅延される。インポートしただけではチェックが走らないため、テストやビルド時にダミーの環境変数を用意する必要がない
+
+補足: `Reflect.get(_db, prop, receiver)` でプロトタイプチェーンも含めた完全な委譲を行っている。
 
 ### スキーマ定義の主要パターン
 
@@ -348,6 +350,11 @@ export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 ```
 
+**`$inferSelect` と `$inferInsert` の違い**:
+
+- `$inferSelect` は **SELECT 結果の型**。DB から取得した完全なレコードを表し、全カラムが必須プロパティになる（例: `id`, `createdAt` 等すべてが含まれる）
+- `$inferInsert` は **INSERT 時の型**。`defaultRandom()` や `defaultNow()` が設定されたカラム（`id`, `createdAt` 等）はオプショナルになり、INSERT 時に省略できる。DB が自動的にデフォルト値を補完する
+
 ### テーブル一覧（カテゴリ別）
 
 | カテゴリ         | テーブル                                           | 用途                       |
@@ -360,7 +367,7 @@ export type NewSession = typeof sessions.$inferInsert;
 | **SNS**          | `sns_posts`, `tiktok_tokens`                       | SNS 投稿管理               |
 | **共通**         | `canvas_registry`                                  | Slack Canvas ID 管理       |
 
-### 3 つのエントリポイント
+### 3 つのエントリポイント（外部からパッケージを読み込む際の入口となるファイル）
 
 ```json
 // package.json の exports
@@ -389,7 +396,7 @@ import { db } from "@argus/db/client"; // DB接続だけ欲しい時
 ### このセクションで学ぶこと
 
 - MCP（Model Context Protocol）サーバーの実装パターン
-- ロールベースの権限分離（Collector / Executor）
+- ロールベース（「役割」に基づいて権限を振り分ける方式）の権限分離（Collector / Executor）
 - 2 つの Knowledge パッケージの設計上の違い
 
 ### MCP サーバー共通パターン
@@ -441,6 +448,8 @@ await this.server.connect(new StdioServerTransport());
 ```
 
 > **平たく言うと**: Collector は「知識を書き込める」、Executor は「知識を読むだけ」。二重チェックで安全性を確保。
+
+**なぜ 2 層で権限分離するのか（Defence-in-Depth）**: ツール公開層だけでは、設定ミスやバグによって書き込みツールが Executor に見えてしまう可能性がある。ビジネスロジック層の `requireCollector()` が最終防衛線（defence-in-depth）として機能し、仮にツール公開層を突破されてもロール検証で書き込みを阻止する。この 2 層構造により、片方が破れても他方が安全性を保つ冗長設計になっている。
 
 ### 2 パッケージの比較
 
@@ -494,7 +503,11 @@ packages/gmail/src/auth.ts
     ├── handleCallback()        ← 認証コード → トークン → DB 保存
     ├── refreshTokenIfNeeded()  ← 5 分バッファ付き有効期限チェック
     └── getAuthenticatedClient() ← リフレッシュ済み OAuth2 クライアント返却
+```
 
+**5 分バッファの目的**: トークンの有効期限ギリギリで API リクエストを送ると、通信中にトークンが失効して認証エラーになるリスクがある。有効期限の 5 分前にリフレッシュすることで、API 呼び出し中のトークン失効を防ぐ。特にエージェントが複数の API 呼び出しを連続実行する場面で、途中でトークンが切れる事故を未然に防止する。
+
+```
 packages/google-calendar/src/calendar-client.ts
     └── import { getAuthenticatedClient } from "@argus/gmail"
         ↑ Gmail パッケージの認証を直接再利用
@@ -524,6 +537,8 @@ function decodeHeader(raw: string): string {
 ```
 
 > **平たく言うと**: 日本語のメールは文字コードの問題で「文字化け」することがある。これを何度もデコードし直すことで正しい日本語に戻す処理。
+
+**なぜ最大 3 回なのか**: メールが中継サーバーを経由するたびに、誤って CP1252 → UTF-8 の再エンコードが行われることがある。最悪のケースで 2 重・3 重のエンコードが発生する。ループの各回で 1 層ずつデコードを剥がし、変化がなくなった（収束した）時点、または UTF-8 として不正なバイト列になった時点で停止する。実運用で 3 回を超える多重エンコードは観測されていないため、3 回を上限として設定している。
 
 ### Google Calendar の MCP ツール
 
@@ -568,7 +583,7 @@ packages/r2-storage/src/
 ```
 
 - 依存は `@aws-sdk/client-s3` のみ
-- `uploadVideo()` という名前だが、**実装はファイル種別を問わない汎用アップローダー**
+- `uploadVideo()` という名前だが、**実装はファイル種別を問わない汎用アップローダー**。最初は動画アップロード専用として作られたが、後から画像・音声等にも利用範囲が拡大し、関数名だけが当初のまま残っている（歴史的経緯）
 - `createReadStream()` でストリーミングアップロード
 
 ### slack-canvas — SDK 不使用の軽量設計
@@ -580,9 +595,17 @@ packages/r2-storage/src/
 
 - **なぜ SDK を使わないか**: 依存を最小化し、Canvas API の 2 つのエンドポイント（create / edit）だけを直接 `fetch()` で呼ぶ
 - `upsertCanvas()`: 既存あれば update、なければ create。Canvas 削除後の復元力もある
-- `canvas-registry.ts`: 機能名 → Canvas ID の対応を DB で管理（`onConflictDoUpdate` で upsert）
+- `canvas-registry.ts`: 機能名 → Canvas ID の対応を DB で管理（`onConflictDoUpdate` で upsert（update + insert の造語。データがあれば更新、なければ新規作成する操作））
 
 ### tiktok — PKCE 認証
+
+**PKCE（Proof Key for Code Exchange）** は、クライアントシークレットを安全に保持できない環境（モバイルアプリ等）向けに設計された OAuth 拡張仕様。認証フローの概要:
+
+1. クライアントがランダムな `code_verifier` を生成
+2. そのハッシュ値（`code_challenge`）を認証サーバーに送信
+3. トークン交換時に元の `code_verifier` を送信し、サーバー側でハッシュを照合して正当性を検証
+
+**Gmail の OAuth2 との違い**: Gmail はサーバーサイドで `client_secret` を使って認証するのに対し、TikTok は PKCE で `code_verifier` / `code_challenge` のペアを使う。これにより、クライアントシークレットをコードに埋め込まずに安全な認証が可能になる。
 
 ```typescript
 // auth.ts — TikTok 固有仕様: SHA256 の hex エンコード（Base64 ではない）
@@ -872,6 +895,8 @@ const results = await Promise.all([
 ]);
 ```
 
+**Consistency Checker が Claude を使わない（決定的な）理由**: チェック内容は tsconfig references の整合性、依存バージョンの一致、ビルド設定の一貫性など、正解が一意に決まるものばかりである。AI の判断が不要で、決定的（deterministic）に実行できることで毎回同じ結果が保証され、偽陽性が発生しない。これにより CI に組み込んでも信頼性が高く、結果の再現性も確保される。
+
 ### 理解度チェック
 
 1. Code Patrol が検証失敗時にロールバックする手順を説明できるか？
@@ -930,6 +955,13 @@ apps/dashboard/src/
 | 例               | ページコンポーネント、SessionList | Navigation, QueryForm        |
 
 **パターン**: ページ（Server）でデータをフェッチし、表示コンポーネントに props で渡す。インタラクティブ部分だけ `"use client"` にする。
+
+**`force-dynamic` による SSR 強制**: Next.js App Router ではページがデフォルトで静的生成（SSG）される。しかし DB クエリを含むページはリクエストごとに最新データを取得する必要があるため、`export const dynamic = "force-dynamic"` を指定してサーバーサイドレンダリング（SSR）を強制する。
+
+```typescript
+// sessions/page.tsx 等 — ビルド時ではなくリクエスト時に DB クエリを実行
+export const dynamic = "force-dynamic";
+```
 
 ### 特徴的コード: Next.js 16 の params Promise
 
@@ -996,16 +1028,18 @@ if (rangeHeader) {
 
 ### 主要設定ファイル一覧
 
-| ファイル              | 役割                                       | 重要ポイント                         |
-| --------------------- | ------------------------------------------ | ------------------------------------ |
-| `package.json`        | ルートスクリプト + 共有依存                | `pnpm -r test` で全パッケージテスト  |
-| `pnpm-workspace.yaml` | `packages/*`, `apps/*` を定義              | ワークスペースの登録                 |
-| `tsconfig.json`       | strict, ESM, **Project References**        | 各パッケージをビルド依存で接続       |
-| `eslint.config.js`    | Flat Config (v9)                           | `_` プレフィックスの未使用変数を許可 |
-| `.prettierrc`         | ダブルクォート, セミコロンあり, 末尾カンマ | 統一フォーマット                     |
-| `.npmrc`              | `node-linker=hoisted`                      | フラットな node_modules              |
-| `.jscpd.json`         | コピペ検出（5%閾値）                       | テスト・型定義は除外                 |
-| `.gitattributes`      | Git LFS 管理                               | wav, png, mp4, ttf, mp3              |
+| ファイル              | 役割                                       | 重要ポイント                           |
+| --------------------- | ------------------------------------------ | -------------------------------------- |
+| `package.json`        | ルートスクリプト + 共有依存                | `pnpm -r test` で全パッケージテスト    |
+| `pnpm-workspace.yaml` | `packages/*`, `apps/*` を定義              | ワークスペースの登録                   |
+| `tsconfig.json`       | strict, ESM, **Project References**        | 各パッケージをビルド依存で接続（後述） |
+| `eslint.config.js`    | Flat Config (v9)                           | `_` プレフィックスの未使用変数を許可   |
+| `.prettierrc`         | ダブルクォート, セミコロンあり, 末尾カンマ | 統一フォーマット                       |
+| `.npmrc`              | `node-linker=hoisted`                      | フラットな node_modules（後述）        |
+| `.jscpd.json`         | コピペ検出（5%閾値）                       | テスト・型定義は除外                   |
+| `.gitattributes`      | Git LFS 管理                               | wav, png, mp4, ttf, mp3                |
+
+**`node-linker=hoisted` の理由**: pnpm のデフォルトはシンボリックリンクベースの厳密な node_modules 構造だが、一部のツール（Claude Agent SDK、Next.js のプラグイン等）がこの構造で正常に動作しない場合がある。`hoisted` を指定することで npm と同様のフラットな構造になり、これらのツールとの互換性を確保できる。
 
 ### Dockerfile のマルチステージビルド
 
@@ -1044,6 +1078,12 @@ steps:
   - run: DATABASE_URL=dummy pnpm build
   - run: pnpm test
 ```
+
+**TypeScript Project References の目的**: Project References は TypeScript コンパイラにパッケージ間のビルド依存関係を認識させる機能。ルートの `tsconfig.json` に全パッケージへの `references` を定義することで、以下の 3 つの恩恵を得る:
+
+1. **インクリメンタルビルド**: 変更のあったパッケージだけを再ビルドできる（`tsc --build` で差分ビルド）
+2. **ビルド順序の自動解決**: パッケージ間の依存関係に基づき、正しい順序で自動的にビルドされる
+3. **独立した型チェック**: 各パッケージの型チェックが独立して高速に実行され、無関係なパッケージのエラーに影響されない
 
 ### 理解度チェック
 
@@ -1158,6 +1198,12 @@ src/session-manager.ts
 src/session-manager.test.ts
 ```
 
+**コロケーションのメリット**:
+
+1. **テスト漏れの防止**: テスト対象と同じディレクトリにあるため、テストが存在しないことに気づきやすく、関連ファイルを探す手間がない
+2. **保守性の向上**: ファイルの移動・リネーム時にテストも一緒に移動でき、パスのずれが発生しない
+3. **インポートパスの簡潔さ**: `../../../tests/...` のような深いネストにならず、`./session-manager.js` のように短いパスで済む
+
 ### パターン 3: ESM 統一 + `.js` 拡張子
 
 ```typescript
@@ -1227,6 +1273,11 @@ updateSnsCanvas().catch((e) =>
   console.error("[sns-scheduler] Canvas error:", e),
 );
 ```
+
+**判断基準**:
+
+- **適切なケース**: UI の付加的更新（Canvas 更新、リアクション追加等）など、失敗しても主処理に影響しないもの。ユーザー体験の向上が目的であり、失敗時は静かにスキップして問題ない処理
+- **不適切なケース**: データの一貫性に関わる処理（DB 書き込み等）、課金処理、ユーザーへの重要な通知など、失敗の検知やリトライが必要なもの。これらは `await` して結果を確認すべき
 
 ### パターン 9: スロットリング
 
