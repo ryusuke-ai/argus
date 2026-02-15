@@ -24,7 +24,13 @@ const SAT_0900_JST = new Date("2026-02-14T00:00:00Z"); // Sat 09:00 JST
  * Convert hour:minute in JST to a UTC Date on a given UTC base date.
  * Useful for building expected results.
  */
-function jstToUTC(year: number, month: number, day: number, hour: number, minute: number): Date {
+function jstToUTC(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+): Date {
   const jstMs = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
   return new Date(jstMs - 9 * 60 * 60 * 1000);
 }
@@ -32,8 +38,19 @@ function jstToUTC(year: number, month: number, day: number, hour: number, minute
 // ─── OPTIMAL_TIMES structure ─────────────────────────────────────
 
 describe("OPTIMAL_TIMES", () => {
-  it("has entries for all 9 platforms", () => {
-    const platforms: Platform[] = ["x", "qiita", "zenn", "note", "youtube", "threads", "tiktok", "github", "podcast"];
+  it("has entries for all 10 platforms", () => {
+    const platforms: Platform[] = [
+      "x",
+      "qiita",
+      "zenn",
+      "note",
+      "youtube",
+      "threads",
+      "tiktok",
+      "github",
+      "podcast",
+      "instagram",
+    ];
     for (const p of platforms) {
       expect(OPTIMAL_TIMES[p]).toBeDefined();
       expect(OPTIMAL_TIMES[p].length).toBeGreaterThan(0);
@@ -70,11 +87,18 @@ describe("OPTIMAL_TIMES", () => {
     }
   });
 
-  it("youtube has 3 slots with mixed constraints", () => {
-    expect(OPTIMAL_TIMES.youtube).toHaveLength(3);
-    expect(OPTIMAL_TIMES.youtube[0]).toEqual({ hour: 18, minute: 0, dayConstraint: "friday" });
-    expect(OPTIMAL_TIMES.youtube[1]).toEqual({ hour: 10, minute: 0, dayConstraint: "weekend" });
-    expect(OPTIMAL_TIMES.youtube[2]).toEqual({ hour: 12, minute: 30, dayConstraint: "weekday" });
+  it("youtube has 2 slots with weekday and weekend constraints", () => {
+    expect(OPTIMAL_TIMES.youtube).toHaveLength(2);
+    expect(OPTIMAL_TIMES.youtube[0]).toEqual({
+      hour: 18,
+      minute: 0,
+      dayConstraint: "weekday",
+    });
+    expect(OPTIMAL_TIMES.youtube[1]).toEqual({
+      hour: 10,
+      minute: 0,
+      dayConstraint: "weekend",
+    });
   });
 
   it("threads has 3 slots all with any constraint", () => {
@@ -91,18 +115,26 @@ describe("OPTIMAL_TIMES", () => {
     expect(OPTIMAL_TIMES.tiktok).toEqual([
       { hour: 7, minute: 0, dayConstraint: "any" },
       { hour: 17, minute: 0, dayConstraint: "weekday" },
-      { hour: 20, minute: 30, dayConstraint: "any" },
+      { hour: 21, minute: 0, dayConstraint: "any" },
     ]);
   });
 
   it("github has 1 weekday slot", () => {
     expect(OPTIMAL_TIMES.github).toHaveLength(1);
-    expect(OPTIMAL_TIMES.github[0]).toEqual({ hour: 10, minute: 0, dayConstraint: "weekday" });
+    expect(OPTIMAL_TIMES.github[0]).toEqual({
+      hour: 10,
+      minute: 0,
+      dayConstraint: "weekday",
+    });
   });
 
   it("podcast has 1 monday slot", () => {
     expect(OPTIMAL_TIMES.podcast).toHaveLength(1);
-    expect(OPTIMAL_TIMES.podcast[0]).toEqual({ hour: 7, minute: 0, dayConstraint: "monday" });
+    expect(OPTIMAL_TIMES.podcast[0]).toEqual({
+      hour: 6,
+      minute: 0,
+      dayConstraint: "monday",
+    });
   });
 });
 
@@ -110,7 +142,18 @@ describe("OPTIMAL_TIMES", () => {
 
 describe("getNextOptimalTime", () => {
   describe("returns a valid future Date for each platform", () => {
-    const platforms: Platform[] = ["x", "qiita", "zenn", "note", "youtube", "threads", "tiktok", "github", "podcast"];
+    const platforms: Platform[] = [
+      "x",
+      "qiita",
+      "zenn",
+      "note",
+      "youtube",
+      "threads",
+      "tiktok",
+      "github",
+      "podcast",
+      "instagram",
+    ];
     for (const p of platforms) {
       it(`${p}: returns a Date in the future`, () => {
         const now = TUE_0700_JST;
@@ -220,10 +263,10 @@ describe("getNextOptimalTime", () => {
     });
   });
 
-  describe("youtube platform (friday + weekend + weekday constraints)", () => {
-    it("on Tuesday 07:00 JST: returns weekday slot 12:30", () => {
+  describe("youtube platform (weekday + weekend constraints)", () => {
+    it("on Tuesday 07:00 JST: returns weekday slot 18:00", () => {
       const result = getNextOptimalTime("youtube", TUE_0700_JST);
-      const expected = jstToUTC(2026, 2, 10, 12, 30);
+      const expected = jstToUTC(2026, 2, 10, 18, 0);
       expect(result.getTime()).toBe(expected.getTime());
     });
 
@@ -233,9 +276,9 @@ describe("getNextOptimalTime", () => {
       expect(result.getTime()).toBe(expected.getTime());
     });
 
-    it("on Tuesday 19:00 JST: skips to Wednesday weekday slot 12:30", () => {
+    it("on Tuesday 19:00 JST: skips to Wednesday weekday slot 18:00", () => {
       const result = getNextOptimalTime("youtube", TUE_1900_JST);
-      const expected = jstToUTC(2026, 2, 11, 12, 30);
+      const expected = jstToUTC(2026, 2, 11, 18, 0);
       expect(result.getTime()).toBe(expected.getTime());
     });
   });
@@ -345,14 +388,14 @@ describe("getDailyOptimalTimes", () => {
     const result = getDailyOptimalTimes("x", SAT_0900_JST);
     expect(result).toHaveLength(3);
     expect(result[0].getTime()).toBe(jstToUTC(2026, 2, 14, 12, 15).getTime()); // Sat 12:15
-    expect(result[1].getTime()).toBe(jstToUTC(2026, 2, 14, 18, 0).getTime());  // Sat 18:00
-    expect(result[2].getTime()).toBe(jstToUTC(2026, 2, 15, 7, 30).getTime());  // Sun 7:30
+    expect(result[1].getTime()).toBe(jstToUTC(2026, 2, 14, 18, 0).getTime()); // Sat 18:00
+    expect(result[2].getTime()).toBe(jstToUTC(2026, 2, 15, 7, 30).getTime()); // Sun 7:30
   });
 
   it("returns 1 time for youtube platform on weekday", () => {
     const result = getDailyOptimalTimes("youtube", TUE_0700_JST);
     expect(result).toHaveLength(1);
-    expect(result[0].getTime()).toBe(jstToUTC(2026, 2, 10, 12, 30).getTime());
+    expect(result[0].getTime()).toBe(jstToUTC(2026, 2, 10, 18, 0).getTime());
   });
 
   it("returns empty array when platform is zenn on weekend", () => {

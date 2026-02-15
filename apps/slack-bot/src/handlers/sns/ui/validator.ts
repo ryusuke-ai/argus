@@ -143,9 +143,27 @@ export interface ArticleValidationOptions {
 }
 
 const ARTICLE_PLATFORM_DEFAULTS: Record<string, ArticleValidationOptions> = {
-  note: { platform: "note", minChars: 2000, maxChars: 5000, maxTitleLength: 100, maxTags: 10 },
-  zenn: { platform: "zenn", minChars: 3000, maxChars: 10000, maxTitleLength: 70, maxTags: 5 },
-  qiita: { platform: "qiita", minChars: 5000, maxChars: 15000, maxTitleLength: 36, maxTags: 5 },
+  note: {
+    platform: "note",
+    minChars: 2000,
+    maxChars: 5000,
+    maxTitleLength: 100,
+    maxTags: 10,
+  },
+  zenn: {
+    platform: "zenn",
+    minChars: 3000,
+    maxChars: 10000,
+    maxTitleLength: 70,
+    maxTags: 5,
+  },
+  qiita: {
+    platform: "qiita",
+    minChars: 5000,
+    maxChars: 15000,
+    maxTitleLength: 36,
+    maxTags: 5,
+  },
 };
 
 /**
@@ -157,12 +175,22 @@ export function validateArticle(
   tags: Array<string | { name: string }>,
   platformOrOptions: string | ArticleValidationOptions,
 ): ValidationResult {
-  const options = typeof platformOrOptions === "string"
-    ? ARTICLE_PLATFORM_DEFAULTS[platformOrOptions]
-    : platformOrOptions;
+  const options =
+    typeof platformOrOptions === "string"
+      ? ARTICLE_PLATFORM_DEFAULTS[platformOrOptions]
+      : platformOrOptions;
 
   if (!options) {
-    return { valid: false, warnings: [], errors: [{ code: "UNKNOWN_PLATFORM", message: `Unknown platform: ${platformOrOptions}` }] };
+    return {
+      valid: false,
+      warnings: [],
+      errors: [
+        {
+          code: "UNKNOWN_PLATFORM",
+          message: `Unknown platform: ${platformOrOptions}`,
+        },
+      ],
+    };
   }
 
   const errors: ValidationError[] = [];
@@ -292,6 +320,404 @@ export function validateThread(posts: string[]): ValidationResult {
         message: `Post ${i + 1}: contains negative/aggressive expressions. Grok AI may suppress distribution.`,
       });
     }
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
+}
+
+const KEBAB_CASE_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * Validate a Threads post.
+ * Threads limits topic tags to 1 per post and discourages external links.
+ */
+export function validateThreadsPost(text: string): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Error: exceeds 500 chars
+  if (text.length > 500) {
+    errors.push({
+      code: "EXCEEDS_500_CHARS",
+      message: `Post exceeds 500 characters (${text.length} chars)`,
+    });
+  }
+
+  // Error: external link (Threads discourages links in auto-posts)
+  if (containsExternalLink(text)) {
+    errors.push({
+      code: "CONTAINS_EXTERNAL_LINK",
+      message:
+        "Post contains an external link. Threads penalizes posts with links in automated posting.",
+    });
+  }
+
+  // Warning: text too short (under 100 chars)
+  if (text.length < 100) {
+    warnings.push({
+      code: "TEXT_TOO_SHORT",
+      message: `Post is ${text.length} characters (recommended: 100-300 chars)`,
+    });
+  }
+
+  // Warning: text too long (over 300 chars but within 500)
+  if (text.length > 300 && text.length <= 500) {
+    warnings.push({
+      code: "TEXT_TOO_LONG",
+      message: `Post is ${text.length} characters (recommended: 100-300 chars)`,
+    });
+  }
+
+  // Warning: 2+ hashtags (topic tags limited to 1 per post)
+  const hashtagCount = countHashtags(text);
+  if (hashtagCount >= 2) {
+    warnings.push({
+      code: "TOO_MANY_HASHTAGS",
+      message: `Post contains ${hashtagCount} hashtags (Threads allows max 1 topic tag per post)`,
+    });
+  }
+
+  // Warning: negative tone
+  if (containsNegativeTone(text)) {
+    warnings.push({
+      code: "NEGATIVE_TONE_INDICATORS",
+      message:
+        "Post contains negative/aggressive expressions. This may reduce distribution.",
+    });
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
+}
+
+/**
+ * Validate an Instagram post (image or reels).
+ * Hashtag limit is 5 (as of Dec 2025). Total caption+hashtags must be under 2200 chars.
+ */
+export function validateInstagramPost(
+  caption: string,
+  hashtags: string[],
+  type: "image" | "reels",
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  const captionLimits =
+    type === "image" ? { min: 200, max: 500 } : { min: 100, max: 300 };
+
+  // Error: hashtags exceed 5
+  if (hashtags.length > 5) {
+    errors.push({
+      code: "TOO_MANY_HASHTAGS",
+      message: `Post has ${hashtags.length} hashtags (max: 5 since Dec 2025)`,
+    });
+  }
+
+  // Error: combined caption+hashtags exceed 2200 chars
+  const combined = caption + " " + hashtags.join(" ");
+  if (combined.length > 2200) {
+    errors.push({
+      code: "EXCEEDS_2200_CHARS",
+      message: `Caption + hashtags total ${combined.length} characters (max: 2200)`,
+    });
+  }
+
+  // Warning: caption too short
+  if (caption.length < captionLimits.min) {
+    warnings.push({
+      code: "CAPTION_TOO_SHORT",
+      message: `Caption is ${caption.length} characters (recommended: ${captionLimits.min}-${captionLimits.max} for ${type})`,
+    });
+  }
+
+  // Warning: caption too long
+  if (caption.length > captionLimits.max) {
+    warnings.push({
+      code: "CAPTION_TOO_LONG",
+      message: `Caption is ${caption.length} characters (recommended: ${captionLimits.min}-${captionLimits.max} for ${type})`,
+    });
+  }
+
+  // Warning: negative tone
+  if (containsNegativeTone(caption)) {
+    warnings.push({
+      code: "NEGATIVE_TONE_INDICATORS",
+      message:
+        "Caption contains negative/aggressive expressions. This may reduce distribution.",
+    });
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
+}
+
+/**
+ * Validate TikTok video metadata.
+ * Description max 2200 chars, hashtags max 5, duration 15-180 seconds recommended.
+ */
+export function validateTikTokMeta(
+  description: string,
+  hashtags: string[],
+  duration: number,
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Error: description exceeds 2200 chars
+  if (description.length > 2200) {
+    errors.push({
+      code: "DESCRIPTION_TOO_LONG",
+      message: `Description exceeds 2200 characters (${description.length} chars)`,
+    });
+  }
+
+  // Warning: hashtags exceed 5
+  if (hashtags.length > 5) {
+    warnings.push({
+      code: "TOO_MANY_HASHTAGS",
+      message: `Video has ${hashtags.length} hashtags (recommended: max 5)`,
+    });
+  }
+
+  // Warning: duration too short
+  if (duration < 15) {
+    warnings.push({
+      code: "DURATION_TOO_SHORT",
+      message: `Duration is ${duration}s (recommended: 15-180 seconds)`,
+    });
+  }
+
+  // Warning: duration too long
+  if (duration > 180) {
+    warnings.push({
+      code: "DURATION_TOO_LONG",
+      message: `Duration is ${duration}s (recommended: 15-180 seconds)`,
+    });
+  }
+
+  // Warning: negative tone
+  if (containsNegativeTone(description)) {
+    warnings.push({
+      code: "NEGATIVE_TONE_INDICATORS",
+      message:
+        "Description contains negative/aggressive expressions. This may reduce distribution.",
+    });
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
+}
+
+/**
+ * Validate YouTube video metadata.
+ * Title max 100 chars (40-60 recommended), description max 5000 chars,
+ * tags total chars max 500 (10-15 tags recommended).
+ */
+export function validateYouTubeMeta(
+  title: string,
+  description: string,
+  tags: string[],
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Error: title exceeds 100 chars
+  if (title.length > 100) {
+    errors.push({
+      code: "TITLE_TOO_LONG",
+      message: `Title exceeds 100 characters (${title.length} chars)`,
+    });
+  }
+
+  // Error: description exceeds 5000 chars
+  if (description.length > 5000) {
+    errors.push({
+      code: "DESCRIPTION_TOO_LONG",
+      message: `Description exceeds 5000 characters (${description.length} chars)`,
+    });
+  }
+
+  // Error: total tag chars exceed 500
+  const totalTagChars = tags.join("").length;
+  if (totalTagChars > 500) {
+    errors.push({
+      code: "TAGS_TOTAL_TOO_LONG",
+      message: `Total tag characters exceed 500 (${totalTagChars} chars)`,
+    });
+  }
+
+  // Warning: title too short (under 40 chars)
+  if (title.length < 40 && title.length <= 100) {
+    warnings.push({
+      code: "TITLE_TOO_SHORT",
+      message: `Title is ${title.length} characters (recommended: 40-60 chars)`,
+    });
+  }
+
+  // Warning: title too long (over 60 chars but within 100)
+  if (title.length > 60 && title.length <= 100) {
+    warnings.push({
+      code: "TITLE_LENGTH_WARNING",
+      message: `Title is ${title.length} characters (recommended: 40-60 chars)`,
+    });
+  }
+
+  // Warning: too few tags (under 10)
+  if (tags.length < 10) {
+    warnings.push({
+      code: "TOO_FEW_TAGS",
+      message: `Video has ${tags.length} tags (recommended: 10-15)`,
+    });
+  }
+
+  // Warning: too many tags (over 15)
+  if (tags.length > 15) {
+    warnings.push({
+      code: "TOO_MANY_TAGS",
+      message: `Video has ${tags.length} tags (recommended: 10-15)`,
+    });
+  }
+
+  // Warning: negative tone
+  if (containsNegativeTone(title) || containsNegativeTone(description)) {
+    warnings.push({
+      code: "NEGATIVE_TONE_INDICATORS",
+      message:
+        "Content contains negative/aggressive expressions. This may reduce distribution.",
+    });
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
+}
+
+/**
+ * Validate podcast episode metadata.
+ * Title max 40 chars (warning), description 200-400 recommended,
+ * duration 15-30 minutes recommended.
+ */
+export function validatePodcastEpisode(
+  title: string,
+  description: string,
+  duration: number,
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Warning: title too long (over 40 chars)
+  if (title.length > 40) {
+    warnings.push({
+      code: "TITLE_TOO_LONG",
+      message: `Title is ${title.length} characters (recommended: max 40 chars)`,
+    });
+  }
+
+  // Warning: description too short
+  if (description.length < 200) {
+    warnings.push({
+      code: "DESCRIPTION_TOO_SHORT",
+      message: `Description is ${description.length} characters (recommended: 200-400 chars)`,
+    });
+  }
+
+  // Warning: description too long
+  if (description.length > 400) {
+    warnings.push({
+      code: "DESCRIPTION_TOO_LONG",
+      message: `Description is ${description.length} characters (recommended: 200-400 chars)`,
+    });
+  }
+
+  // Warning: duration too short (under 15 minutes)
+  if (duration < 15) {
+    warnings.push({
+      code: "DURATION_TOO_SHORT",
+      message: `Duration is ${duration} minutes (recommended: 15-30 minutes)`,
+    });
+  }
+
+  // Warning: duration too long (over 30 minutes)
+  if (duration > 30) {
+    warnings.push({
+      code: "DURATION_TOO_LONG",
+      message: `Duration is ${duration} minutes (recommended: 15-30 minutes)`,
+    });
+  }
+
+  // Warning: negative tone
+  if (containsNegativeTone(title) || containsNegativeTone(description)) {
+    warnings.push({
+      code: "NEGATIVE_TONE_INDICATORS",
+      message: "Content contains negative/aggressive expressions.",
+    });
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
+}
+
+/**
+ * Validate GitHub repository metadata.
+ * Name should be kebab-case, description max 350 chars,
+ * topics 5-10 recommended.
+ */
+export function validateGitHubRepo(
+  name: string,
+  description: string,
+  topics: string[],
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Error: description exceeds 350 chars
+  if (description.length > 350) {
+    errors.push({
+      code: "DESCRIPTION_TOO_LONG",
+      message: `Description exceeds 350 characters (${description.length} chars)`,
+    });
+  }
+
+  // Warning: name not kebab-case
+  if (!KEBAB_CASE_PATTERN.test(name)) {
+    warnings.push({
+      code: "NAME_NOT_KEBAB_CASE",
+      message: `Repository name "${name}" is not kebab-case (expected: lowercase with hyphens)`,
+    });
+  }
+
+  // Warning: too few topics (under 5)
+  if (topics.length < 5) {
+    warnings.push({
+      code: "TOO_FEW_TOPICS",
+      message: `Repository has ${topics.length} topics (recommended: 5-10)`,
+    });
+  }
+
+  // Warning: too many topics (over 10)
+  if (topics.length > 10) {
+    warnings.push({
+      code: "TOO_MANY_TOPICS",
+      message: `Repository has ${topics.length} topics (recommended: 5-10)`,
+    });
   }
 
   return {
