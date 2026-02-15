@@ -44,7 +44,7 @@ RUN pnpm install --prod --frozen-lockfile && \
     rm -rf /root/.local/share/pnpm/store
 
 # PM2設定ファイルをコピー
-COPY ecosystem.config.cjs ./
+COPY scripts/ops/ecosystem.config.cjs ./
 
 # 起動スクリプトをコピー（docker/ ディレクトリからの相対パス: docker build -f docker/Dockerfile . で実行）
 COPY docker/entrypoint.sh ./docker-entrypoint.sh
