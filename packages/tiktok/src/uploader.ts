@@ -4,6 +4,7 @@ import type {
   TiktokCreatorInfo,
   TiktokUploadResult,
   TiktokPublishStatusResult,
+  PublishVideoByUrlInput,
 } from "./types.js";
 
 const TIKTOK_API_BASE = "https://open.tiktokapis.com";
@@ -43,6 +44,13 @@ interface PublishStatusApiResponse {
   data?: {
     status: string;
     publish_id?: string;
+  };
+  error: { code: string; message: string };
+}
+
+interface VideoInitByUrlApiResponse {
+  data?: {
+    publish_id: string;
   };
   error: { code: string; message: string };
 }
@@ -163,7 +171,10 @@ export async function uploadVideo(
   // 4. Initialize video upload
   const videoSize = statSync(input.filePath).size;
   const effectiveChunkSize = Math.min(CHUNK_SIZE, videoSize);
-  const totalChunkCount = Math.max(1, Math.ceil(videoSize / effectiveChunkSize));
+  const totalChunkCount = Math.max(
+    1,
+    Math.ceil(videoSize / effectiveChunkSize),
+  );
 
   const initResult = await initVideoUpload({
     accessToken,
@@ -424,4 +435,137 @@ async function pollPublishStatus(params: {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Publish a video to TikTok using PULL_FROM_URL source.
+ * TikTok downloads the video directly from the provided URL.
+ *
+ * Flow:
+ * 1. Validate videoUrl
+ * 2. Auth via refreshTokenIfNeeded()
+ * 3. Query Creator Info for privacy level
+ * 4. POST /v2/post/publish/inbox/video/init/ with PULL_FROM_URL source
+ * 5. Poll publish status (no chunk upload needed)
+ */
+export async function publishVideoByUrl(
+  input: PublishVideoByUrlInput,
+): Promise<TiktokUploadResult> {
+  // 1. Validate videoUrl
+  if (!input.videoUrl) {
+    return {
+      success: false,
+      error: "videoUrl is required",
+    };
+  }
+
+  // 2. Auth
+  const authResult = await refreshTokenIfNeeded();
+  if (!authResult.success || !authResult.tokens) {
+    return {
+      success: false,
+      error: authResult.error || "Authentication failed",
+    };
+  }
+
+  const { accessToken } = authResult.tokens;
+
+  // 3. Query Creator Info for privacy level
+  const creatorResult = await queryCreatorInfo(accessToken);
+  if (!creatorResult.success || !creatorResult.creatorInfo) {
+    return {
+      success: false,
+      error: creatorResult.error || "Failed to query creator info",
+    };
+  }
+
+  const privacyLevel =
+    input.privacyLevel ||
+    selectBestPrivacyLevel(creatorResult.creatorInfo.privacyLevelOptions);
+
+  // 4. Initialize video by URL
+  const initResult = await initVideoByUrl({
+    accessToken,
+    videoUrl: input.videoUrl,
+  });
+
+  if (!initResult.success || !initResult.publishId) {
+    return {
+      success: false,
+      error: initResult.error || "Failed to initialize video by URL",
+    };
+  }
+
+  // 5. Poll publish status (no chunk upload needed for PULL_FROM_URL)
+  const statusResult = await pollPublishStatus({
+    accessToken,
+    publishId: initResult.publishId,
+  });
+
+  if (statusResult.status === "failed") {
+    return {
+      success: false,
+      publishId: initResult.publishId,
+      privacyLevel,
+      error: statusResult.error || "Publishing failed",
+    };
+  }
+
+  return {
+    success: true,
+    publishId: initResult.publishId,
+    privacyLevel,
+  };
+}
+
+/**
+ * Initialize video upload via Inbox endpoint with PULL_FROM_URL source.
+ * TikTok will download the video from the provided URL directly.
+ */
+async function initVideoByUrl(params: {
+  accessToken: string;
+  videoUrl: string;
+}): Promise<{
+  success: boolean;
+  publishId?: string;
+  error?: string;
+}> {
+  try {
+    const body = {
+      source_info: {
+        source: "PULL_FROM_URL",
+        video_url: params.videoUrl,
+      },
+    };
+
+    const response = await fetch(
+      `${TIKTOK_API_BASE}/v2/post/publish/inbox/video/init/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${params.accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+
+    const data = (await response.json()) as VideoInitByUrlApiResponse;
+
+    if (data.error.code !== "ok" || !data.data) {
+      return {
+        success: false,
+        error: data.error.message || `Init error: ${data.error.code}`,
+      };
+    }
+
+    return {
+      success: true,
+      publishId: data.data.publish_id,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[TikTok] Video init by URL error:", message);
+    return { success: false, error: message };
+  }
 }
