@@ -4,17 +4,7 @@
 
 ## キャラクター設定
 
-### つくよみちゃん（tsukuyomi）
-- 役割: メインパーソナリティ
-- 性格: 明るく知的、丁寧語で話す
-- 口調: 「〜ですね」「〜なんですよ」
-- TTS速度: 1.0
-
-### 銀芽（ginga）
-- 役割: アシスタント・聞き役
-- 性格: カジュアル、素朴な疑問を投げかける
-- 口調: 「〜だよね」「〜なの？」
-- TTS速度: 1.15
+@characters/tsukuyomi.md と @characters/ginga.md を参照。
 
 ## 構成ルール
 
@@ -61,8 +51,14 @@ script.json として以下のJSON形式で出力:
     {
       "type": "opening",
       "segments": [
-        { "speaker": "tsukuyomi", "text": "おはようございます！つくよみちゃんです。" },
-        { "speaker": "ginga", "text": "銀芽です！今日もAIニュースお届けします。" }
+        {
+          "speaker": "tsukuyomi",
+          "text": "おはようございます！つくよみちゃんです。"
+        },
+        {
+          "speaker": "ginga",
+          "text": "銀芽です！今日もAIニュースお届けします。"
+        }
       ]
     },
     {
