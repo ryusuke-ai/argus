@@ -23,6 +23,7 @@ import { publishToInstagram } from "./instagram-publisher.js";
 import { buildPublishedBlocks } from "../ui/reporter.js";
 import { validateXPost, validateThread } from "../ui/validator.js";
 import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
+import { normalizeMediaPath } from "../generation/artifact-extractors.js";
 
 export async function handleSnsPublish(
   postId: number,
@@ -67,7 +68,7 @@ export async function handleSnsPublish(
         thumbnailPath?: string;
       };
       const result = await uploadToYouTube({
-        videoPath: content.videoPath || "",
+        videoPath: normalizeMediaPath(content.videoPath || ""),
         title: content.title,
         description: content.description,
         tags: content.tags || [],
@@ -305,7 +306,9 @@ export async function handleSnsPublish(
         text?: string;
       };
       const result = await publishToTikTok({
-        videoPath: content.videoPath || content.videoUrl || "",
+        videoPath: normalizeMediaPath(
+          content.videoPath || content.videoUrl || "",
+        ),
         caption: content.title || content.text || "",
       });
 
@@ -588,5 +591,29 @@ export async function handleSnsPublish(
     );
   } catch (error) {
     console.error("[sns] Publish error:", error);
+    const channelId = body.channel?.id;
+    const messageTs = body.message?.ts;
+    if (channelId && messageTs) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      await swapReaction(client, channelId, messageTs, "eyes", "x").catch(
+        () => {},
+      );
+      await client.chat
+        .update({
+          channel: channelId,
+          ts: messageTs,
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: `*投稿処理でエラーが発生しました*\n${errorMsg}`,
+              },
+            },
+          ],
+          text: `投稿処理でエラーが発生しました: ${errorMsg}`,
+        })
+        .catch((e) => console.error("[sns] Failed to send error to Slack:", e));
+    }
   }
 }

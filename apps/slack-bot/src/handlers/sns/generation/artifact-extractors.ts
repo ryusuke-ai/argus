@@ -1,4 +1,29 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { AgentResult } from "@argus/agent-core";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const PROJECT_ROOT = resolve(__dirname, "../../../../../..");
+
+/**
+ * 抽出されたメディアパスを正規化する。
+ * サブエージェントが `/agent-output/...` のような不完全パスを返した場合、
+ * プロジェクトルートの `.claude/` 配下で解決を試みる。
+ */
+export function normalizeMediaPath(extractedPath: string): string {
+  if (!extractedPath) return "";
+  if (existsSync(extractedPath)) return extractedPath;
+
+  const agentOutputIdx = extractedPath.indexOf("agent-output/");
+  if (agentOutputIdx !== -1) {
+    const relativePart = extractedPath.slice(agentOutputIdx);
+    const resolved = resolve(PROJECT_ROOT, ".claude", relativePart);
+    if (existsSync(resolved)) return resolved;
+  }
+
+  return extractedPath;
+}
 
 /**
  * Claude SDK の実行結果からビデオパスを抽出する。
@@ -16,7 +41,7 @@ export function extractVideoPath(result: AgentResult): string {
       const toolMatch = resultStr.match(
         /(\/[^\s"']*agent-output\/[^\s"']*\.mp4)/,
       );
-      if (toolMatch) return toolMatch[1];
+      if (toolMatch) return normalizeMediaPath(toolMatch[1]);
     }
   }
 
@@ -30,11 +55,11 @@ export function extractVideoPath(result: AgentResult): string {
   const agentOutputMatch = responseText.match(
     /(\/[^\s`"']*agent-output\/[^\s`"']*\.mp4)/,
   );
-  if (agentOutputMatch) return agentOutputMatch[1];
+  if (agentOutputMatch) return normalizeMediaPath(agentOutputMatch[1]);
 
   // 汎用: 任意の絶対パスの .mp4
   const generalMatch = responseText.match(/(\/[^\s`"']*\.mp4)/);
-  if (generalMatch) return generalMatch[1];
+  if (generalMatch) return normalizeMediaPath(generalMatch[1]);
 
   return "";
 }
@@ -49,7 +74,7 @@ export function extractImagePath(result: AgentResult): string {
       const toolMatch = resultStr.match(
         /(\/[^\s"']*agent-output\/[^\s"']*\.(png|webp|jpg))/,
       );
-      if (toolMatch) return toolMatch[1];
+      if (toolMatch) return normalizeMediaPath(toolMatch[1]);
     }
   }
 
@@ -61,10 +86,10 @@ export function extractImagePath(result: AgentResult): string {
   const agentOutputMatch = responseText.match(
     /(\/[^\s`"']*agent-output\/[^\s`"']*\.(png|webp|jpg))/,
   );
-  if (agentOutputMatch) return agentOutputMatch[1];
+  if (agentOutputMatch) return normalizeMediaPath(agentOutputMatch[1]);
 
   const generalMatch = responseText.match(/(\/[^\s`"']*\.(png|webp|jpg))/);
-  if (generalMatch) return generalMatch[1];
+  if (generalMatch) return normalizeMediaPath(generalMatch[1]);
 
   return "";
 }
