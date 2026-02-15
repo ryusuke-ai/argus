@@ -9,7 +9,7 @@ set -euo pipefail
 # 環境設定
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ARGUS_ROOT="$(dirname "$SCRIPT_DIR")"
+ARGUS_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LOG_DIR="${ARGUS_ROOT}/logs"
 LOG_FILE="${LOG_DIR}/satoru-daily-news-$(date +%Y%m%d).log"
 ALERT_CHANNEL="${SLACK_NOTIFICATION_CHANNEL:-}"
