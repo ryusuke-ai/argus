@@ -28,3 +28,8 @@ export interface TiktokCreatorInfo {
   stitchDisabled: boolean;
   maxVideoPostDurationSec: number;
 }
+
+export interface PublishVideoByUrlInput {
+  videoUrl: string;
+  privacyLevel?: string;
+}
