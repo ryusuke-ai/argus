@@ -8,7 +8,7 @@ import type {
 
 const TIKTOK_API_BASE = "https://open.tiktokapis.com";
 const POLL_INTERVAL_MS = 5_000;
-const MAX_POLL_ATTEMPTS = 12; // 12 * 5s = 60s timeout
+const MAX_POLL_ATTEMPTS = 36; // 36 * 5s = 180s timeout
 
 const PRIVACY_LEVEL_PRIORITY = [
   "PUBLIC_TO_EVERYONE",

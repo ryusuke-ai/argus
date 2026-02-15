@@ -26,6 +26,7 @@ import type {
 } from "../types.js";
 import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
 import { getPlatformLabel } from "../scheduling/scheduler-utils.js";
+import { normalizeMediaPath } from "../generation/artifact-extractors.js";
 
 /**
  * スケジュール済み投稿を毎分チェックし、投稿時刻が到来したものを自動投稿する。
@@ -247,13 +248,15 @@ export async function publishPost(
         thumbnailPath?: string;
       };
       const result = await uploadToYouTube({
-        videoPath: content.videoPath || "",
+        videoPath: normalizeMediaPath(content.videoPath || ""),
         title: content.title,
         description: content.description,
         tags: content.tags || [],
         categoryId: "28",
         privacyStatus: "public",
-        thumbnailPath: content.thumbnailPath,
+        thumbnailPath: content.thumbnailPath
+          ? normalizeMediaPath(content.thumbnailPath)
+          : undefined,
       });
       return { success: result.success, url: result.url, error: result.error };
     }
