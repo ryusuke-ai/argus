@@ -455,17 +455,18 @@ await this.server.connect(new StdioServerTransport());
 | 固有機能    | `search_lessons`     | `personal_context`（パーソナリティ構造化取得） |
 | シード      | なし                 | **ファイルシステムからの一括投入**             |
 
-### 特徴的コード: Markdown の構造的パース
+### 特徴的コード: ファイルベースのセクション取得
 
 ```typescript
-// personal の service.ts — Markdown を H2 で分割してセクション検索
-const sections = this.splitByH2(content);
-const matchers: Record<PersonalitySection, string[]> = {
-  values: ["価値観"],
-  strengths: ["強み", "得意"],
-  weaknesses: ["落とし穴", "苦手"],
-  habits: [], // 別ファイルから取得
-};
+// personal の service.ts — ファイル名がセクション名に直接対応
+// self/{section}.md を直接読むだけのシンプルな設計
+type PersonalitySection =
+  | "identity" // self/identity.md
+  | "values" // self/values.md
+  | "strengths" // self/strengths.md (弱みも含む)
+  | "thinking" // self/thinking.md
+  | "preferences" // self/preferences.md (好き嫌い)
+  | "routines"; // self/routines.md
 ```
 
 ### 理解度チェック

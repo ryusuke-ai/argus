@@ -4,15 +4,15 @@ import type { PersonalService, NoteEntry, SearchResult } from "./types.js";
 
 describe("PersonalMcpServer", () => {
   const mockNote: NoteEntry = {
-    path: "personality/value.md",
-    category: "personality",
-    name: "value",
+    path: "self/values.md",
+    category: "self",
+    name: "values",
     content: "Test content",
   };
 
   const mockSearchResult: SearchResult = {
-    path: "personality/value.md",
-    name: "value",
+    path: "self/values.md",
+    name: "values",
     matches: [
       {
         line: 1,
@@ -23,9 +23,9 @@ describe("PersonalMcpServer", () => {
   };
 
   const mockListEntry = {
-    path: "personality/value.md",
-    name: "value",
-    category: "personality",
+    path: "self/values.md",
+    name: "values",
+    category: "self",
   };
 
   const createMockService = (): PersonalService => ({
@@ -82,19 +82,19 @@ describe("PersonalMcpServer", () => {
 
     it("should execute personal_read tool", async () => {
       const result = await server.handleToolCall("personal_read", {
-        path: "personality/value.md",
+        path: "self/values.md",
       });
 
-      expect(mockService.read).toHaveBeenCalledWith("personality/value.md");
+      expect(mockService.read).toHaveBeenCalledWith("self/values.md");
       expect(result).toEqual(mockNote);
     });
 
     it("should execute personal_list tool", async () => {
       const result = await server.handleToolCall("personal_list", {
-        category: "personality",
+        category: "self",
       });
 
-      expect(mockService.list).toHaveBeenCalledWith("personality");
+      expect(mockService.list).toHaveBeenCalledWith("self");
       expect(result).toEqual([mockListEntry]);
     });
 
@@ -123,13 +123,13 @@ describe("PersonalMcpServer", () => {
 
     it("should execute personal_add tool", async () => {
       const result = await server.handleToolCall("personal_add", {
-        category: "personality",
+        category: "self",
         name: "new-note",
         content: "# New Note\n\nContent here",
       });
 
       expect(mockService.add).toHaveBeenCalledWith(
-        "personality",
+        "self",
         "new-note",
         "# New Note\n\nContent here",
       );
@@ -138,13 +138,13 @@ describe("PersonalMcpServer", () => {
 
     it("should execute personal_update tool", async () => {
       const result = await server.handleToolCall("personal_update", {
-        path: "personality/value.md",
+        path: "self/values.md",
         content: "Updated content",
         mode: "append",
       });
 
       expect(mockService.update).toHaveBeenCalledWith(
-        "personality/value.md",
+        "self/values.md",
         "Updated content",
         "append",
       );

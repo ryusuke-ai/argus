@@ -38,29 +38,29 @@ description: プレゼン資料を自動生成する。「プレゼン資料を�
 
 ## Phase参照
 
-| Phase | 詳細手順 | 実行方法 | 出力 |
-|-------|---------|----------|------|
-| Phase 1 | `phases/phase1-structure.md` | 直接実行（Claude） | structure.json |
-| Phase 2 | `phases/phase2-content.md` | **Task → サブエージェント** | slides-content.json |
-| Phase 3 | `phases/phase3-design.md` | **Task → サブエージェント** | design.json |
-| Phase 4 | `phases/phase4-render.md` | スクリプト + スキル | slides.md, images/, slides.pdf |
+| Phase   | 詳細手順                    | 実行方法                    | 出力                           |
+| ------- | --------------------------- | --------------------------- | ------------------------------ |
+| Phase 1 | @phases/phase1-structure.md | 直接実行（Claude）          | structure.json                 |
+| Phase 2 | @phases/phase2-content.md   | **Task → サブエージェント** | slides-content.json            |
+| Phase 3 | @phases/phase3-design.md    | **Task → サブエージェント** | design.json                    |
+| Phase 4 | @phases/phase4-render.md    | スクリプト + スキル         | slides.md, images/, slides.pdf |
 
 ---
 
 ## レイアウト一覧
 
-| レイアウト | 用途 | 必須フィールド | 推奨使用率 |
-|-----------|------|--------------|-----------|
-| `title` | 表紙 | heading, subtitle | 構造用（比率対象外） |
-| `section` | セクション区切り | heading | 構造用（比率対象外） |
-| `text-only` | テキストのみ | heading, bullets | **最大20%**（最終手段） |
-| `text-and-image` | テキスト+図解 | heading, bullets, visual | 積極使用（40%+目標） |
-| `image-full` | 全面画像 | heading, visual | 積極使用 |
-| `comparison` | 2列比較 | heading, leftColumn, rightColumn | 比較要素に必須 |
-| `quote` | 引用 | heading, quote, attribution | 適宜 |
-| `key-number` | 数値強調 | heading + design.json の keyNumber | 数値データに必須 |
-| `timeline` | 時系列 | heading, bullets（**太字** で時期を示す） | 時系列データに必須 |
-| `icon-grid` | カード型グリッド | heading, bullets（**太字** でラベル） | 3-4項目列挙に必須 |
+| レイアウト       | 用途             | 必須フィールド                            | 推奨使用率              |
+| ---------------- | ---------------- | ----------------------------------------- | ----------------------- |
+| `title`          | 表紙             | heading, subtitle                         | 構造用（比率対象外）    |
+| `section`        | セクション区切り | heading                                   | 構造用（比率対象外）    |
+| `text-only`      | テキストのみ     | heading, bullets                          | **最大20%**（最終手段） |
+| `text-and-image` | テキスト+図解    | heading, bullets, visual                  | 積極使用（40%+目標）    |
+| `image-full`     | 全面画像         | heading, visual                           | 積極使用                |
+| `comparison`     | 2列比較          | heading, leftColumn, rightColumn          | 比較要素に必須          |
+| `quote`          | 引用             | heading, quote, attribution               | 適宜                    |
+| `key-number`     | 数値強調         | heading + design.json の keyNumber        | 数値データに必須        |
+| `timeline`       | 時系列           | heading, bullets（**太字** で時期を示す） | 時系列データに必須      |
+| `icon-grid`      | カード型グリッド | heading, bullets（**太字** でラベル）     | 3-4項目列挙に必須       |
 
 ### ビジュアル比率ルール
 
@@ -93,40 +93,40 @@ agent-output/presentation-{YYYYMMDD}-{topic}/
 
 ### プロンプト（prompts/）
 
-| ファイル | 用途 |
-|---------|------|
-| `structure-prompt.md` | 構成設計 |
-| `content-prompt.md` | コンテンツ生成 |
-| `design-prompt.md` | デザイン設計 |
+| ファイル                     | 用途           |
+| ---------------------------- | -------------- |
+| @prompts/structure-prompt.md | 構成設計       |
+| @prompts/content-prompt.md   | コンテンツ生成 |
+| @prompts/design-prompt.md    | デザイン設計   |
 
 ### スキーマ（schemas/）
 
-| ファイル | 用途 |
-|---------|------|
-| `structure.schema.json` | Phase 1 |
-| `slides-content.schema.json` | Phase 2 |
-| `design.schema.json` | Phase 3 |
-| `zod-schemas.js` | Zodバリデーション |
+| ファイル                            | 用途              |
+| ----------------------------------- | ----------------- |
+| @schemas/structure.schema.json      | Phase 1           |
+| @schemas/slides-content.schema.json | Phase 2           |
+| @schemas/design.schema.json         | Phase 3           |
+| @schemas/zod-schemas.js             | Zodバリデーション |
 
 ### スクリプト（scripts/）
 
-| スクリプト | 用途 |
-|-----------|------|
-| `merge-slides.js` | Phase 4-2: Marp Markdown組み立て（design.json対応） |
-| `render-slides.js` | Phase 4-3: PDF/HTMLレンダリング |
-| `validate-json.js` | JSONバリデーション |
+| スクリプト         | 用途                                                |
+| ------------------ | --------------------------------------------------- |
+| `merge-slides.js`  | Phase 4-2: Marp Markdown組み立て（design.json対応） |
+| `render-slides.js` | Phase 4-3: PDF/HTMLレンダリング                     |
+| `validate-json.js` | JSONバリデーション                                  |
 
 ### テーマ（themes/）
 
-| ファイル | 用途 |
-|---------|------|
+| ファイル      | 用途                 |
+| ------------- | -------------------- |
 | `default.css` | デフォルトMarpテーマ |
 
 ### 外部スキル
 
-| スキル | 用途 |
-|-------|------|
-| `mermaid-to-webp` | フロー図・シーケンス図 |
-| `svg-diagram` | カスタム図解 |
-| `gen-ai-image` | 写真的な画像 |
-| `gen-rich-image` | 複雑な概念図（最終手段） |
+| スキル            | 用途                     |
+| ----------------- | ------------------------ |
+| `mermaid-to-webp` | フロー図・シーケンス図   |
+| `svg-diagram`     | カスタム図解             |
+| `gen-ai-image`    | 写真的な画像             |
+| `gen-rich-image`  | 複雑な概念図（最終手段） |
