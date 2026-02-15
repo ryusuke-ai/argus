@@ -1,0 +1,45 @@
+# Node
+node_modules
+.pnpm-store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next
+.vercel
+
+# Build
+dist
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Testing
+coverage
+
+# Misc
+.DS_Store
+*.log
+
+# Worktrees
+.worktrees
+
+# Docs
+.docs
+
+# Claude Code work directories (keep skills/rules/agents for runtime)
+.claude/agent-workspace
+.claude/agent-output
+.claude/.docs

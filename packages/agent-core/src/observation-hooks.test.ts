@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createDBObservationHooks, type ObservationDB } from "./observation-hooks.js";
+import {
+  createDBObservationHooks,
+  type ObservationDB,
+} from "./observation-hooks.js";
 
 function createMockDB() {
-  const insertedTasks: any[] = [];
-  const updatedTasks: any[] = [];
-  const insertedLessons: any[] = [];
+  const insertedTasks: Record<string, unknown>[] = [];
+  const updatedTasks: Record<string, unknown>[] = [];
+  const insertedLessons: Record<string, unknown>[] = [];
 
   const tasksTable = { id: "tasks.id" };
   const lessonsTable = { id: "lessons.id" };
@@ -13,8 +16,8 @@ function createMockDB() {
 
   const mockDB: ObservationDB = {
     db: {
-      insert: vi.fn((table: any) => ({
-        values: vi.fn((values: any) => {
+      insert: vi.fn((table: unknown) => ({
+        values: vi.fn((values: Record<string, unknown>) => {
           if (table === tasksTable) {
             const task = { id: `task-${++taskIdCounter}`, ...values };
             insertedTasks.push(task);
@@ -24,8 +27,8 @@ function createMockDB() {
           return { returning: vi.fn(async () => [values]) };
         }),
       })),
-      update: vi.fn((_table: any) => ({
-        set: vi.fn((values: any) => {
+      update: vi.fn((_table: unknown) => ({
+        set: vi.fn((values: Record<string, unknown>) => {
           const entry = { ...values };
           updatedTasks.push(entry);
           return { where: vi.fn(async () => {}) };
@@ -34,7 +37,7 @@ function createMockDB() {
     },
     tasks: tasksTable,
     lessons: lessonsTable,
-    eq: vi.fn((col: any, val: any) => ({ col, val })),
+    eq: vi.fn((col: unknown, val: unknown) => ({ col, val })),
   };
 
   return { mockDB, insertedTasks, updatedTasks, insertedLessons };
@@ -42,9 +45,9 @@ function createMockDB() {
 
 describe("createDBObservationHooks", () => {
   let mockDB: ReturnType<typeof createMockDB>["mockDB"];
-  let insertedTasks: any[];
-  let updatedTasks: any[];
-  let insertedLessons: any[];
+  let insertedTasks: Record<string, unknown>[];
+  let updatedTasks: Record<string, unknown>[];
+  let insertedLessons: Record<string, unknown>[];
 
   beforeEach(() => {
     const mocks = createMockDB();
@@ -218,7 +221,9 @@ describe("createDBObservationHooks", () => {
         ...mockDB.db,
         insert: vi.fn(() => ({
           values: vi.fn(() => ({
-            returning: vi.fn(async () => { throw new Error("DB error"); }),
+            returning: vi.fn(async () => {
+              throw new Error("DB error");
+            }),
           })),
         })),
       },

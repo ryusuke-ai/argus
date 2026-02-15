@@ -1,3 +1,4 @@
+import type { BlockAction } from "@slack/bolt";
 import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
@@ -24,15 +25,25 @@ import {
 export function setupSnsActions(): void {
   // 投稿ボタン
   app.action("sns_publish", async ({ ack, body, client }) => {
-    await handleSnsPublish(0, ack, client, body as any);
+    const ba = body as BlockAction;
+    await handleSnsPublish(0, ack, client, {
+      actions: ba.actions?.map((a) => ({
+        value: "value" in a ? (a.value as string) : undefined,
+      })),
+      channel: ba.channel ? { id: ba.channel.id } : undefined,
+      message: ba.message ? { ts: ba.message.ts } : undefined,
+      trigger_id: ba.trigger_id,
+    });
   });
 
   // 編集ボタン → モーダルを開く
   app.action("sns_edit", async ({ ack, body, client }) => {
     await ack();
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const ba = body as BlockAction;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     const [post] = await db
@@ -43,7 +54,7 @@ export function setupSnsActions(): void {
 
     if (!post) return;
 
-    const triggerId = (body as any).trigger_id;
+    const triggerId = ba.trigger_id;
     if (!triggerId) return;
 
     const content = post.content as unknown as {
@@ -58,8 +69,8 @@ export function setupSnsActions(): void {
         callback_id: "sns_edit_submit",
         private_metadata: JSON.stringify({
           postId,
-          channelId: (body as any).channel?.id,
-          messageTs: (body as any).message?.ts,
+          channelId: ba.channel?.id,
+          messageTs: ba.message?.ts,
         }),
         title: { type: "plain_text", text: "投稿を編集" },
         submit: { type: "plain_text", text: "保存" },
@@ -84,12 +95,13 @@ export function setupSnsActions(): void {
   // スレッド編集ボタン
   app.action("sns_edit_thread", async ({ action, ack, client, body }) => {
     await ack();
+    const ba = body as BlockAction;
     const postId = "value" in action ? action.value : undefined;
     if (!postId) return;
 
     await client.chat.postMessage({
-      channel: body.channel?.id || "",
-      thread_ts: (body as any).message?.ts || "",
+      channel: ba.channel?.id || "",
+      thread_ts: ba.message?.ts || "",
       text: "修正内容を返信してください。返信内容に基づいてコンテンツを再生成します。",
     });
   });
@@ -98,14 +110,16 @@ export function setupSnsActions(): void {
   app.action("sns_approve_metadata", async ({ ack, body, client }) => {
     await ack();
 
-    const channelId = (body as any).channel?.id;
-    const messageTs = (body as any).message?.ts;
+    const ba = body as BlockAction;
+    const channelId = ba.channel?.id;
+    const messageTs = ba.message?.ts;
     if (channelId && messageTs) {
-      await addReaction(client as any, channelId, messageTs, "eyes");
+      await addReaction(client, channelId, messageTs, "eyes");
     }
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     try {
@@ -145,19 +159,21 @@ export function setupSnsActions(): void {
   app.action("sns_approve_script", async ({ ack, body, client }) => {
     await ack();
 
-    const channelIdForReaction = (body as any).channel?.id;
-    const messageTsForReaction = (body as any).message?.ts;
+    const ba = body as BlockAction;
+    const channelIdForReaction = ba.channel?.id;
+    const messageTsForReaction = ba.message?.ts;
     if (channelIdForReaction && messageTsForReaction) {
       await addReaction(
-        client as any,
+        client,
         channelIdForReaction,
         messageTsForReaction,
         "eyes",
       );
     }
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     const [post] = await db
@@ -169,10 +185,10 @@ export function setupSnsActions(): void {
     if (!post) return;
 
     const content = post.content as unknown as YouTubeMetadataContent & {
-      script?: any;
+      script?: Record<string, unknown>;
     };
-    const channelId = (body as any).channel?.id;
-    const messageTs = (body as any).message?.ts;
+    const channelId = ba.channel?.id;
+    const messageTs = ba.message?.ts;
 
     try {
       await db
@@ -212,14 +228,16 @@ export function setupSnsActions(): void {
   app.action("sns_approve_tiktok", async ({ ack, body, client }) => {
     await ack();
 
-    const channelId = (body as any).channel?.id;
-    const messageTs = (body as any).message?.ts;
+    const ba = body as BlockAction;
+    const channelId = ba.channel?.id;
+    const messageTs = ba.message?.ts;
     if (channelId && messageTs) {
-      await addReaction(client as any, channelId, messageTs, "eyes");
+      await addReaction(client, channelId, messageTs, "eyes");
     }
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     try {
@@ -260,19 +278,21 @@ export function setupSnsActions(): void {
   app.action("sns_approve_ig_content", async ({ ack, body, client }) => {
     await ack();
 
-    const channelIdForReaction = (body as any).channel?.id;
-    const messageTsForReaction = (body as any).message?.ts;
+    const ba = body as BlockAction;
+    const channelIdForReaction = ba.channel?.id;
+    const messageTsForReaction = ba.message?.ts;
     if (channelIdForReaction && messageTsForReaction) {
       await addReaction(
-        client as any,
+        client,
         channelIdForReaction,
         messageTsForReaction,
         "eyes",
       );
     }
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     const [post] = await db
@@ -287,8 +307,8 @@ export function setupSnsActions(): void {
       imagePrompt?: string;
       imageUrl?: string;
     };
-    const channelId = (body as any).channel?.id;
-    const messageTs = (body as any).message?.ts;
+    const channelId = ba.channel?.id;
+    const messageTs = ba.message?.ts;
 
     try {
       await db
@@ -331,14 +351,16 @@ export function setupSnsActions(): void {
   app.action("sns_approve_podcast", async ({ ack, body, client }) => {
     await ack();
 
-    const channelId = (body as any).channel?.id;
-    const messageTs = (body as any).message?.ts;
+    const ba = body as BlockAction;
+    const channelId = ba.channel?.id;
+    const messageTs = ba.message?.ts;
     if (channelId && messageTs) {
-      await addReaction(client as any, channelId, messageTs, "eyes");
+      await addReaction(client, channelId, messageTs, "eyes");
     }
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     try {
@@ -378,8 +400,10 @@ export function setupSnsActions(): void {
   app.action("sns_skip", async ({ ack, body, client }) => {
     await ack();
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const ba = body as BlockAction;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     try {
@@ -388,8 +412,8 @@ export function setupSnsActions(): void {
         .set({ status: "skipped", updatedAt: new Date() })
         .where(eq(snsPosts.id, postId));
 
-      const channelId = (body as any).channel?.id;
-      const messageTs = (body as any).message?.ts;
+      const channelId = ba.channel?.id;
+      const messageTs = ba.message?.ts;
       if (channelId && messageTs) {
         const blocks = buildSkippedBlocks();
         await client.chat.update({
@@ -398,7 +422,7 @@ export function setupSnsActions(): void {
           blocks,
           text: "スキップ済み",
         });
-        await addReaction(client as any, channelId, messageTs, "fast_forward");
+        await addReaction(client, channelId, messageTs, "fast_forward");
       }
       // Canvas 更新
       updateSnsCanvas().catch((e) =>
@@ -413,8 +437,10 @@ export function setupSnsActions(): void {
   app.action("sns_schedule", async ({ ack, body, client }) => {
     await ack();
 
-    const action = (body as any).actions?.[0];
-    const postId = action?.value;
+    const ba = body as BlockAction;
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
     if (!postId) return;
 
     const [post] = await db
@@ -444,8 +470,8 @@ export function setupSnsActions(): void {
         })
         .where(eq(snsPosts.id, postId));
 
-      const channelId = (body as any).channel?.id;
-      const messageTs = (body as any).message?.ts;
+      const channelId = ba.channel?.id;
+      const messageTs = ba.message?.ts;
       if (channelId && messageTs) {
         const platformLabels: Record<string, string> = {
           x: "X",
@@ -467,7 +493,7 @@ export function setupSnsActions(): void {
           blocks,
           text: `${platformLabel} のスケジュール投稿が確定しました (${timeLabel})`,
         });
-        await addReaction(client as any, channelId, messageTs, "clock3");
+        await addReaction(client, channelId, messageTs, "clock3");
       }
       // Canvas 更新
       updateSnsCanvas().catch((e) =>

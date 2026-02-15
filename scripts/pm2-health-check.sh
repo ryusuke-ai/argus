@@ -36,7 +36,7 @@ fi
 # Get PM2 process list in JSON
 pm2_json=$(npx pm2 jlist 2>/dev/null)
 if [ -z "$pm2_json" ] || [ "$pm2_json" = "[]" ]; then
-  if [ -f "$ARGUS_DIR/ecosystem.local.config.cjs" ]; then
+  if [ -f "$ARGUS_DIR/scripts/ops/ecosystem.local.config.cjs" ]; then
     notify_slack ":warning: *PM2 Health Check*\nPM2 has no running processes. All Argus services may be down."
   fi
   exit 0

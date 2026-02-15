@@ -30,7 +30,7 @@ export default tseslint.config(
   },
   // CJS files (postcss, tailwind, ecosystem configs)
   {
-    files: ["**/*.cjs", "ecosystem.config.js"],
+    files: ["**/*.cjs"],
     languageOptions: {
       globals: {
         module: "readonly",
@@ -39,16 +39,6 @@ export default tseslint.config(
         __filename: "readonly",
         process: "readonly",
         exports: "readonly",
-      },
-    },
-  },
-  // Node.js files that use process
-  {
-    files: ["ecosystem.config.js"],
-    languageOptions: {
-      globals: {
-        process: "readonly",
-        module: "readonly",
       },
     },
   },

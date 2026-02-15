@@ -2,14 +2,14 @@
  * PM2 ecosystem config for local Mac development/production.
  *
  * Usage:
- *   pnpm build && pm2 start ecosystem.local.config.cjs
+ *   pnpm build && pm2 start scripts/ops/ecosystem.local.config.cjs
  *   pm2 logs
  *   pm2 stop all
  */
 const fs = require("fs");
 const path = require("path");
 
-const ROOT = __dirname;
+const ROOT = path.resolve(__dirname, "../..");
 const LOGS_DIR = path.join(ROOT, "logs");
 
 // Ensure logs directory exists
