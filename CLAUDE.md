@@ -29,7 +29,7 @@ pnpm monorepo (`@argus/` スコープ):
 
 依存: `slack-bot` → `agent-core`, `db`, `gmail`, `google-calendar` / `dashboard` → `agent-core`, `db` / `orchestrator` → `agent-core`, `db`, `knowledge`, `gmail`, `google-calendar` / `knowledge` → `db` / `google-calendar` → `gmail`
 
-セッション設計・実行ループ・観測・Memory中心設計・権限分離の詳細: @.claude/rules/architecture.md
+セッション設計・実行ループ・観測・Memory中心設計・権限分離の詳細は .claude/rules/architecture.md を参照
 
 ## .claude/ ディレクトリ
 
@@ -54,7 +54,7 @@ pnpm monorepo (`@argus/` スコープ):
 
 ## Conventions
 
-詳細: @.claude/rules/coding-conventions.md
+詳細は .claude/rules/coding-conventions.md を参照
 
 - **ESM統一** — `import/export`、`node:` プレフィックス、パッケージ内は `.js` 拡張子付きimport
 - **ファイル名**: kebab-case / **コンポーネント**: PascalCase / **DBカラム**: snake_case
@@ -71,4 +71,4 @@ Slack にはファイルパスではなく URL を貼る。
 ## Deploy
 
 Railway VPS (GitHub連携自動デプロイ) + Cloudflare Tunnel + Access (メール認証)
-詳細: @docs/DEPLOYMENT.md
+詳細: docs/DEPLOYMENT.md

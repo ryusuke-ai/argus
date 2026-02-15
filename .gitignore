@@ -84,6 +84,9 @@ zenn-content/
 .DS_Store
 Thumbs.db
 
+# MCP config (contains local paths)
+.mcp.json
+
 # IDE
 .vscode/
 .idea/
