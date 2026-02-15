@@ -9,6 +9,12 @@ import {
   validateXPost,
   validateThread,
   validateArticle,
+  validateThreadsPost,
+  validateInstagramPost,
+  validateTikTokMeta,
+  validateYouTubeMeta,
+  validatePodcastEpisode,
+  validateGitHubRepo,
 } from "./ui/validator.js";
 import {
   buildXPostBlocks,
@@ -455,6 +461,13 @@ async function generateYouTubeSuggestionManual(
 
   const content = result.content;
 
+  // バリデーション
+  const validation = validateYouTubeMeta(
+    content.title,
+    content.description,
+    content.tags || [],
+  );
+
   // DB に挿入
   const [post] = await db
     .insert(snsPosts)
@@ -475,6 +488,7 @@ async function generateYouTubeSuggestionManual(
     category: content.metadata.category,
     duration: content.metadata.estimatedDuration,
     videoUrl: "",
+    warnings: validation.warnings,
   });
 
   await client.chat.postMessage({

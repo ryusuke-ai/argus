@@ -6,6 +6,11 @@ import {
   validateXPost,
   validateThread,
   validateArticle,
+  validateThreadsPost,
+  validateTikTokMeta,
+  validateYouTubeMeta,
+  validateGitHubRepo,
+  validatePodcastEpisode,
 } from "../ui/validator.js";
 import {
   buildXPostBlocks,
@@ -292,6 +297,13 @@ export async function generateYouTubeSuggestion(
     }
 
     const content = result.content;
+
+    const validation = validateYouTubeMeta(
+      content.title,
+      content.description,
+      content.tags || [],
+    );
+
     const scheduledAt = getNextOptimalTime("youtube");
     const scheduledTime = formatScheduledTime(scheduledAt);
 
@@ -307,6 +319,7 @@ export async function generateYouTubeSuggestion(
       category: content.metadata.category,
       duration: content.metadata.estimatedDuration,
       videoUrl: "",
+      warnings: validation.warnings,
     });
 
     const msgResult = await client.chat.postMessage({
@@ -371,6 +384,8 @@ export async function generateThreadsSuggestion(
       return;
     }
 
+    const validation = validateThreadsPost(postText);
+
     const scheduledAt = suggestedAt || getNextOptimalTime("threads");
     const scheduledTime = formatScheduledTime(scheduledAt);
 
@@ -385,6 +400,7 @@ export async function generateThreadsSuggestion(
       text: postText,
       category,
       platformLabel: "Threads 投稿案",
+      warnings: validation.warnings,
       scheduledTime: `推奨投稿時間: ${scheduledTime}`,
     });
 
@@ -434,6 +450,12 @@ export async function generateTikTokSuggestion(
 
     const content = result.content;
 
+    const validation = validateTikTokMeta(
+      content.description,
+      content.metadata.hashtags || [],
+      content.metadata.estimatedDuration,
+    );
+
     await finalizePost(postId, { ...content, category });
 
     const blocks = buildTikTokPostBlocks({
@@ -443,6 +465,7 @@ export async function generateTikTokSuggestion(
       category: content.metadata.category || category,
       estimatedDuration: content.metadata.estimatedDuration,
       hashtags: content.metadata.hashtags || [],
+      warnings: validation.warnings,
     });
 
     const msgResult = await client.chat.postMessage({
@@ -518,6 +541,8 @@ export async function generateGitHubSuggestion(
       return;
     }
 
+    const validation = validateGitHubRepo(repoName, description, topics);
+
     const scheduledAt = getNextOptimalTime("github");
     const scheduledTime = formatScheduledTime(scheduledAt);
 
@@ -536,6 +561,7 @@ export async function generateGitHubSuggestion(
       name: repoName,
       description,
       topics,
+      warnings: validation.warnings,
       scheduledTime: `推奨作成時間: ${scheduledTime}`,
     });
 
@@ -608,6 +634,8 @@ export async function generatePodcastSuggestion(
       return;
     }
 
+    const validation = validatePodcastEpisode(title, description, 0);
+
     const scheduledAt = getNextOptimalTime("podcast");
     const scheduledTime = formatScheduledTime(scheduledAt);
 
@@ -624,6 +652,7 @@ export async function generatePodcastSuggestion(
       id: postId,
       title,
       description: description.slice(0, 200),
+      warnings: validation.warnings,
       scheduledTime: `推奨配信日: ${scheduledTime}`,
     });
 

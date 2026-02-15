@@ -21,7 +21,15 @@ import { publishToTikTok } from "./tiktok-publisher.js";
 import { publishToGitHub } from "./github-publisher.js";
 import { publishToInstagram } from "./instagram-publisher.js";
 import { buildPublishedBlocks } from "../ui/reporter.js";
-import { validateXPost, validateThread } from "../ui/validator.js";
+import {
+  validateXPost,
+  validateThread,
+  validateThreadsPost,
+  validateInstagramPost,
+  validateTikTokMeta,
+  validateYouTubeMeta,
+  validateGitHubRepo,
+} from "../ui/validator.js";
 import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
 import { normalizeMediaPath } from "../generation/artifact-extractors.js";
 
@@ -67,6 +75,26 @@ export async function handleSnsPublish(
         videoPath?: string;
         thumbnailPath?: string;
       };
+
+      // プレパブリッシュバリデーション
+      const ytValidation = validateYouTubeMeta(
+        content.title,
+        content.description,
+        content.tags || [],
+      );
+      if (!ytValidation.valid) {
+        const channelId = body.channel?.id;
+        const messageTs = body.message?.ts;
+        if (channelId) {
+          await client.chat.postMessage({
+            channel: channelId,
+            thread_ts: messageTs,
+            text: `投稿エラー: ${ytValidation.errors.map((e) => e.message).join(", ")}`,
+          });
+        }
+        return;
+      }
+
       const result = await uploadToYouTube({
         videoPath: normalizeMediaPath(content.videoPath || ""),
         title: content.title,
@@ -248,6 +276,22 @@ export async function handleSnsPublish(
       }
     } else if (post.platform === "threads") {
       const content = post.content as unknown as ThreadsContent;
+
+      // プレパブリッシュバリデーション
+      const threadsValidation = validateThreadsPost(content.text || "");
+      if (!threadsValidation.valid) {
+        const channelId = body.channel?.id;
+        const messageTs = body.message?.ts;
+        if (channelId) {
+          await client.chat.postMessage({
+            channel: channelId,
+            thread_ts: messageTs,
+            text: `投稿エラー: ${threadsValidation.errors.map((e) => e.message).join(", ")}`,
+          });
+        }
+        return;
+      }
+
       const result = await publishToThreads({ text: content.text || "" });
 
       if (!result.success) {
@@ -305,6 +349,26 @@ export async function handleSnsPublish(
         videoPath?: string;
         text?: string;
       };
+
+      // プレパブリッシュバリデーション
+      const tiktokValidation = validateTikTokMeta(
+        content.description || "",
+        content.metadata?.hashtags || [],
+        content.metadata?.estimatedDuration || 0,
+      );
+      if (!tiktokValidation.valid) {
+        const channelId = body.channel?.id;
+        const messageTs = body.message?.ts;
+        if (channelId) {
+          await client.chat.postMessage({
+            channel: channelId,
+            thread_ts: messageTs,
+            text: `投稿エラー: ${tiktokValidation.errors.map((e) => e.message).join(", ")}`,
+          });
+        }
+        return;
+      }
+
       const result = await publishToTikTok({
         videoPath: normalizeMediaPath(
           content.videoPath || content.videoUrl || "",
@@ -369,6 +433,26 @@ export async function handleSnsPublish(
       }
     } else if (post.platform === "github") {
       const content = post.content as unknown as GitHubContent;
+
+      // プレパブリッシュバリデーション
+      const ghValidation = validateGitHubRepo(
+        content.name,
+        content.description,
+        content.topics || [],
+      );
+      if (!ghValidation.valid) {
+        const channelId = body.channel?.id;
+        const messageTs = body.message?.ts;
+        if (channelId) {
+          await client.chat.postMessage({
+            channel: channelId,
+            thread_ts: messageTs,
+            text: `投稿エラー: ${ghValidation.errors.map((e) => e.message).join(", ")}`,
+          });
+        }
+        return;
+      }
+
       const result = await publishToGitHub({
         name: content.name,
         description: content.description,
@@ -431,6 +515,26 @@ export async function handleSnsPublish(
         imageUrl?: string;
         videoUrl?: string;
       };
+
+      // プレパブリッシュバリデーション
+      const igValidation = validateInstagramPost(
+        content.caption || "",
+        content.hashtags || [],
+        content.type === "reels" ? "reels" : "image",
+      );
+      if (!igValidation.valid) {
+        const channelId = body.channel?.id;
+        const messageTs = body.message?.ts;
+        if (channelId) {
+          await client.chat.postMessage({
+            channel: channelId,
+            thread_ts: messageTs,
+            text: `投稿エラー: ${igValidation.errors.map((e) => e.message).join(", ")}`,
+          });
+        }
+        return;
+      }
+
       const caption = `${content.caption || ""}\n\n${(content.hashtags || []).join(" ")}`;
       const result = await publishToInstagram({
         imageUrl: content.imageUrl,

@@ -396,6 +396,7 @@ interface GitHubPostInput {
   description: string;
   topics: string[];
   scheduledTime?: string;
+  warnings?: Array<{ code: string; message: string }>;
 }
 
 export function buildGitHubPostBlocks(input: GitHubPostInput): KnownBlock[] {
@@ -420,31 +421,42 @@ export function buildGitHubPostBlocks(input: GitHubPostInput): KnownBlock[] {
       ],
     },
     { type: "divider" },
-    {
-      type: "actions",
-      elements: [
-        {
-          type: "button",
-          text: { type: "plain_text", text: "今すぐ作成", emoji: true },
-          style: "primary",
-          action_id: "sns_publish",
-          value: input.id,
-        },
-        {
-          type: "button",
-          text: { type: "plain_text", text: "編集", emoji: true },
-          action_id: "sns_edit",
-          value: input.id,
-        },
-        {
-          type: "button",
-          text: { type: "plain_text", text: "スキップ", emoji: true },
-          action_id: "sns_skip",
-          value: input.id,
-        },
-      ],
-    },
   ];
+
+  if (input.warnings && input.warnings.length > 0) {
+    blocks.push({
+      type: "context",
+      elements: input.warnings.map((w) => ({
+        type: "mrkdwn",
+        text: `\u26A0\uFE0F ${w.message}`,
+      })),
+    });
+  }
+
+  blocks.push({
+    type: "actions",
+    elements: [
+      {
+        type: "button",
+        text: { type: "plain_text", text: "今すぐ作成", emoji: true },
+        style: "primary",
+        action_id: "sns_publish",
+        value: input.id,
+      },
+      {
+        type: "button",
+        text: { type: "plain_text", text: "編集", emoji: true },
+        action_id: "sns_edit",
+        value: input.id,
+      },
+      {
+        type: "button",
+        text: { type: "plain_text", text: "スキップ", emoji: true },
+        action_id: "sns_skip",
+        value: input.id,
+      },
+    ],
+  });
 
   return blocks;
 }
@@ -454,6 +466,7 @@ interface PodcastPostInput {
   title: string;
   description: string;
   scheduledTime?: string;
+  warnings?: Array<{ code: string; message: string }>;
 }
 
 export function buildPodcastPostBlocks(input: PodcastPostInput): KnownBlock[] {
@@ -475,31 +488,42 @@ export function buildPodcastPostBlocks(input: PodcastPostInput): KnownBlock[] {
         ]
       : []),
     { type: "divider" },
-    {
-      type: "actions",
-      elements: [
-        {
-          type: "button",
-          text: { type: "plain_text", text: "音声生成", emoji: true },
-          style: "primary",
-          action_id: "sns_approve_podcast",
-          value: input.id,
-        },
-        {
-          type: "button",
-          text: { type: "plain_text", text: "編集", emoji: true },
-          action_id: "sns_edit",
-          value: input.id,
-        },
-        {
-          type: "button",
-          text: { type: "plain_text", text: "スキップ", emoji: true },
-          action_id: "sns_skip",
-          value: input.id,
-        },
-      ],
-    },
   ];
+
+  if (input.warnings && input.warnings.length > 0) {
+    blocks.push({
+      type: "context",
+      elements: input.warnings.map((w) => ({
+        type: "mrkdwn",
+        text: `\u26A0\uFE0F ${w.message}`,
+      })),
+    });
+  }
+
+  blocks.push({
+    type: "actions",
+    elements: [
+      {
+        type: "button",
+        text: { type: "plain_text", text: "音声生成", emoji: true },
+        style: "primary",
+        action_id: "sns_approve_podcast",
+        value: input.id,
+      },
+      {
+        type: "button",
+        text: { type: "plain_text", text: "編集", emoji: true },
+        action_id: "sns_edit",
+        value: input.id,
+      },
+      {
+        type: "button",
+        text: { type: "plain_text", text: "スキップ", emoji: true },
+        action_id: "sns_skip",
+        value: input.id,
+      },
+    ],
+  });
 
   return blocks;
 }
@@ -681,6 +705,7 @@ interface TikTokPostInput {
   estimatedDuration: number;
   hashtags: string[];
   videoPath?: string;
+  warnings?: Array<{ code: string; message: string }>;
 }
 
 const TIKTOK_CATEGORY_LABELS: Record<string, string> = {
@@ -729,6 +754,16 @@ export function buildTikTokPostBlocks(input: TikTokPostInput): KnownBlock[] {
     },
     { type: "divider" },
   ];
+
+  if (input.warnings && input.warnings.length > 0) {
+    blocks.push({
+      type: "context",
+      elements: input.warnings.map((w) => ({
+        type: "mrkdwn",
+        text: `\u26A0\uFE0F ${w.message}`,
+      })),
+    });
+  }
 
   const actionButtons: Button[] = [];
   if (input.videoPath) {
@@ -782,6 +817,7 @@ interface InstagramPostInput {
   category: string;
   scheduledTime?: string;
   videoUrl?: string;
+  warnings?: Array<{ code: string; message: string }>;
 }
 
 export function buildInstagramPostBlocks(
@@ -826,6 +862,16 @@ export function buildInstagramPostBlocks(
   }
 
   blocks.push({ type: "divider" });
+
+  if (input.warnings && input.warnings.length > 0) {
+    blocks.push({
+      type: "context",
+      elements: input.warnings.map((w) => ({
+        type: "mrkdwn",
+        text: `\u26A0\uFE0F ${w.message}`,
+      })),
+    });
+  }
 
   const actionButtons: Button[] = [];
 
