@@ -37,70 +37,88 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((col, val) => ({ col, val })),
 }));
 
-vi.mock("./x-publisher.js", () => ({
+vi.mock("./platforms/x-publisher.js", () => ({
   publishToX: vi.fn(),
   publishThread: vi.fn(),
 }));
 
-vi.mock("./youtube-publisher.js", () => ({
+vi.mock("./platforms/youtube-publisher.js", () => ({
   uploadToYouTube: vi.fn(),
 }));
 
-vi.mock("./reporter.js", () => ({
-  buildXPostBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "post blocks" } }]),
-  buildPublishedBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "published" } }]),
-  buildSkippedBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "skipped" } }]),
-  buildScheduledBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "scheduled" } }]),
-  buildVideoPostBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "video blocks" } }]),
-  buildScriptProposalBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "script proposal" } }]),
-  buildScriptDetailBlocks: vi.fn(() => [[{ type: "section", text: { type: "mrkdwn", text: "script detail" } }]]),
-  buildRenderedBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "rendered" } }]),
-  buildInstagramImageBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "instagram image" } }]),
+vi.mock("./ui/reporter.js", () => ({
+  buildXPostBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "post blocks" } },
+  ]),
+  buildPublishedBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "published" } },
+  ]),
+  buildSkippedBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "skipped" } },
+  ]),
+  buildScheduledBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "scheduled" } },
+  ]),
+  buildVideoPostBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "video blocks" } },
+  ]),
+  buildScriptProposalBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "script proposal" } },
+  ]),
+  buildScriptDetailBlocks: vi.fn(() => [
+    [{ type: "section", text: { type: "mrkdwn", text: "script detail" } }],
+  ]),
+  buildRenderedBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "rendered" } },
+  ]),
+  buildInstagramImageBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "instagram image" } },
+  ]),
 }));
 
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
 }));
 
-vi.mock("./script-generator.js", () => ({
+vi.mock("./generation/script-generator.js", () => ({
   generateVideoScript: vi.fn(),
 }));
 
-vi.mock("./validator.js", () => ({
+vi.mock("./ui/validator.js", () => ({
   validateXPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
   validateThread: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
 }));
 
-vi.mock("./optimal-time.js", () => ({
+vi.mock("./scheduling/optimal-time.js", () => ({
   getNextOptimalTime: vi.fn(() => new Date("2026-02-10T22:30:00Z")),
   formatScheduledTime: vi.fn(() => "今日 07:30"),
 }));
 
-vi.mock("./qiita-publisher.js", () => ({
+vi.mock("./platforms/qiita-publisher.js", () => ({
   publishToQiita: vi.fn(),
 }));
 
-vi.mock("./zenn-publisher.js", () => ({
+vi.mock("./platforms/zenn-publisher.js", () => ({
   publishToZenn: vi.fn(),
 }));
 
-vi.mock("./note-publisher.js", () => ({
+vi.mock("./platforms/note-publisher.js", () => ({
   publishToNote: vi.fn(),
 }));
 
-vi.mock("./threads-publisher.js", () => ({
+vi.mock("./platforms/threads-publisher.js", () => ({
   publishToThreads: vi.fn(),
 }));
 
-vi.mock("./tiktok-publisher.js", () => ({
+vi.mock("./platforms/tiktok-publisher.js", () => ({
   publishToTikTok: vi.fn(),
 }));
 
-vi.mock("./github-publisher.js", () => ({
+vi.mock("./platforms/github-publisher.js", () => ({
   publishToGitHub: vi.fn(),
 }));
 
-vi.mock("./instagram-publisher.js", () => ({
+vi.mock("./platforms/instagram-publisher.js", () => ({
   publishToInstagram: vi.fn(),
 }));
 
@@ -136,9 +154,11 @@ describe("SNS Action Handlers", () => {
     app = appModule.app as unknown as { action: Mock; view: Mock };
 
     // Capture handlers when registered
-    (app.action as Mock).mockImplementation((actionId: string, handler: any) => {
-      actionHandlers[actionId] = handler;
-    });
+    (app.action as Mock).mockImplementation(
+      (actionId: string, handler: any) => {
+        actionHandlers[actionId] = handler;
+      },
+    );
     (app.view as Mock).mockImplementation((viewId: string, handler: any) => {
       viewHandlers[viewId] = handler;
     });
@@ -163,22 +183,49 @@ describe("SNS Action Handlers", () => {
   it("should register 10 actions and 1 view handler", () => {
     expect(app.action).toHaveBeenCalledTimes(10);
     expect(app.view).toHaveBeenCalledTimes(1);
-    expect(app.action).toHaveBeenCalledWith("sns_publish", expect.any(Function));
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_publish",
+      expect.any(Function),
+    );
     expect(app.action).toHaveBeenCalledWith("sns_edit", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("sns_edit_thread", expect.any(Function));
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_edit_thread",
+      expect.any(Function),
+    );
     expect(app.action).toHaveBeenCalledWith("sns_skip", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("sns_schedule", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("sns_approve_metadata", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("sns_approve_script", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("sns_approve_tiktok", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("sns_approve_ig_content", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("sns_approve_podcast", expect.any(Function));
-    expect(app.view).toHaveBeenCalledWith("sns_edit_submit", expect.any(Function));
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_schedule",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_approve_metadata",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_approve_script",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_approve_tiktok",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_approve_ig_content",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "sns_approve_podcast",
+      expect.any(Function),
+    );
+    expect(app.view).toHaveBeenCalledWith(
+      "sns_edit_submit",
+      expect.any(Function),
+    );
   });
 
   describe("sns_publish action", () => {
     it("should publish single post to X and update DB/Slack", async () => {
-      const { publishToX } = await import("./x-publisher.js");
+      const { publishToX } = await import("./platforms/x-publisher.js");
       (publishToX as Mock).mockResolvedValue({
         success: true,
         tweetId: "tweet-123",
@@ -215,7 +262,7 @@ describe("SNS Action Handlers", () => {
       };
       mockLimit.mockResolvedValue([threadPost]);
 
-      const { publishThread } = await import("./x-publisher.js");
+      const { publishThread } = await import("./platforms/x-publisher.js");
       (publishThread as Mock).mockResolvedValue({
         success: true,
         tweetIds: ["t1", "t2", "t3"],
@@ -240,7 +287,11 @@ describe("SNS Action Handlers", () => {
       });
 
       expect(mockAck).toHaveBeenCalled();
-      expect(publishThread).toHaveBeenCalledWith(["Post 1", "Post 2", "Post 3"]);
+      expect(publishThread).toHaveBeenCalledWith([
+        "Post 1",
+        "Post 2",
+        "Post 3",
+      ]);
       expect(mockUpdateSet).toHaveBeenCalledWith(
         expect.objectContaining({ status: "published" }),
       );
@@ -263,7 +314,7 @@ describe("SNS Action Handlers", () => {
     it("should do nothing if post not found", async () => {
       mockLimit.mockResolvedValue([]);
 
-      const { publishToX } = await import("./x-publisher.js");
+      const { publishToX } = await import("./platforms/x-publisher.js");
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -311,7 +362,9 @@ describe("SNS Action Handlers", () => {
 
       // Verify the modal contains the post text as initial value
       const viewArg = mockClient.views.open.mock.calls[0][0];
-      const inputBlock = viewArg.view.blocks.find((b: any) => b.type === "input");
+      const inputBlock = viewArg.view.blocks.find(
+        (b: any) => b.type === "input",
+      );
       expect(inputBlock.element.initial_value).toBe("Hello world!");
     });
 
@@ -351,7 +404,7 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_skip action", () => {
     it("should update DB to skipped and update Slack message", async () => {
-      const { buildSkippedBlocks } = await import("./reporter.js");
+      const { buildSkippedBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -395,7 +448,7 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_edit_submit view", () => {
     it("should update content in DB and re-render Slack message", async () => {
-      const { buildXPostBlocks } = await import("./reporter.js");
+      const { buildXPostBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -436,7 +489,7 @@ describe("SNS Action Handlers", () => {
     });
 
     it("should detect thread format from --- separator", async () => {
-      const { buildXPostBlocks } = await import("./reporter.js");
+      const { buildXPostBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -524,8 +577,8 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_publish with validation", () => {
     it("should block publish when validation errors exist (280+ chars)", async () => {
-      const { validateXPost } = await import("./validator.js");
-      const { publishToX } = await import("./x-publisher.js");
+      const { validateXPost } = await import("./ui/validator.js");
+      const { publishToX } = await import("./platforms/x-publisher.js");
 
       (validateXPost as Mock).mockReturnValue({
         valid: false,
@@ -571,8 +624,8 @@ describe("SNS Action Handlers", () => {
     });
 
     it("should block publish when too many hashtags", async () => {
-      const { validateXPost } = await import("./validator.js");
-      const { publishToX } = await import("./x-publisher.js");
+      const { validateXPost } = await import("./ui/validator.js");
+      const { publishToX } = await import("./platforms/x-publisher.js");
 
       (validateXPost as Mock).mockReturnValue({
         valid: false,
@@ -617,8 +670,8 @@ describe("SNS Action Handlers", () => {
     });
 
     it("should continue publish with warnings (external link)", async () => {
-      const { validateXPost } = await import("./validator.js");
-      const { publishToX } = await import("./x-publisher.js");
+      const { validateXPost } = await import("./ui/validator.js");
+      const { publishToX } = await import("./platforms/x-publisher.js");
 
       (validateXPost as Mock).mockReturnValue({
         valid: true,
@@ -689,13 +742,14 @@ describe("SNS Action Handlers", () => {
     it("should upload video to YouTube when platform is youtube", async () => {
       mockLimit.mockResolvedValue([youtubePost]);
 
-      const { uploadToYouTube } = await import("./youtube-publisher.js");
+      const { uploadToYouTube } =
+        await import("./platforms/youtube-publisher.js");
       (uploadToYouTube as Mock).mockResolvedValue({
         success: true,
         url: "https://youtube.com/watch?v=abc123",
       });
 
-      const { buildPublishedBlocks } = await import("./reporter.js");
+      const { buildPublishedBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = {
         chat: { update: vi.fn(), postMessage: vi.fn() },
@@ -726,7 +780,10 @@ describe("SNS Action Handlers", () => {
           publishedUrl: "https://youtube.com/watch?v=abc123",
         }),
       );
-      expect(buildPublishedBlocks).toHaveBeenCalledWith("YouTube", "https://youtube.com/watch?v=abc123");
+      expect(buildPublishedBlocks).toHaveBeenCalledWith(
+        "YouTube",
+        "https://youtube.com/watch?v=abc123",
+      );
       expect(mockClient.chat.update).toHaveBeenCalledWith(
         expect.objectContaining({
           text: "YouTube 投稿完了: https://youtube.com/watch?v=abc123",
@@ -737,7 +794,8 @@ describe("SNS Action Handlers", () => {
     it("should handle YouTube upload failure", async () => {
       mockLimit.mockResolvedValue([youtubePost]);
 
-      const { uploadToYouTube } = await import("./youtube-publisher.js");
+      const { uploadToYouTube } =
+        await import("./platforms/youtube-publisher.js");
       (uploadToYouTube as Mock).mockResolvedValue({
         success: false,
         error: "Quota exceeded",
@@ -820,8 +878,8 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_edit_submit with validation", () => {
     it("should pass warnings to buildXPostBlocks", async () => {
-      const { validateXPost } = await import("./validator.js");
-      const { buildXPostBlocks } = await import("./reporter.js");
+      const { validateXPost } = await import("./ui/validator.js");
+      const { buildXPostBlocks } = await import("./ui/reporter.js");
 
       (validateXPost as Mock).mockReturnValue({
         valid: true,
@@ -860,9 +918,7 @@ describe("SNS Action Handlers", () => {
       expect(mockAck).toHaveBeenCalled();
       expect(buildXPostBlocks).toHaveBeenCalledWith(
         expect.objectContaining({
-          warnings: [
-            expect.objectContaining({ code: "SINGLE_POST_TOO_LONG" }),
-          ],
+          warnings: [expect.objectContaining({ code: "SINGLE_POST_TOO_LONG" })],
         }),
       );
     });
@@ -870,8 +926,9 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_schedule action", () => {
     it("should schedule post with optimal time and update DB/Slack", async () => {
-      const { getNextOptimalTime, formatScheduledTime } = await import("./optimal-time.js");
-      const { buildScheduledBlocks } = await import("./reporter.js");
+      const { getNextOptimalTime, formatScheduledTime } =
+        await import("./scheduling/optimal-time.js");
+      const { buildScheduledBlocks } = await import("./ui/reporter.js");
 
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
@@ -902,8 +959,9 @@ describe("SNS Action Handlers", () => {
     });
 
     it("should use suggestedScheduledAt from content when available", async () => {
-      const { getNextOptimalTime } = await import("./optimal-time.js");
-      const { buildScheduledBlocks } = await import("./reporter.js");
+      const { getNextOptimalTime } =
+        await import("./scheduling/optimal-time.js");
+      const { buildScheduledBlocks } = await import("./ui/reporter.js");
 
       // Post with suggestedScheduledAt in content
       const postWithSuggested = {
@@ -960,7 +1018,8 @@ describe("SNS Action Handlers", () => {
     it("should do nothing if post not found", async () => {
       mockLimit.mockResolvedValue([]);
 
-      const { getNextOptimalTime } = await import("./optimal-time.js");
+      const { getNextOptimalTime } =
+        await import("./scheduling/optimal-time.js");
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -1057,14 +1116,15 @@ describe("SNS Action Handlers", () => {
     it("should publish to Instagram and update DB/Slack", async () => {
       mockLimit.mockResolvedValue([instagramPublishPost]);
 
-      const { publishToInstagram } = await import("./instagram-publisher.js");
+      const { publishToInstagram } =
+        await import("./platforms/instagram-publisher.js");
       (publishToInstagram as Mock).mockResolvedValue({
         success: true,
         mediaId: "media-123",
         url: "https://www.instagram.com/p/ABC123/",
       });
 
-      const { buildPublishedBlocks } = await import("./reporter.js");
+      const { buildPublishedBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = {
         chat: { update: vi.fn(), postMessage: vi.fn() },
@@ -1094,7 +1154,10 @@ describe("SNS Action Handlers", () => {
           publishedUrl: "https://www.instagram.com/p/ABC123/",
         }),
       );
-      expect(buildPublishedBlocks).toHaveBeenCalledWith("Instagram", "https://www.instagram.com/p/ABC123/");
+      expect(buildPublishedBlocks).toHaveBeenCalledWith(
+        "Instagram",
+        "https://www.instagram.com/p/ABC123/",
+      );
     });
   });
 
@@ -1156,14 +1219,17 @@ describe("SNS Action Handlers", () => {
       (mockQuery as Mock).mockResolvedValue({
         message: {
           content: [
-            { type: "text", text: "レンダリング完了: /path/to/agent-output/video-20260210-test/output.mp4" },
+            {
+              type: "text",
+              text: "レンダリング完了: /path/to/agent-output/video-20260210-test/output.mp4",
+            },
           ],
         },
         toolCalls: [],
         success: true,
       });
 
-      const { buildRenderedBlocks } = await import("./reporter.js");
+      const { buildRenderedBlocks } = await import("./ui/reporter.js");
 
       const mockAck = vi.fn();
       const mockClient = {
@@ -1202,22 +1268,21 @@ describe("SNS Action Handlers", () => {
       const { query: mockQuery } = await import("@argus/agent-core");
       (mockQuery as Mock).mockResolvedValue({
         message: {
-          content: [
-            { type: "text", text: "レンダリングが完了しました。" },
-          ],
+          content: [{ type: "text", text: "レンダリングが完了しました。" }],
         },
         toolCalls: [
           {
             name: "Bash",
             input: { command: "node render-video.js" },
-            result: "Done! Output: /home/user/.claude/agent-output/video-20260210-ai/output.mp4",
+            result:
+              "Done! Output: /home/user/.claude/agent-output/video-20260210-ai/output.mp4",
             status: "success",
           },
         ],
         success: true,
       });
 
-      const { buildRenderedBlocks } = await import("./reporter.js");
+      const { buildRenderedBlocks } = await import("./ui/reporter.js");
 
       const mockAck = vi.fn();
       const mockClient = {
@@ -1238,7 +1303,8 @@ describe("SNS Action Handlers", () => {
 
       expect(buildRenderedBlocks).toHaveBeenCalledWith(
         expect.objectContaining({
-          videoPath: "/home/user/.claude/agent-output/video-20260210-ai/output.mp4",
+          videoPath:
+            "/home/user/.claude/agent-output/video-20260210-ai/output.mp4",
         }),
       );
     });

@@ -8,19 +8,22 @@ import {
   buildXPostBlocks,
   buildSkippedBlocks,
   buildScheduledBlocks,
-} from "./reporter.js";
-import { validateXPost, validateThread } from "./validator.js";
-import { getNextOptimalTime, formatScheduledTime } from "./optimal-time.js";
-import type { Platform } from "./optimal-time.js";
+} from "./ui/reporter.js";
+import { validateXPost, validateThread } from "./ui/validator.js";
+import {
+  getNextOptimalTime,
+  formatScheduledTime,
+} from "./scheduling/optimal-time.js";
+import type { Platform } from "./scheduling/optimal-time.js";
 import { updateSnsCanvas } from "../../canvas/sns-canvas.js";
-import { handleSnsPublish } from "./publish-handlers.js";
+import { handleSnsPublish } from "./platforms/publish-handlers.js";
 import {
   generateAndPostScript,
   generatePodcastAudio,
   generateTikTokVideo,
   generateImageWithSkill,
   renderWithSkill,
-} from "./content-generators.js";
+} from "./generation/content-generators.js";
 
 export function setupSnsActions(): void {
   // 投稿ボタン

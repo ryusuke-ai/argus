@@ -33,7 +33,7 @@ vi.mock("@argus/db", () => {
   };
 });
 
-vi.mock("./reporter.js", () => ({
+vi.mock("./ui/reporter.js", () => ({
   buildXPostBlocks: vi.fn(() => [
     { type: "section", text: { type: "mrkdwn", text: "post blocks" } },
   ]),
@@ -45,30 +45,30 @@ vi.mock("./reporter.js", () => ({
   ]),
 }));
 
-vi.mock("./generator.js", () => ({
+vi.mock("./generation/generator.js", () => ({
   generateXPost: vi.fn(),
 }));
 
-vi.mock("./validator.js", () => ({
+vi.mock("./ui/validator.js", () => ({
   validateXPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
   validateThread: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
   validateArticle: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
 }));
 
-vi.mock("./scheduler.js", () => ({
+vi.mock("./scheduling/scheduler.js", () => ({
   startSnsScheduler: vi.fn(),
 }));
 
-vi.mock("./optimal-time.js", () => ({
+vi.mock("./scheduling/optimal-time.js", () => ({
   getNextOptimalTime: vi.fn(() => new Date("2026-02-10T22:30:00Z")),
   formatScheduledTime: vi.fn(() => "今日 07:30"),
 }));
 
-vi.mock("./article-generator.js", () => ({
+vi.mock("./generation/article-generator.js", () => ({
   generateArticle: vi.fn(),
 }));
 
-vi.mock("./youtube-metadata-generator.js", () => ({
+vi.mock("./generation/youtube-metadata-generator.js", () => ({
   generateYouTubeMetadata: vi.fn(),
 }));
 
@@ -124,7 +124,12 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_OTHER", ts: "1.1", text: "投稿ネタ出して", user: "U_HUMAN" };
+    const message = {
+      channel: "C_OTHER",
+      ts: "1.1",
+      text: "投稿ネタ出して",
+      user: "U_HUMAN",
+    };
     await messageHandler({ message, client: mockClient });
 
     expect(db.insert).not.toHaveBeenCalled();
@@ -132,8 +137,8 @@ describe("message handler", () => {
 
   it("should respond to trigger phrases in the SNS channel", async () => {
     const { db } = await import("@argus/db");
-    const { buildXPostBlocks } = await import("./reporter.js");
-    const { generateXPost } = await import("./generator.js");
+    const { buildXPostBlocks } = await import("./ui/reporter.js");
+    const { generateXPost } = await import("./generation/generator.js");
 
     (generateXPost as Mock).mockResolvedValue({
       success: true,
@@ -148,7 +153,11 @@ describe("message handler", () => {
     (db.insert as any).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([
-          { id: "post-1", platform: "x", content: { text: "AI生成された投稿テキスト" } },
+          {
+            id: "post-1",
+            platform: "x",
+            content: { text: "AI生成された投稿テキスト" },
+          },
         ]),
       }),
     });
@@ -158,7 +167,12 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_SNS", ts: "1.1", text: "投稿ネタ出して", user: "U_HUMAN" };
+    const message = {
+      channel: "C_SNS",
+      ts: "1.1",
+      text: "投稿ネタ出して",
+      user: "U_HUMAN",
+    };
     await messageHandler({ message, client: mockClient });
 
     // Should insert a post into DB
@@ -186,7 +200,12 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_SNS", ts: "1.1", text: "投稿ネタ出して", user: "BOT_USER" };
+    const message = {
+      channel: "C_SNS",
+      ts: "1.1",
+      text: "投稿ネタ出して",
+      user: "BOT_USER",
+    };
     await messageHandler({ message, client: mockClient });
 
     expect(db.insert).not.toHaveBeenCalled();
@@ -200,14 +219,19 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_SNS", ts: "1.1", text: "Hello world", user: "U_HUMAN" };
+    const message = {
+      channel: "C_SNS",
+      ts: "1.1",
+      text: "Hello world",
+      user: "U_HUMAN",
+    };
     await messageHandler({ message, client: mockClient });
 
     expect(db.insert).not.toHaveBeenCalled();
   });
 
   it("should handle generator failure and post error message", async () => {
-    const { generateXPost } = await import("./generator.js");
+    const { generateXPost } = await import("./generation/generator.js");
     (generateXPost as Mock).mockResolvedValue({
       success: false,
       error: "SDK connection failed",
@@ -218,7 +242,12 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_SNS", ts: "1.1", text: "投稿ネタ出して", user: "U_HUMAN" };
+    const message = {
+      channel: "C_SNS",
+      ts: "1.1",
+      text: "投稿ネタ出して",
+      user: "U_HUMAN",
+    };
     await messageHandler({ message, client: mockClient });
 
     // DB挿入はされない
@@ -226,16 +255,17 @@ describe("message handler", () => {
     expect(db.insert).not.toHaveBeenCalled();
 
     // エラーメッセージが投稿される（生成中メッセージ + エラーメッセージ = 2回）
-    const errorCall = mockClient.chat.postMessage.mock.calls.find(
-      (call: any) => call[0]?.text?.includes("失敗"),
+    const errorCall = mockClient.chat.postMessage.mock.calls.find((call: any) =>
+      call[0]?.text?.includes("失敗"),
     );
     expect(errorCall).toBeTruthy();
   });
 
   it("should respond to YouTube trigger phrases", async () => {
     const { db } = await import("@argus/db");
-    const { buildVideoPostBlocks } = await import("./reporter.js");
-    const { generateYouTubeMetadata } = await import("./youtube-metadata-generator.js");
+    const { buildVideoPostBlocks } = await import("./ui/reporter.js");
+    const { generateYouTubeMetadata } =
+      await import("./generation/youtube-metadata-generator.js");
 
     (generateYouTubeMetadata as Mock).mockResolvedValue({
       success: true,
@@ -261,9 +291,11 @@ describe("message handler", () => {
 
     (db.insert as any).mockReturnValue({
       values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([
-          { id: "video-1", platform: "youtube", content: {} },
-        ]),
+        returning: vi
+          .fn()
+          .mockResolvedValue([
+            { id: "video-1", platform: "youtube", content: {} },
+          ]),
       }),
     });
 
@@ -272,7 +304,12 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_SNS", ts: "1.1", text: "YouTubeで動画作って", user: "U_HUMAN" };
+    const message = {
+      channel: "C_SNS",
+      ts: "1.1",
+      text: "YouTubeで動画作って",
+      user: "U_HUMAN",
+    };
     await messageHandler({ message, client: mockClient });
 
     expect(db.insert).toHaveBeenCalled();
@@ -281,7 +318,7 @@ describe("message handler", () => {
 
   it("should respond to X-specific trigger patterns", async () => {
     const { db } = await import("@argus/db");
-    const { generateXPost } = await import("./generator.js");
+    const { generateXPost } = await import("./generation/generator.js");
 
     (generateXPost as Mock).mockResolvedValue({
       success: true,
@@ -295,9 +332,11 @@ describe("message handler", () => {
 
     (db.insert as any).mockReturnValue({
       values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([
-          { id: "post-1", platform: "x", content: { text: "生成テキスト" } },
-        ]),
+        returning: vi
+          .fn()
+          .mockResolvedValue([
+            { id: "post-1", platform: "x", content: { text: "生成テキスト" } },
+          ]),
       }),
     });
 
@@ -306,7 +345,12 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_SNS", ts: "1.1", text: "Xでこの記事について投稿して", user: "U_HUMAN" };
+    const message = {
+      channel: "C_SNS",
+      ts: "1.1",
+      text: "Xでこの記事について投稿して",
+      user: "U_HUMAN",
+    };
     await messageHandler({ message, client: mockClient });
 
     expect(db.insert).toHaveBeenCalled();
@@ -314,7 +358,7 @@ describe("message handler", () => {
   });
 
   it("should pass user text to generateXPost", async () => {
-    const { generateXPost } = await import("./generator.js");
+    const { generateXPost } = await import("./generation/generator.js");
     (generateXPost as Mock).mockResolvedValue({
       success: true,
       content: {
@@ -328,9 +372,11 @@ describe("message handler", () => {
     const { db } = await import("@argus/db");
     (db.insert as any).mockReturnValue({
       values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([
-          { id: "post-1", platform: "x", content: { text: "生成テキスト" } },
-        ]),
+        returning: vi
+          .fn()
+          .mockResolvedValue([
+            { id: "post-1", platform: "x", content: { text: "生成テキスト" } },
+          ]),
       }),
     });
 
@@ -339,7 +385,12 @@ describe("message handler", () => {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
     };
 
-    const message = { channel: "C_SNS", ts: "1.1", text: "tips系の投稿ネタ出して", user: "U_HUMAN" };
+    const message = {
+      channel: "C_SNS",
+      ts: "1.1",
+      text: "tips系の投稿ネタ出して",
+      user: "U_HUMAN",
+    };
     await messageHandler({ message, client: mockClient });
 
     // generateXPost が呼ばれ、ユーザーのテキストが渡される

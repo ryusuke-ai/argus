@@ -3,19 +3,23 @@ import type { KnownBlock } from "@slack/types";
 import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { setupSnsActions } from "./actions.js";
-import { generateXPost } from "./generator.js";
-import { generateArticle } from "./article-generator.js";
-import { validateXPost, validateThread, validateArticle } from "./validator.js";
+import { generateXPost } from "./generation/generator.js";
+import { generateArticle } from "./generation/article-generator.js";
+import {
+  validateXPost,
+  validateThread,
+  validateArticle,
+} from "./ui/validator.js";
 import {
   buildXPostBlocks,
   buildArticlePostBlocks,
   buildVideoPostBlocks,
-} from "./reporter.js";
+} from "./ui/reporter.js";
 import {
   startSnsScheduler,
   generateAllPlatformSuggestions,
-} from "./scheduler.js";
-import { generateYouTubeMetadata } from "./youtube-metadata-generator.js";
+} from "./scheduling/scheduler.js";
+import { generateYouTubeMetadata } from "./generation/youtube-metadata-generator.js";
 
 const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
 
