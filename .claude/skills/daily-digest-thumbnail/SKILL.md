@@ -95,6 +95,8 @@ node .claude/skills/daily-digest-thumbnail/scripts/generate.js \
 
 ## キャラクター設定
 
+> **注記**: このキャラクターは @../shared/characters/satoru.md（さとるちゃん）の視覚表現。性格・口調は共通キャラクター設定を参照。画像生成用のビジュアルプロンプトは `config.json` の `character` フィールドに定義。
+
 参照画像を指定しない場合、以下の設定でキャラクターが生成される:
 
 - **モチーフ**: フクロウ

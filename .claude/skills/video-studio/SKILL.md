@@ -9,11 +9,11 @@ description: 動画の企画・編集・レンダリング統合スキル。「�
 
 ## 機能判定
 
-| キーワード | 機能 | 参照先 |
-|-----------|------|--------|
-| シナリオ、台本、構成、企画、動画を作って | Planner | `../video-planner/` |
-| 編集、セリフ修正、発音修正、画像差し替え | Editor | `../video-editor/` |
-| レンダリング、video-script.json | Explainer | `../video-explainer/` |
+| キーワード                               | 機能      | 参照先                |
+| ---------------------------------------- | --------- | --------------------- |
+| シナリオ、台本、構成、企画、動画を作って | Planner   | `../video-planner/`   |
+| 編集、セリフ修正、発音修正、画像差し替え | Editor    | `../video-editor/`    |
+| レンダリング、video-script.json          | Explainer | `../video-explainer/` |
 
 ## ワークフロー
 
@@ -31,6 +31,6 @@ description: 動画の企画・編集・レンダリング統合スキル。「�
 
 各機能の詳細手順は参照先ディレクトリの以下を読み込むこと：
 
-- **Planner**: `../video-planner/phases/`, `../video-planner/prompts/`, `../video-planner/schemas/`
-- **Editor**: `../video-editor/reference.md`
-- **Explainer**: `../video-explainer/spec.md`, `../video-explainer/PREVIEW_FRAME.md`
+- **Planner**: @../video-planner/phases/, @../video-planner/prompts/, @../video-planner/schemas/
+- **Editor**: @../video-editor/reference.md
+- **Explainer**: @../video-explainer/spec.md, @../video-explainer/PREVIEW_FRAME.md
