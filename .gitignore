@@ -56,7 +56,7 @@ service-account*.json
 supabase/.branches/
 supabase/.temp/
 
-# Zenn content (separate repo)
+# Zenn content (managed separately, not part of this repo)
 zenn-content/
 
 # Generated media assets (TTS audio, copied backgrounds, etc.)
