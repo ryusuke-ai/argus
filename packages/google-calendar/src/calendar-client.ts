@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import type { calendar_v3 } from "googleapis";
 import { getAuthenticatedClient } from "@argus/gmail";
 import type {
   CalendarEvent,
@@ -48,17 +49,16 @@ function addOneHour(isoString: string): string {
   return result.toISOString();
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toCalendarEvent(item: any): CalendarEvent {
+function toCalendarEvent(item: calendar_v3.Schema$Event): CalendarEvent {
   return {
-    id: item.id,
-    title: item.summary,
-    start: item.start?.dateTime ?? item.start?.date,
-    end: item.end?.dateTime ?? item.end?.date,
+    id: item.id ?? "",
+    title: item.summary ?? "",
+    start: item.start?.dateTime ?? item.start?.date ?? "",
+    end: item.end?.dateTime ?? item.end?.date ?? "",
     description: item.description ?? undefined,
     location: item.location ?? undefined,
     attendees: item.attendees
-      ? item.attendees.map((a: { email: string }) => a.email)
+      ? item.attendees.map((a) => a.email ?? "")
       : undefined,
     htmlLink: item.htmlLink ?? undefined,
   };
@@ -83,8 +83,7 @@ export async function createEvent(
     endField = { dateTime: params.end ?? addOneHour(params.start) };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const requestBody: Record<string, any> = {
+  const requestBody: Partial<calendar_v3.Schema$Event> = {
     summary: params.title,
     start: startField,
     end: endField,
@@ -137,8 +136,7 @@ export async function updateEvent(
   const auth = await getAuthenticatedClient();
   const calendar = google.calendar({ version: "v3", auth });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const requestBody: Record<string, any> = {};
+  const requestBody: Partial<calendar_v3.Schema$Event> = {};
 
   if (params.title !== undefined) {
     requestBody.summary = params.title;

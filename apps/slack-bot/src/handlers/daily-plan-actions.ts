@@ -1,3 +1,5 @@
+import type { BlockAction } from "@slack/bolt";
+import type { KnownBlock } from "@slack/types";
 import { app } from "../app.js";
 import { db, todos, inboxTasks, gmailMessages } from "@argus/db";
 import { eq } from "drizzle-orm";
@@ -7,18 +9,27 @@ export function setupDailyPlanActions(): void {
   app.action(/^dp_check_/, async ({ ack, body, client }) => {
     await ack();
 
-    const action = (body as any).actions?.[0];
+    const ba = body as BlockAction;
+    const action = ba.actions?.[0];
     if (!action) return;
 
     // checkboxes: チェック解除（selected_options が空）は無視
-    if (action.type === "checkboxes" && (!action.selected_options || action.selected_options.length === 0)) {
+    if (
+      action.type === "checkboxes" &&
+      (!action.selected_options || action.selected_options.length === 0)
+    ) {
       return;
     }
 
     // value の取得: checkboxes は selected_options[0].value、button は action.value
-    const rawValue = action.type === "checkboxes"
-      ? action.selected_options?.[0]?.value
-      : action.value;
+    const rawValue =
+      action.type === "checkboxes"
+        ? action.selected_options?.[0]?.value
+        : "value" in action
+          ? (action.value as string | undefined)
+          : undefined;
+
+    if (!rawValue) return;
 
     let parsed: { type: string; id?: string; index?: number };
     try {
@@ -28,8 +39,8 @@ export function setupDailyPlanActions(): void {
       return;
     }
 
-    const channelId = (body as any).channel?.id;
-    const messageTs = (body as any).message?.ts;
+    const channelId = ba.channel?.id;
+    const messageTs = ba.message?.ts;
 
     try {
       switch (parsed.type) {
@@ -37,7 +48,11 @@ export function setupDailyPlanActions(): void {
           if (parsed.id) {
             await db
               .update(todos)
-              .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
+              .set({
+                status: "completed",
+                completedAt: new Date(),
+                updatedAt: new Date(),
+              })
               .where(eq(todos.id, parsed.id));
           }
           break;
@@ -71,10 +86,11 @@ export function setupDailyPlanActions(): void {
 
       // チェック済み表示に更新
       if (channelId && messageTs) {
-        const originalMessage = (body as any).message;
+        const originalMessage = ba.message;
         if (originalMessage?.blocks) {
-          const srcBlocks: any[] = originalMessage.blocks;
-          const updatedBlocks: any[] = [];
+          const srcBlocks: KnownBlock[] =
+            originalMessage.blocks as KnownBlock[];
+          const updatedBlocks: KnownBlock[] = [];
 
           for (let i = 0; i < srcBlocks.length; i++) {
             const block = srcBlocks[i];
@@ -82,10 +98,13 @@ export function setupDailyPlanActions(): void {
             // checkboxes パターン: actions ブロック内の checkboxes で action_id が一致
             if (block.type === "actions") {
               const checkbox = block.elements?.find(
-                (el: any) => el.type === "checkboxes" && el.action_id === action.action_id,
+                (el) =>
+                  el.type === "checkboxes" && el.action_id === action.action_id,
               );
-              if (checkbox) {
-                const label = checkbox.options?.[0]?.text?.text || "";
+              if (checkbox && "options" in checkbox) {
+                const label =
+                  (checkbox.options as Array<{ text: { text: string } }>)?.[0]
+                    ?.text?.text || "";
                 updatedBlocks.push({
                   type: "section",
                   text: { type: "mrkdwn", text: `~${label}~` },
@@ -94,7 +113,8 @@ export function setupDailyPlanActions(): void {
               }
               // button パターン（旧レイアウト互換）: 直前の section テキストを打ち消し表示
               const hasButton = block.elements?.some(
-                (el: any) => el.type === "button" && el.action_id === action.action_id,
+                (el) =>
+                  el.type === "button" && el.action_id === action.action_id,
               );
               if (hasButton) {
                 const prev = updatedBlocks[updatedBlocks.length - 1];
@@ -108,8 +128,16 @@ export function setupDailyPlanActions(): void {
               }
             }
             // section + accessory パターン
-            if (block.type === "section" && block.accessory?.action_id === action.action_id) {
-              const originalText = (block.text?.text || "").replace(/^☐\s*/, "");
+            if (
+              block.type === "section" &&
+              block.accessory &&
+              "action_id" in block.accessory &&
+              block.accessory.action_id === action.action_id
+            ) {
+              const originalText = (block.text?.text || "").replace(
+                /^☐\s*/,
+                "",
+              );
               updatedBlocks.push({
                 type: "section",
                 text: { type: "mrkdwn", text: `~${originalText}~` },
@@ -127,7 +155,9 @@ export function setupDailyPlanActions(): void {
         }
       }
 
-      console.log(`[DailyPlanActions] Checked: ${parsed.type} ${parsed.id ?? parsed.index ?? ""}`);
+      console.log(
+        `[DailyPlanActions] Checked: ${parsed.type} ${parsed.id ?? parsed.index ?? ""}`,
+      );
     } catch (error) {
       console.error("[DailyPlanActions] Error:", error);
     }

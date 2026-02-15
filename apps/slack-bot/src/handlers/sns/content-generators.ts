@@ -1,3 +1,5 @@
+import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, snsPosts } from "@argus/db";
@@ -35,7 +37,7 @@ export async function generateAndPostScript(
   postId: string,
   channelId: string,
   messageTs: string,
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   const [post] = await db
     .select()
@@ -109,7 +111,7 @@ export async function generateAndPostScript(
     }
 
     await swapReaction(
-      client as any,
+      client,
       channelId,
       messageTs,
       "eyes",
@@ -117,7 +119,7 @@ export async function generateAndPostScript(
     );
   } catch (error) {
     console.error("[sns] Script generation failed:", error);
-    await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+    await swapReaction(client, channelId, messageTs, "eyes", "x");
     await client.chat.postMessage({
       channel: channelId,
       thread_ts: messageTs,
@@ -130,7 +132,7 @@ export async function generatePodcastAudio(
   postId: string,
   channelId: string,
   messageTs: string,
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   const TIMEOUT_MS = 30 * 60 * 1000;
   const PROGRESS_INTERVAL_MS = 2 * 60 * 1000;
@@ -255,7 +257,7 @@ export async function generatePodcastAudio(
     });
 
     await swapReaction(
-      client as any,
+      client,
       channelId,
       messageTs,
       "eyes",
@@ -264,7 +266,7 @@ export async function generatePodcastAudio(
   } catch (error) {
     clearInterval(progressTimer);
     console.error("[sns] Podcast audio generation failed:", error);
-    await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+    await swapReaction(client, channelId, messageTs, "eyes", "x");
     await client.chat.postMessage({
       channel: channelId,
       thread_ts: messageTs,
@@ -277,7 +279,7 @@ export async function generateTikTokVideo(
   postId: string,
   channelId: string,
   messageTs: string,
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   const TIMEOUT_MS = 15 * 60 * 1000;
   const PROGRESS_INTERVAL_MS = 2 * 60 * 1000;
@@ -322,7 +324,7 @@ export async function generateTikTokVideo(
 ## 台本
 タイトル: ${content.title || ""}
 フック: ${content.script?.hook?.narration || ""}
-本文: ${content.script?.body?.map((b: any) => b.narration).join("\n") || ""}
+本文: ${content.script?.body?.map((b: { narration?: string }) => b.narration).join("\n") || ""}
 CTA: ${content.script?.cta?.narration || ""}
 
 ## 出力先
@@ -419,7 +421,7 @@ CTA: ${content.script?.cta?.narration || ""}
     }
 
     await swapReaction(
-      client as any,
+      client,
       channelId,
       messageTs,
       "eyes",
@@ -428,7 +430,7 @@ CTA: ${content.script?.cta?.narration || ""}
   } catch (error) {
     clearInterval(progressTimer);
     console.error("[sns] TikTok video generation failed:", error);
-    await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+    await swapReaction(client, channelId, messageTs, "eyes", "x");
     await client.chat.postMessage({
       channel: channelId,
       thread_ts: messageTs,
@@ -441,7 +443,7 @@ export async function createInstagramReelProposal(
   videoUrl: string,
   tiktokContent: TikTokScript & { category?: string },
   channelId: string,
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   const channel = SNS_CHANNEL_FOR_IG || channelId;
 
@@ -489,7 +491,7 @@ export async function createInstagramReelProposal(
 
   await client.chat.postMessage({
     channel,
-    blocks: blocks as any[],
+    blocks: blocks as KnownBlock[],
     text: `[自動] Instagram リール提案（動画共用）`,
   });
 
@@ -498,10 +500,10 @@ export async function createInstagramReelProposal(
 
 export async function generateImageWithSkill(
   postId: string,
-  content: any,
+  content: InstagramContent & { imageUrl?: string; imagePath?: string },
   channelId: string,
   messageTs: string,
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   try {
     const prompt = `Instagram 投稿用の画像を生成してください。
@@ -582,10 +584,13 @@ gen-ai-image スキルを使って画像を生成し、出力パスを報告し�
 
 export async function renderWithSkill(
   postId: string,
-  content: any,
+  content: YouTubeMetadataContent & {
+    script?: { title?: string; [key: string]: unknown };
+    videoPath?: string;
+  },
   channelId: string,
   messageTs: string,
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   try {
     const scriptJson = JSON.stringify(content.script, null, 2);

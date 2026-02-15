@@ -1,3 +1,5 @@
+import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { addReaction, swapReaction } from "../../utils/reactions.js";
@@ -25,8 +27,13 @@ import { updateSnsCanvas } from "../../canvas/sns-canvas.js";
 export async function handleSnsPublish(
   postId: number,
   ack: () => Promise<void>,
-  client: any,
-  body: any,
+  client: WebClient,
+  body: {
+    actions?: Array<{ value?: string }>;
+    channel?: { id: string };
+    message?: { ts: string };
+    trigger_id?: string;
+  },
 ): Promise<void> {
   await ack();
 
@@ -38,7 +45,7 @@ export async function handleSnsPublish(
   const messageTsForReaction = body.message?.ts;
   if (channelIdForReaction && messageTsForReaction) {
     await addReaction(
-      client as any,
+      client,
       channelIdForReaction,
       messageTsForReaction,
       "eyes",
@@ -73,7 +80,7 @@ export async function handleSnsPublish(
         const channelId = body.channel?.id || "";
         const messageTs = body.message?.ts || "";
         if (channelId && messageTs) {
-          await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+          await swapReaction(client, channelId, messageTs, "eyes", "x");
           await client.chat.update({
             channel: channelId,
             ts: messageTs,
@@ -106,13 +113,13 @@ export async function handleSnsPublish(
       await client.chat.update({
         channel: body.channel?.id || "",
         ts: body.message?.ts || "",
-        blocks: buildPublishedBlocks("YouTube", result.url!) as any[],
+        blocks: buildPublishedBlocks("YouTube", result.url!) as KnownBlock[],
         text: `YouTube 投稿完了: ${result.url}`,
       });
 
       if (channelIdForReaction && messageTsForReaction) {
         await swapReaction(
-          client as any,
+          client,
           channelIdForReaction,
           messageTsForReaction,
           "eyes",
@@ -139,7 +146,7 @@ export async function handleSnsPublish(
         const qiitaResult = await publishToQiita({
           title: content.title,
           body: content.body,
-          tags: content.tags.map((t: any) =>
+          tags: content.tags.map((t: string | { name: string }) =>
             typeof t === "string" ? { name: t } : t,
           ),
         });
@@ -191,7 +198,7 @@ export async function handleSnsPublish(
               : post.platform === "zenn"
                 ? "Zenn"
                 : "note";
-          await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+          await swapReaction(client, channelId, messageTs, "eyes", "x");
           await client.chat.update({
             channel: channelId,
             ts: messageTs,
@@ -236,13 +243,7 @@ export async function handleSnsPublish(
           blocks,
           text: `${platformLabel} 投稿完了`,
         });
-        await swapReaction(
-          client as any,
-          channelId,
-          messageTs,
-          "eyes",
-          "rocket",
-        );
+        await swapReaction(client, channelId, messageTs, "eyes", "rocket");
       }
     } else if (post.platform === "threads") {
       const content = post.content as unknown as ThreadsContent;
@@ -252,7 +253,7 @@ export async function handleSnsPublish(
         const channelId = body.channel?.id || "";
         const messageTs = body.message?.ts || "";
         if (channelId && messageTs) {
-          await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+          await swapReaction(client, channelId, messageTs, "eyes", "x");
           await client.chat.update({
             channel: channelId,
             ts: messageTs,
@@ -284,13 +285,13 @@ export async function handleSnsPublish(
       await client.chat.update({
         channel: body.channel?.id || "",
         ts: body.message?.ts || "",
-        blocks: buildPublishedBlocks("Threads", result.url!) as any[],
+        blocks: buildPublishedBlocks("Threads", result.url!) as KnownBlock[],
         text: `Threads 投稿完了: ${result.url}`,
       });
 
       if (channelIdForReaction && messageTsForReaction) {
         await swapReaction(
-          client as any,
+          client,
           channelIdForReaction,
           messageTsForReaction,
           "eyes",
@@ -312,7 +313,7 @@ export async function handleSnsPublish(
         const channelId = body.channel?.id || "";
         const messageTs = body.message?.ts || "";
         if (channelId && messageTs) {
-          await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+          await swapReaction(client, channelId, messageTs, "eyes", "x");
           await client.chat.update({
             channel: channelId,
             ts: messageTs,
@@ -356,7 +357,7 @@ export async function handleSnsPublish(
 
       if (channelIdForReaction && messageTsForReaction) {
         await swapReaction(
-          client as any,
+          client,
           channelIdForReaction,
           messageTsForReaction,
           "eyes",
@@ -377,7 +378,7 @@ export async function handleSnsPublish(
         const channelId = body.channel?.id || "";
         const messageTs = body.message?.ts || "";
         if (channelId && messageTs) {
-          await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+          await swapReaction(client, channelId, messageTs, "eyes", "x");
           await client.chat.update({
             channel: channelId,
             ts: messageTs,
@@ -409,13 +410,13 @@ export async function handleSnsPublish(
       await client.chat.update({
         channel: body.channel?.id || "",
         ts: body.message?.ts || "",
-        blocks: buildPublishedBlocks("GitHub", result.url!) as any[],
+        blocks: buildPublishedBlocks("GitHub", result.url!) as KnownBlock[],
         text: `GitHub リポジトリ作成完了: ${result.url}`,
       });
 
       if (channelIdForReaction && messageTsForReaction) {
         await swapReaction(
-          client as any,
+          client,
           channelIdForReaction,
           messageTsForReaction,
           "eyes",
@@ -439,7 +440,7 @@ export async function handleSnsPublish(
         const channelId = body.channel?.id || "";
         const messageTs = body.message?.ts || "";
         if (channelId && messageTs) {
-          await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+          await swapReaction(client, channelId, messageTs, "eyes", "x");
           await client.chat.update({
             channel: channelId,
             ts: messageTs,
@@ -471,13 +472,13 @@ export async function handleSnsPublish(
       await client.chat.update({
         channel: body.channel?.id || "",
         ts: body.message?.ts || "",
-        blocks: buildPublishedBlocks("Instagram", result.url!) as any[],
+        blocks: buildPublishedBlocks("Instagram", result.url!) as KnownBlock[],
         text: `Instagram 投稿完了: ${result.url}`,
       });
 
       if (channelIdForReaction && messageTsForReaction) {
         await swapReaction(
-          client as any,
+          client,
           channelIdForReaction,
           messageTsForReaction,
           "eyes",
@@ -537,7 +538,7 @@ export async function handleSnsPublish(
         const channelId = body.channel?.id;
         const messageTs = body.message?.ts;
         if (channelId && messageTs) {
-          await swapReaction(client as any, channelId, messageTs, "eyes", "x");
+          await swapReaction(client, channelId, messageTs, "eyes", "x");
           await client.chat.update({
             channel: channelId,
             ts: messageTs,
@@ -578,13 +579,7 @@ export async function handleSnsPublish(
           blocks,
           text: "X 投稿完了",
         });
-        await swapReaction(
-          client as any,
-          channelId,
-          messageTs,
-          "eyes",
-          "rocket",
-        );
+        await swapReaction(client, channelId, messageTs, "eyes", "rocket");
       }
     }
     // Canvas 更新

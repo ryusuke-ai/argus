@@ -25,7 +25,7 @@ import * as path from "node:path";
  * Create observation hooks that log tool executions to the tasks table.
  */
 function createObservationHooks(dbSessionId: string): ArgusHooks {
-  const obsDB: ObservationDB = { db, tasks, lessons, eq };
+  const obsDB = { db, tasks, lessons, eq } as ObservationDB;
   return createDBObservationHooks(obsDB, dbSessionId, "[Agent Executor]");
 }
 

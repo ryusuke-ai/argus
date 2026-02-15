@@ -5,6 +5,7 @@
 // フェーズ＋ステップ一覧を表示し、完了・実行中・待機の状態を視覚的に示す。
 
 import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 
 type Block = Record<string, unknown>;
 
@@ -104,7 +105,7 @@ export class ProgressReporter {
         channel: this.channel,
         thread_ts: this.threadTs,
         text: `⏳ ${this.taskLabel}`,
-        blocks: this.buildBlocks() as any[],
+        blocks: this.buildBlocks() as unknown as KnownBlock[],
       });
       this.messageTs = result.ts as string;
 
@@ -300,13 +301,9 @@ export class ProgressReporter {
       const actual = (p.completedAt || 0) - (p.startedAt || 0);
       return sum + actual / 1000;
     }, 0);
-    const doneEstimate = donePhases.reduce(
-      (sum, p) => sum + p.estimateSec,
-      0,
-    );
-    const ratio = doneEstimate > 0
-      ? Math.min(totalActual / doneEstimate, 3.0)
-      : 1.0;
+    const doneEstimate = donePhases.reduce((sum, p) => sum + p.estimateSec, 0);
+    const ratio =
+      doneEstimate > 0 ? Math.min(totalActual / doneEstimate, 3.0) : 1.0;
 
     // 実行中フェーズの経過時間
     const elapsedInPhase = runningPhase?.startedAt
@@ -362,14 +359,18 @@ export class ProgressReporter {
         channel: this.channel,
         ts: this.messageTs,
         text: `⏳ ${this.taskLabel}`,
-        blocks: this.buildBlocks() as any[],
+        blocks: this.buildBlocks() as unknown as KnownBlock[],
       });
-    } catch (err: any) {
-      if (err?.data?.error === "message_not_found") {
+    } catch (err: unknown) {
+      const slackErr = err as { data?: { error?: string } } | undefined;
+      if (slackErr?.data?.error === "message_not_found") {
         // メッセージが削除された場合は追跡を停止
         this.messageTs = null;
       } else {
-        console.error("[progress-reporter] Failed to update message:", err?.data?.error || err);
+        console.error(
+          "[progress-reporter] Failed to update message:",
+          slackErr?.data?.error || err,
+        );
       }
     }
   }

@@ -16,13 +16,14 @@ export async function addReaction(
 ): Promise<void> {
   try {
     await client.reactions.add({ channel, timestamp, name });
-  } catch (error: any) {
-    if (error?.data?.error === "already_reacted") {
+  } catch (error: unknown) {
+    const slackErr = error as { data?: { error?: string } } | undefined;
+    if (slackErr?.data?.error === "already_reacted") {
       // skip
     } else {
       console.error(
         `[reactions] Failed to add :${name}:`,
-        error?.data?.error || error,
+        slackErr?.data?.error || error,
       );
     }
   }
@@ -39,13 +40,14 @@ export async function removeReaction(
 ): Promise<void> {
   try {
     await client.reactions.remove({ channel, timestamp, name });
-  } catch (error: any) {
-    if (error?.data?.error === "no_reaction") {
+  } catch (error: unknown) {
+    const slackErr = error as { data?: { error?: string } } | undefined;
+    if (slackErr?.data?.error === "no_reaction") {
       // skip
     } else {
       console.error(
         `[reactions] Failed to remove :${name}:`,
-        error?.data?.error || error,
+        slackErr?.data?.error || error,
       );
     }
   }

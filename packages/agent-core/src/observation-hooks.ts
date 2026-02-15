@@ -12,15 +12,23 @@ import type { ArgusHooks } from "./hooks.js";
 export interface ObservationDB {
   /** Drizzle db インスタンス */
   db: {
-    insert: (table: any) => { values: (values: any) => { returning: () => Promise<any[]> } };
-    update: (table: any) => { set: (values: any) => { where: (condition: any) => Promise<any> } };
+    insert: <T>(table: T) => {
+      values: (values: Record<string, unknown>) => {
+        returning: () => Promise<Array<{ id: string; [key: string]: unknown }>>;
+      };
+    };
+    update: <T>(table: T) => {
+      set: (values: Record<string, unknown>) => {
+        where: (condition: unknown) => Promise<unknown>;
+      };
+    };
   };
   /** tasks テーブル参照 */
-  tasks: any;
+  tasks: { id: unknown };
   /** lessons テーブル参照 */
-  lessons: any;
+  lessons: unknown;
   /** drizzle-orm の eq 関数 */
-  eq: (column: any, value: any) => any;
+  eq: (column: unknown, value: unknown) => unknown;
 }
 
 /**

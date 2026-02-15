@@ -2,15 +2,16 @@
 import { db, todos } from "@argus/db";
 import { eq, and } from "drizzle-orm";
 import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import type { ClassificationResult } from "../../prompts/inbox-classifier.js";
 
 /** カテゴリ別の絵文字マッピング */
 const CATEGORY_EMOJI: Record<string, string> = {
-  "仕事": "\uD83D\uDCBC",
-  "買い物": "\uD83D\uDED2",
-  "学習": "\uD83D\uDCDA",
-  "生活": "\uD83C\uDFE0",
-  "その他": "\uD83D\uDCCC",
+  仕事: "\uD83D\uDCBC",
+  買い物: "\uD83D\uDED2",
+  学習: "\uD83D\uDCDA",
+  生活: "\uD83C\uDFE0",
+  その他: "\uD83D\uDCCC",
 };
 
 /** キーワードベースのカテゴリ判定マッピング */
@@ -25,9 +26,14 @@ const CATEGORY_KEYWORDS: Array<{ category: string; keywords: string[] }> = [
  * 分類結果からカテゴリを抽出する。
  * AI レスポンスに category があればそれを使用し、なければキーワードベースで判定。
  */
-export function extractCategory(classification: ClassificationResult): string | null {
+export function extractCategory(
+  classification: ClassificationResult,
+): string | null {
   // AI レスポンスに category がある場合はそれを使用
-  const aiCategory = (classification as any).category;
+  const aiCategory =
+    "category" in classification
+      ? (classification as { category: string }).category
+      : undefined;
   if (typeof aiCategory === "string" && aiCategory.trim().length > 0) {
     return aiCategory.trim();
   }
@@ -55,7 +61,10 @@ export function findMatchingTodo(
 ): { id: string; content: string } | null {
   // 完了系キーワードを除去
   const cleanedText = completionText
-    .replace(/終わった|終わり|完了した|完了|できた|やった|済んだ|済み|した$/g, "")
+    .replace(
+      /終わった|終わり|完了した|完了|できた|やった|済んだ|済み|した$/g,
+      "",
+    )
     .replace(/[。、！!？?]/g, "")
     .trim();
 
@@ -63,7 +72,10 @@ export function findMatchingTodo(
 
   // 部分一致マッチ
   for (const todo of pendingTodos) {
-    if (todo.content.includes(cleanedText) || cleanedText.includes(todo.content)) {
+    if (
+      todo.content.includes(cleanedText) ||
+      cleanedText.includes(todo.content)
+    ) {
       return todo;
     }
   }
@@ -158,7 +170,9 @@ export async function handleTodoCreate(
     text: `📝 「${todo.content}」をToDoリストに追加しました`,
   });
 
-  console.log(`[inbox-todo] Created todo: "${todo.content}" (category: ${category || "none"})`);
+  console.log(
+    `[inbox-todo] Created todo: "${todo.content}" (category: ${category || "none"})`,
+  );
 }
 
 /**
@@ -209,7 +223,9 @@ export async function handleTodoComplete(
     text: `\u2705 \u300C${matched.content}\u300D\u3092\u5B8C\u4E86\u306B\u3057\u307E\u3057\u305F\uFF08\u6B8B\u308A ${remaining.length} \u4EF6\uFF09`,
   });
 
-  console.log(`[inbox-todo] Completed todo: "${matched.content}" (remaining: ${remaining.length})`);
+  console.log(
+    `[inbox-todo] Completed todo: "${matched.content}" (remaining: ${remaining.length})`,
+  );
 }
 
 /**
@@ -227,14 +243,18 @@ export async function handleTodoCheck(
     .where(and(eq(todos.status, "pending"), eq(todos.slackChannel, channel)));
 
   const blocks = buildTodoCheckBlocks(
-    pendingTodos.map((t) => ({ id: t.id, content: t.content, category: t.category })),
+    pendingTodos.map((t) => ({
+      id: t.id,
+      content: t.content,
+      category: t.category,
+    })),
   );
 
   await client.chat.postMessage({
     channel,
     thread_ts: threadTs,
     text: `\uD83D\uDCDD ToDo\uFF08${pendingTodos.length}\u4EF6\uFF09`,
-    blocks: blocks as any[],
+    blocks: blocks as unknown as KnownBlock[],
   });
 }
 

@@ -1,4 +1,6 @@
-import { db, snsPosts } from "@argus/db";
+import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
+import { db, snsPosts, type SnsPost } from "@argus/db";
 import { eq, and, lte } from "drizzle-orm";
 import { publishToX, publishThread } from "./x-publisher.js";
 import { publishToQiita } from "./qiita-publisher.js";
@@ -12,14 +14,23 @@ import { publishToGitHub } from "./github-publisher.js";
 import { publishToInstagram } from "./instagram-publisher.js";
 import { buildPublishedBlocks } from "./reporter.js";
 import { addReaction } from "../../utils/reactions.js";
-import type { SnsContentUnion } from "./types.js";
+import type {
+  XPostContent,
+  ArticleContent,
+  YouTubeMetadataContent,
+  TikTokScript,
+  InstagramContent,
+  ThreadsContent,
+  GitHubContent,
+  PodcastContent,
+} from "./types.js";
 import { updateSnsCanvas } from "../../canvas/sns-canvas.js";
 import { getPlatformLabel } from "./scheduler-utils.js";
 
 /**
  * スケジュール済み投稿を毎分チェックし、投稿時刻が到来したものを自動投稿する。
  */
-export async function pollScheduledPosts(client: any): Promise<void> {
+export async function pollScheduledPosts(client: WebClient): Promise<void> {
   const now = new Date();
 
   const scheduledPosts = await db
@@ -55,11 +66,11 @@ export async function pollScheduledPosts(client: any): Promise<void> {
               blocks: buildPublishedBlocks(
                 platformLabel,
                 result.url || "",
-              ) as any[],
+              ) as KnownBlock[],
               text: `${platformLabel} のスケジュール投稿が完了しました`,
             });
             await addReaction(
-              client as any,
+              client,
               post.slackChannel,
               post.slackMessageTs,
               "rocket",
@@ -71,7 +82,7 @@ export async function pollScheduledPosts(client: any): Promise<void> {
               blocks: buildPublishedBlocks(
                 platformLabel,
                 result.url || "",
-              ) as any[],
+              ) as KnownBlock[],
               text: `${platformLabel} のスケジュール投稿が完了しました`,
             });
           }
@@ -104,7 +115,7 @@ export async function pollScheduledPosts(client: any): Promise<void> {
               text: `${platformLabel} のスケジュール投稿に失敗しました: ${result.error || "不明なエラー"}\nステータスを「提案」に戻しました。`,
             });
             await addReaction(
-              client as any,
+              client,
               post.slackChannel,
               post.slackMessageTs,
               "x",
@@ -145,13 +156,13 @@ export async function pollScheduledPosts(client: any): Promise<void> {
  * プラットフォーム別にパブリッシャーを呼び出すヘルパー
  */
 export async function publishPost(
-  post: any,
+  post: SnsPost,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
-  const content = post.content as unknown as SnsContentUnion &
-    Record<string, any>;
-
   switch (post.platform) {
     case "x": {
+      const content = post.content as unknown as XPostContent & {
+        text?: string;
+      };
       const text = content.text || "";
       const parts = text.split("\n---\n").map((p: string) => p.trim());
       const isThread = parts.length > 1;
@@ -169,10 +180,11 @@ export async function publishPost(
     }
 
     case "qiita": {
+      const content = post.content as unknown as ArticleContent;
       const result = await publishToQiita({
         title: content.title,
         body: content.body,
-        tags: (content.tags || []).map((t: any) =>
+        tags: (content.tags || []).map((t: string | { name: string }) =>
           typeof t === "string" ? { name: t } : t,
         ),
       });
@@ -180,6 +192,7 @@ export async function publishPost(
     }
 
     case "zenn": {
+      const content = post.content as unknown as ArticleContent;
       const slug = content.title
         .toLowerCase()
         .replace(/[^\w\s]/g, "")
@@ -199,6 +212,7 @@ export async function publishPost(
     }
 
     case "note": {
+      const content = post.content as unknown as ArticleContent;
       const result = await publishToNote({
         title: content.title,
         body: content.body,
@@ -209,8 +223,12 @@ export async function publishPost(
     }
 
     case "youtube": {
+      const content = post.content as unknown as YouTubeMetadataContent & {
+        videoPath?: string;
+        thumbnailPath?: string;
+      };
       const result = await uploadToYouTube({
-        videoPath: content.videoPath,
+        videoPath: content.videoPath || "",
         title: content.title,
         description: content.description,
         tags: content.tags || [],
@@ -222,6 +240,7 @@ export async function publishPost(
     }
 
     case "threads": {
+      const content = post.content as unknown as ThreadsContent;
       const result = await publishToThreads({
         text: content.text || "",
       });
@@ -229,6 +248,11 @@ export async function publishPost(
     }
 
     case "tiktok": {
+      const content = post.content as unknown as TikTokScript & {
+        videoPath?: string;
+        videoUrl?: string;
+        text?: string;
+      };
       const result = await publishToTikTok({
         videoPath: content.videoPath || content.videoUrl || "",
         caption: content.title || content.text || "",
@@ -237,17 +261,22 @@ export async function publishPost(
     }
 
     case "github": {
+      const content = post.content as unknown as GitHubContent;
       const result = await publishToGitHub({
         name: content.name,
         description: content.description,
         readme: content.readme,
         topics: content.topics || [],
-        visibility: content.visibility || "public",
+        visibility: (content.visibility as "public" | "private") || "public",
       });
       return { success: result.success, url: result.url, error: result.error };
     }
 
     case "instagram": {
+      const content = post.content as unknown as InstagramContent & {
+        imageUrl?: string;
+        videoUrl?: string;
+      };
       const igResult = await publishToInstagram({
         imageUrl: content.imageUrl,
         videoUrl: content.videoUrl,
@@ -262,10 +291,14 @@ export async function publishPost(
     }
 
     case "podcast": {
+      const content = post.content as unknown as PodcastContent;
       const result = await publishPodcast({
         title: content.title || "",
         description: content.description || "",
-        chapters: content.chapters || [],
+        chapters: (content.chapters || []).map((ch) => ({
+          startTime: ch.time || "00:00",
+          title: ch.title,
+        })),
         category: content.category || "",
         audioPath: content.audioPath || "",
       });

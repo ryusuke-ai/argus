@@ -147,7 +147,7 @@ function createResearchHooks(
   say: SayFn,
   threadTs: string,
 ): ArgusHooks {
-  const obsDB: ObservationDB = { db, tasks, lessons, eq };
+  const obsDB = { db, tasks, lessons, eq } as ObservationDB;
   const baseHooks = createDBObservationHooks(
     obsDB,
     dbSessionId,

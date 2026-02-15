@@ -6,6 +6,7 @@
  * Usage: pnpm tsx --env-file=.env scripts/test-sns-all-platforms.ts
  */
 
+import type { KnownBlock } from "@slack/types";
 import { db, snsPosts } from "@argus/db";
 
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
@@ -22,7 +23,7 @@ if (!SNS_CHANNEL) {
 async function postMessage(
   channel: string,
   text: string,
-  blocks: any[],
+  blocks: KnownBlock[],
 ): Promise<string> {
   const res = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
@@ -32,7 +33,11 @@ async function postMessage(
     },
     body: JSON.stringify({ channel, text, blocks }),
   });
-  const data = (await res.json()) as any;
+  const data = (await res.json()) as {
+    ok: boolean;
+    error?: string;
+    ts: string;
+  };
   if (!data.ok) {
     throw new Error(`Slack API error: ${data.error}`);
   }
@@ -60,7 +65,7 @@ function buildXPostBlocks(input: {
   threadCount?: number;
   scheduledTime?: string;
   platformLabel?: string;
-}): any[] {
+}): KnownBlock[] {
   const categoryLabel = CATEGORY_LABELS[input.category] || input.category;
   const formatLabel = input.isThread
     ? `スレッド (${input.threadCount}ポスト)`
@@ -129,7 +134,7 @@ function buildArticlePostBlocks(input: {
   body: string;
   tags: string[];
   scheduledTime?: string;
-}): any[] {
+}): KnownBlock[] {
   const PLATFORM_LABELS: Record<string, string> = {
     note: "note 記事案",
     zenn: "Zenn 記事案",
@@ -196,7 +201,7 @@ function buildVideoPostBlocks(input: {
   category: string;
   duration: string;
   platformLabel?: string;
-}): any[] {
+}): KnownBlock[] {
   const VIDEO_CATEGORY_LABELS: Record<string, string> = {
     tutorial: "チュートリアル",
     review: "レビュー",
@@ -257,7 +262,7 @@ function buildGitHubPostBlocks(input: {
   description: string;
   topics: string[];
   scheduledTime?: string;
-}): any[] {
+}): KnownBlock[] {
   const topicsText = input.topics.length > 0 ? input.topics.join(", ") : "なし";
   return [
     {
@@ -310,7 +315,7 @@ function buildPodcastPostBlocks(input: {
   title: string;
   description: string;
   scheduledTime?: string;
-}): any[] {
+}): KnownBlock[] {
   return [
     {
       type: "header",
@@ -364,8 +369,8 @@ interface PostSpec {
   name: string;
   platform: string;
   postType: string;
-  content: any;
-  buildBlocks: (id: string) => { blocks: any[]; text: string };
+  content: Record<string, unknown>;
+  buildBlocks: (id: string) => { blocks: KnownBlock[]; text: string };
 }
 
 const specs: PostSpec[] = [
@@ -732,9 +737,10 @@ async function main() {
         `[${i + 1}/${TOTAL}] ${spec.name} -> OK (id: ${post.id}, ts: ${ts})`,
       );
       results.push({ name: spec.name, ok: true, id: post.id });
-    } catch (e: any) {
-      console.error(`[${i + 1}/${TOTAL}] ${spec.name} -> FAIL: ${e.message}`);
-      results.push({ name: spec.name, ok: false, error: e.message });
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      console.error(`[${i + 1}/${TOTAL}] ${spec.name} -> FAIL: ${errMsg}`);
+      results.push({ name: spec.name, ok: false, error: errMsg });
     }
 
     // Rate limit 対策

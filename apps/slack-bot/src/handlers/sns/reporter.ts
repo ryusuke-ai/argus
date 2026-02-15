@@ -1,3 +1,5 @@
+import type { KnownBlock, Button } from "@slack/types";
+
 interface XPostInput {
   id: string;
   text: string;
@@ -16,7 +18,8 @@ const WARNING_LABELS: Record<string, string> = {
   SINGLE_POST_TOO_LONG: "200文字を超えています（推奨: 100-200文字）",
   THREAD_POST_TOO_SHORT: "100文字未満のポストがあります（推奨: 200-280文字）",
   TOO_MANY_THREAD_POSTS: "ポスト数が多すぎます（推奨: 3-6ポスト）",
-  NEGATIVE_TONE_INDICATORS: "ネガティブな表現を含んでいます（Grokが配信抑制する可能性）",
+  NEGATIVE_TONE_INDICATORS:
+    "ネガティブな表現を含んでいます（Grokが配信抑制する可能性）",
   EXCESSIVE_HASHTAGS: "ハッシュタグが多めです（推奨: 0-1個）",
 };
 
@@ -30,13 +33,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   youtube_clip: "YouTube 切り抜き",
 };
 
-export function buildXPostBlocks(input: XPostInput): any[] {
+export function buildXPostBlocks(input: XPostInput): KnownBlock[] {
   const categoryLabel = CATEGORY_LABELS[input.category] || input.category;
-  const formatLabel = input.isThread ? `スレッド (${input.threadCount}ポスト)` : "単発投稿";
-  const charCountLabel = input.isThread ? `合計${input.text.length}文字` : `${input.text.length}文字`;
+  const formatLabel = input.isThread
+    ? `スレッド (${input.threadCount}ポスト)`
+    : "単発投稿";
+  const charCountLabel = input.isThread
+    ? `合計${input.text.length}文字`
+    : `${input.text.length}文字`;
   const headerText = input.platformLabel || "X 投稿案";
 
-  const blocks: any[] = [
+  const blocks: KnownBlock[] = [
     {
       type: "header",
       text: { type: "plain_text", text: headerText, emoji: true },
@@ -47,7 +54,9 @@ export function buildXPostBlocks(input: XPostInput): any[] {
         { type: "mrkdwn", text: `*${categoryLabel}*` },
         { type: "mrkdwn", text: formatLabel },
         { type: "mrkdwn", text: charCountLabel },
-        ...(input.scheduledTime ? [{ type: "mrkdwn" as const, text: input.scheduledTime }] : []),
+        ...(input.scheduledTime
+          ? [{ type: "mrkdwn" as const, text: input.scheduledTime }]
+          : []),
       ],
     },
     { type: "divider" },
@@ -69,7 +78,7 @@ export function buildXPostBlocks(input: XPostInput): any[] {
     });
   }
 
-  const actionButtons: any[] = [];
+  const actionButtons: Button[] = [];
   if (!input.hideScheduleButton) {
     actionButtons.push({
       type: "button",
@@ -151,11 +160,11 @@ const VIDEO_CATEGORY_LABELS: Record<string, string> = {
   news: "ニュース",
 };
 
-export function buildVideoPostBlocks(input: VideoPostInput): any[] {
+export function buildVideoPostBlocks(input: VideoPostInput): KnownBlock[] {
   const categoryLabel = VIDEO_CATEGORY_LABELS[input.category] || input.category;
   const headerText = input.platformLabel || "YouTube 動画案";
 
-  const blocks: any[] = [
+  const blocks: KnownBlock[] = [
     {
       type: "header",
       text: { type: "plain_text", text: headerText, emoji: true },
@@ -173,10 +182,15 @@ export function buildVideoPostBlocks(input: VideoPostInput): any[] {
       text: { type: "mrkdwn", text: `*${input.title}*\n${input.description}` },
     },
     ...(input.videoUrl
-      ? [{
-          type: "section" as const,
-          text: { type: "mrkdwn" as const, text: `<${input.videoUrl}|プレビュー再生>` },
-        }]
+      ? [
+          {
+            type: "section" as const,
+            text: {
+              type: "mrkdwn" as const,
+              text: `<${input.videoUrl}|プレビュー再生>`,
+            },
+          },
+        ]
       : []),
     { type: "divider" },
   ];
@@ -191,7 +205,7 @@ export function buildVideoPostBlocks(input: VideoPostInput): any[] {
     });
   }
 
-  const videoButtons: any[] = [];
+  const videoButtons: Button[] = [];
   if (input.videoUrl) {
     // Phase 2: レンダリング済み → 投稿ボタン
     videoButtons.push({
@@ -251,7 +265,9 @@ const PLATFORM_LABELS: Record<string, string> = {
  * タグを表示用文字列に正規化する。
  * string[] でも {name: string}[] でも対応する。
  */
-function normalizeTagsForDisplay(tags: Array<string | { name: string }>): string {
+function normalizeTagsForDisplay(
+  tags: Array<string | { name: string }>,
+): string {
   if (tags.length === 0) return "なし";
   return tags.map((t) => (typeof t === "string" ? t : t.name)).join(", ");
 }
@@ -261,11 +277,12 @@ function normalizeTagsForDisplay(tags: Array<string | { name: string }>): string
  * メインメッセージにはヘッダー・タイトル・メタ情報・ボタンのみ。
  * 記事本文はスレッドに別途投稿する（index.ts で処理）。
  */
-export function buildArticlePostBlocks(input: ArticlePostInput): any[] {
-  const platformLabel = PLATFORM_LABELS[input.platform] || `${input.platform} 記事案`;
+export function buildArticlePostBlocks(input: ArticlePostInput): KnownBlock[] {
+  const platformLabel =
+    PLATFORM_LABELS[input.platform] || `${input.platform} 記事案`;
   const tagText = normalizeTagsForDisplay(input.tags);
 
-  const blocks: any[] = [
+  const blocks: KnownBlock[] = [
     {
       type: "header",
       text: { type: "plain_text", text: platformLabel, emoji: true },
@@ -279,7 +296,9 @@ export function buildArticlePostBlocks(input: ArticlePostInput): any[] {
       elements: [
         { type: "mrkdwn", text: `*タグ:* ${tagText}` },
         { type: "mrkdwn", text: `*${input.body.length}文字*` },
-        ...(input.scheduledTime ? [{ type: "mrkdwn" as const, text: input.scheduledTime }] : []),
+        ...(input.scheduledTime
+          ? [{ type: "mrkdwn" as const, text: input.scheduledTime }]
+          : []),
       ],
     },
     { type: "divider" },
@@ -295,7 +314,7 @@ export function buildArticlePostBlocks(input: ArticlePostInput): any[] {
     });
   }
 
-  const articleButtons: any[] = [];
+  const articleButtons: Button[] = [];
   if (!input.hideScheduleButton) {
     articleButtons.push({
       type: "button",
@@ -332,25 +351,37 @@ export function buildArticlePostBlocks(input: ArticlePostInput): any[] {
   return blocks;
 }
 
-export function buildScheduledBlocks(platform: string, timeLabel: string): any[] {
+export function buildScheduledBlocks(
+  platform: string,
+  timeLabel: string,
+): KnownBlock[] {
   return [
     {
       type: "section",
-      text: { type: "mrkdwn", text: `*${platform}* のスケジュール投稿が確定しました\n投稿予定: *${timeLabel}*` },
+      text: {
+        type: "mrkdwn",
+        text: `*${platform}* のスケジュール投稿が確定しました\n投稿予定: *${timeLabel}*`,
+      },
     },
   ];
 }
 
-export function buildPublishedBlocks(platform: string, url: string): any[] {
+export function buildPublishedBlocks(
+  platform: string,
+  url: string,
+): KnownBlock[] {
   return [
     {
       type: "section",
-      text: { type: "mrkdwn", text: `*${platform} 投稿完了*\n<${url}|投稿を見る>` },
+      text: {
+        type: "mrkdwn",
+        text: `*${platform} 投稿完了*\n<${url}|投稿を見る>`,
+      },
     },
   ];
 }
 
-export function buildSkippedBlocks(): any[] {
+export function buildSkippedBlocks(): KnownBlock[] {
   return [
     {
       type: "section",
@@ -367,10 +398,10 @@ interface GitHubPostInput {
   scheduledTime?: string;
 }
 
-export function buildGitHubPostBlocks(input: GitHubPostInput): any[] {
+export function buildGitHubPostBlocks(input: GitHubPostInput): KnownBlock[] {
   const topicsText = input.topics.length > 0 ? input.topics.join(", ") : "なし";
 
-  const blocks: any[] = [
+  const blocks: KnownBlock[] = [
     {
       type: "header",
       text: { type: "plain_text", text: "GitHub リポジトリ案", emoji: true },
@@ -383,7 +414,9 @@ export function buildGitHubPostBlocks(input: GitHubPostInput): any[] {
       type: "context",
       elements: [
         { type: "mrkdwn", text: `*トピック:* ${topicsText}` },
-        ...(input.scheduledTime ? [{ type: "mrkdwn" as const, text: input.scheduledTime }] : []),
+        ...(input.scheduledTime
+          ? [{ type: "mrkdwn" as const, text: input.scheduledTime }]
+          : []),
       ],
     },
     { type: "divider" },
@@ -423,8 +456,8 @@ interface PodcastPostInput {
   scheduledTime?: string;
 }
 
-export function buildPodcastPostBlocks(input: PodcastPostInput): any[] {
-  const blocks: any[] = [
+export function buildPodcastPostBlocks(input: PodcastPostInput): KnownBlock[] {
+  const blocks: KnownBlock[] = [
     {
       type: "header",
       text: { type: "plain_text", text: "Podcast エピソード案", emoji: true },
@@ -434,10 +467,12 @@ export function buildPodcastPostBlocks(input: PodcastPostInput): any[] {
       text: { type: "mrkdwn", text: `*${input.title}*\n${input.description}` },
     },
     ...(input.scheduledTime
-      ? [{
-          type: "context" as const,
-          elements: [{ type: "mrkdwn" as const, text: input.scheduledTime }],
-        }]
+      ? [
+          {
+            type: "context" as const,
+            elements: [{ type: "mrkdwn" as const, text: input.scheduledTime }],
+          },
+        ]
       : []),
     { type: "divider" },
     {
@@ -477,7 +512,9 @@ interface PodcastAudioInput {
   scheduledTime?: string;
 }
 
-export function buildPodcastAudioBlocks(input: PodcastAudioInput): any[] {
+export function buildPodcastAudioBlocks(
+  input: PodcastAudioInput,
+): KnownBlock[] {
   return [
     {
       type: "header",
@@ -489,12 +526,17 @@ export function buildPodcastAudioBlocks(input: PodcastAudioInput): any[] {
     },
     {
       type: "section",
-      text: { type: "mrkdwn", text: `<${input.audioUrl}|ポッドキャストを再生>` },
+      text: {
+        type: "mrkdwn",
+        text: `<${input.audioUrl}|ポッドキャストを再生>`,
+      },
     },
     {
       type: "context",
       elements: [
-        ...(input.scheduledTime ? [{ type: "mrkdwn" as const, text: input.scheduledTime }] : []),
+        ...(input.scheduledTime
+          ? [{ type: "mrkdwn" as const, text: input.scheduledTime }]
+          : []),
       ],
     },
     { type: "divider" },
@@ -519,7 +561,9 @@ export function buildPodcastAudioBlocks(input: PodcastAudioInput): any[] {
   ];
 }
 
-export function buildScriptProposalBlocks(input: ScriptProposalInput): any[] {
+export function buildScriptProposalBlocks(
+  input: ScriptProposalInput,
+): KnownBlock[] {
   const modeLabel = input.mode === "dialogue" ? "対話形式" : "ナレーション形式";
 
   return [
@@ -544,7 +588,10 @@ export function buildScriptProposalBlocks(input: ScriptProposalInput): any[] {
     {
       type: "context",
       elements: [
-        { type: "mrkdwn", text: "スレッドに台本の詳細が投稿されています。確認してから承認してください。" },
+        {
+          type: "mrkdwn",
+          text: "スレッドに台本の詳細が投稿されています。確認してから承認してください。",
+        },
       ],
     },
     {
@@ -552,7 +599,11 @@ export function buildScriptProposalBlocks(input: ScriptProposalInput): any[] {
       elements: [
         {
           type: "button",
-          text: { type: "plain_text", text: "承認してレンダリング開始", emoji: true },
+          text: {
+            type: "plain_text",
+            text: "承認してレンダリング開始",
+            emoji: true,
+          },
           style: "primary",
           action_id: "sns_approve_script",
           value: input.id,
@@ -580,11 +631,15 @@ interface RenderedVideoInput {
   videoPath: string;
 }
 
-export function buildRenderedBlocks(input: RenderedVideoInput): any[] {
+export function buildRenderedBlocks(input: RenderedVideoInput): KnownBlock[] {
   return [
     {
       type: "header",
-      text: { type: "plain_text", text: "YouTube 動画レンダリング完了", emoji: true },
+      text: {
+        type: "plain_text",
+        text: "YouTube 動画レンダリング完了",
+        emoji: true,
+      },
     },
     {
       type: "section",
@@ -639,21 +694,30 @@ const TIKTOK_CATEGORY_LABELS: Record<string, string> = {
   before_after: "ビフォーアフター",
 };
 
-export function buildTikTokPostBlocks(input: TikTokPostInput): any[] {
-  const categoryLabel = TIKTOK_CATEGORY_LABELS[input.category] || input.category;
+export function buildTikTokPostBlocks(input: TikTokPostInput): KnownBlock[] {
+  const categoryLabel =
+    TIKTOK_CATEGORY_LABELS[input.category] || input.category;
   const durationLabel = `${input.estimatedDuration}秒`;
-  const hashtagsLabel = input.hashtags.length > 0
-    ? input.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")
-    : "なし";
+  const hashtagsLabel =
+    input.hashtags.length > 0
+      ? input.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")
+      : "なし";
 
-  const blocks: any[] = [
+  const blocks: KnownBlock[] = [
     {
       type: "header",
-      text: { type: "plain_text", text: "TikTok & Instagram 動画案", emoji: true },
+      text: {
+        type: "plain_text",
+        text: "TikTok & Instagram 動画案",
+        emoji: true,
+      },
     },
     {
       type: "section",
-      text: { type: "mrkdwn", text: `*${input.title}*\n${input.description.slice(0, 200)}` },
+      text: {
+        type: "mrkdwn",
+        text: `*${input.title}*\n${input.description.slice(0, 200)}`,
+      },
     },
     {
       type: "context",
@@ -666,7 +730,7 @@ export function buildTikTokPostBlocks(input: TikTokPostInput): any[] {
     { type: "divider" },
   ];
 
-  const actionButtons: any[] = [];
+  const actionButtons: Button[] = [];
   if (input.videoPath) {
     // Phase 3: 動画レンダリング済み → 投稿ボタン
     actionButtons.push({
@@ -680,7 +744,11 @@ export function buildTikTokPostBlocks(input: TikTokPostInput): any[] {
     // Phase 1: 台本のみ → 承認して動画生成
     actionButtons.push({
       type: "button",
-      text: { type: "plain_text", text: "承認して動画生成（TikTok & Instagram）", emoji: true },
+      text: {
+        type: "plain_text",
+        text: "承認して動画生成（TikTok & Instagram）",
+        emoji: true,
+      },
       style: "primary",
       action_id: "sns_approve_tiktok",
       value: input.id,
@@ -716,15 +784,21 @@ interface InstagramPostInput {
   videoUrl?: string;
 }
 
-export function buildInstagramPostBlocks(input: InstagramPostInput): any[] {
+export function buildInstagramPostBlocks(
+  input: InstagramPostInput,
+): KnownBlock[] {
   const typeLabel = input.contentType === "reels" ? "リール" : "画像投稿";
   const categoryLabel = CATEGORY_LABELS[input.category] || input.category;
   const hashtagText = input.hashtags.length > 0 ? input.hashtags.join(" ") : "";
 
-  const blocks: any[] = [
+  const blocks: KnownBlock[] = [
     {
       type: "header",
-      text: { type: "plain_text", text: `Instagram ${typeLabel}案`, emoji: true },
+      text: {
+        type: "plain_text",
+        text: `Instagram ${typeLabel}案`,
+        emoji: true,
+      },
     },
     {
       type: "context",
@@ -732,7 +806,9 @@ export function buildInstagramPostBlocks(input: InstagramPostInput): any[] {
         { type: "mrkdwn", text: `*${categoryLabel}*` },
         { type: "mrkdwn", text: `*${input.caption.length}文字*` },
         { type: "mrkdwn", text: "TikTok & Instagram 共用動画" },
-        ...(input.scheduledTime ? [{ type: "mrkdwn" as const, text: input.scheduledTime }] : []),
+        ...(input.scheduledTime
+          ? [{ type: "mrkdwn" as const, text: input.scheduledTime }]
+          : []),
       ],
     },
     { type: "divider" },
@@ -751,7 +827,7 @@ export function buildInstagramPostBlocks(input: InstagramPostInput): any[] {
 
   blocks.push({ type: "divider" });
 
-  const actionButtons: any[] = [];
+  const actionButtons: Button[] = [];
 
   actionButtons.push(
     {
@@ -795,7 +871,9 @@ interface InstagramImageInput {
   imageUrl: string;
 }
 
-export function buildInstagramImageBlocks(input: InstagramImageInput): any[] {
+export function buildInstagramImageBlocks(
+  input: InstagramImageInput,
+): KnownBlock[] {
   return [
     {
       type: "header",
@@ -839,9 +917,11 @@ export function buildInstagramImageBlocks(input: InstagramImageInput): any[] {
   ];
 }
 
-export function buildScriptDetailBlocks(input: ScriptDetailInput): any[][] {
-  const messages: any[][] = [];
-  let currentBlocks: any[] = [];
+export function buildScriptDetailBlocks(
+  input: ScriptDetailInput,
+): KnownBlock[][] {
+  const messages: KnownBlock[][] = [];
+  let currentBlocks: KnownBlock[] = [];
   let currentCharCount = 0;
   const CHAR_LIMIT = 2800;
   const BLOCK_LIMIT = 45;
@@ -855,7 +935,7 @@ export function buildScriptDetailBlocks(input: ScriptDetailInput): any[][] {
   }
 
   for (const section of input.sections) {
-    const sectionBlocks: any[] = [];
+    const sectionBlocks: KnownBlock[] = [];
     let sectionChars = 0;
 
     // Section header

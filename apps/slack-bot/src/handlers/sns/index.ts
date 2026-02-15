@@ -1,11 +1,20 @@
+import type { WebClient } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { setupSnsActions } from "./actions.js";
 import { generateXPost } from "./generator.js";
 import { generateArticle } from "./article-generator.js";
 import { validateXPost, validateThread, validateArticle } from "./validator.js";
-import { buildXPostBlocks, buildArticlePostBlocks, buildVideoPostBlocks } from "./reporter.js";
-import { startSnsScheduler, generateAllPlatformSuggestions } from "./scheduler.js";
+import {
+  buildXPostBlocks,
+  buildArticlePostBlocks,
+  buildVideoPostBlocks,
+} from "./reporter.js";
+import {
+  startSnsScheduler,
+  generateAllPlatformSuggestions,
+} from "./scheduler.js";
 import { generateYouTubeMetadata } from "./youtube-metadata-generator.js";
 
 const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
@@ -25,7 +34,10 @@ const TRIGGER_PATTERNS = [
   /ポストして/,
 ];
 
-const ARTICLE_TRIGGER_PATTERNS: Array<{ pattern: RegExp; platform: "qiita" | "zenn" | "note" }> = [
+const ARTICLE_TRIGGER_PATTERNS: Array<{
+  pattern: RegExp;
+  platform: "qiita" | "zenn" | "note";
+}> = [
   { pattern: /qiita.*記事/i, platform: "qiita" },
   { pattern: /qiita.*article/i, platform: "qiita" },
   { pattern: /qiita.*投稿/i, platform: "qiita" },
@@ -98,7 +110,8 @@ export function setupSnsHandler(): void {
     if ("subtype" in message && message.subtype === "bot_message") return;
     if (message.channel !== SNS_CHANNEL) return;
 
-    const text = "text" in message && typeof message.text === "string" ? message.text : "";
+    const text =
+      "text" in message && typeof message.text === "string" ? message.text : "";
     if (text.trim().length === 0) return;
 
     const botInfo = await client.auth.test();
@@ -106,7 +119,9 @@ export function setupSnsHandler(): void {
 
     // 全プラットフォーム一括提案
     if (isAllPlatformTrigger(text)) {
-      console.log(`[sns] All-platform trigger detected: "${text.slice(0, 50)}"`);
+      console.log(
+        `[sns] All-platform trigger detected: "${text.slice(0, 50)}"`,
+      );
 
       await client.chat.postMessage({
         channel: SNS_CHANNEL,
@@ -135,7 +150,9 @@ export function setupSnsHandler(): void {
     // 記事プラットフォーム（Qiita/Zenn/note）の検出を先に行う
     const articlePlatform = detectArticlePlatform(text);
     if (articlePlatform) {
-      console.log(`[sns] Article trigger detected: platform=${articlePlatform}, "${text.slice(0, 50)}"`);
+      console.log(
+        `[sns] Article trigger detected: platform=${articlePlatform}, "${text.slice(0, 50)}"`,
+      );
 
       await client.chat.postMessage({
         channel: SNS_CHANNEL,
@@ -144,7 +161,13 @@ export function setupSnsHandler(): void {
       });
 
       try {
-        await generateArticleSuggestion(client, SNS_CHANNEL, message.ts!, text, articlePlatform);
+        await generateArticleSuggestion(
+          client,
+          SNS_CHANNEL,
+          message.ts!,
+          text,
+          articlePlatform,
+        );
       } catch (error) {
         console.error("[sns] Article generation error:", error);
         await client.chat.postMessage({
@@ -167,7 +190,12 @@ export function setupSnsHandler(): void {
       });
 
       try {
-        await generateYouTubeSuggestionManual(client, SNS_CHANNEL, message.ts!, text);
+        await generateYouTubeSuggestionManual(
+          client,
+          SNS_CHANNEL,
+          message.ts!,
+          text,
+        );
       } catch (error) {
         console.error("[sns] YouTube generation error:", error);
         await client.chat.postMessage({
@@ -208,13 +236,21 @@ export function setupSnsHandler(): void {
 }
 
 async function generateXPostSuggestion(
-  client: any,
+  client: WebClient,
   channel: string,
   threadTs: string,
   userPrompt: string,
 ): Promise<void> {
   const dayOfWeek = new Date().getDay();
-  const categories = ["discussion", "tips", "news", "experience", "code", "summary", "tips"];
+  const categories = [
+    "discussion",
+    "tips",
+    "news",
+    "experience",
+    "code",
+    "summary",
+    "tips",
+  ];
   const category = categories[dayOfWeek];
 
   // Claude SDK で投稿コンテンツを生成
@@ -272,13 +308,13 @@ async function generateXPostSuggestion(
   await client.chat.postMessage({
     channel,
     thread_ts: threadTs,
-    blocks: blocks as any[],
+    blocks: blocks as KnownBlock[],
     text: `X 投稿案 (${content.metadata.category || category})`,
   });
 }
 
 async function generateArticleSuggestion(
-  client: any,
+  client: WebClient,
   channel: string,
   threadTs: string,
   userPrompt: string,
@@ -298,7 +334,12 @@ async function generateArticleSuggestion(
   const content = result.content;
 
   // バリデーション
-  const validation = validateArticle(content.title, content.body, content.tags, platform);
+  const validation = validateArticle(
+    content.title,
+    content.body,
+    content.tags,
+    platform,
+  );
 
   // DB に挿入
   const [post] = await db
@@ -332,7 +373,7 @@ async function generateArticleSuggestion(
   const mainMsg = await client.chat.postMessage({
     channel,
     thread_ts: threadTs,
-    blocks: blocks as any[],
+    blocks: blocks as KnownBlock[],
     text: `${platform} 記事案: ${content.title}`,
   });
 
@@ -345,7 +386,10 @@ async function generateArticleSuggestion(
         channel,
         thread_ts: mainMsg.ts || threadTs,
         blocks: [
-          { type: "section", text: { type: "mrkdwn", text: `*${content.title}*\n\n${body}` } },
+          {
+            type: "section",
+            text: { type: "mrkdwn", text: `*${content.title}*\n\n${body}` },
+          },
         ],
         text: `${content.title} (全文)`,
       });
@@ -359,7 +403,13 @@ async function generateArticleSuggestion(
           channel,
           thread_ts: mainMsg.ts || threadTs,
           blocks: [
-            { type: "section", text: { type: "mrkdwn", text: part === 1 ? `*${content.title}*\n\n${chunk}` : chunk } },
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: part === 1 ? `*${content.title}*\n\n${chunk}` : chunk,
+              },
+            },
           ],
           text: `${content.title} (${part}/${total})`,
         });
@@ -371,13 +421,21 @@ async function generateArticleSuggestion(
 }
 
 async function generateYouTubeSuggestionManual(
-  client: any,
+  client: WebClient,
   channel: string,
   threadTs: string,
   userPrompt: string,
 ): Promise<void> {
   const dayOfWeek = new Date().getDay();
-  const categories = ["discussion", "tips", "news", "experience", "code", "summary", "tips"];
+  const categories = [
+    "discussion",
+    "tips",
+    "news",
+    "experience",
+    "code",
+    "summary",
+    "tips",
+  ];
   const category = categories[dayOfWeek];
 
   const result = await generateYouTubeMetadata(userPrompt, category);
@@ -418,7 +476,7 @@ async function generateYouTubeSuggestionManual(
   await client.chat.postMessage({
     channel,
     thread_ts: threadTs,
-    blocks: blocks as any[],
+    blocks: blocks as KnownBlock[],
     text: `YouTube 動画案: ${content.title}`,
   });
 }

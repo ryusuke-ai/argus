@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import type { ScheduledTask } from "node-cron";
+import type { WebClient } from "@slack/web-api";
 import { getDailyOptimalTimes, POSTS_PER_DAY } from "./optimal-time.js";
 import { db, snsPosts } from "@argus/db";
 import { gte, sql } from "drizzle-orm";
@@ -35,7 +36,7 @@ const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
 let suggestionTask: ScheduledTask | null = null;
 let publishTask: ScheduledTask | null = null;
 
-export function startSnsScheduler(client: any): void {
+export function startSnsScheduler(client: WebClient): void {
   if (!SNS_CHANNEL) {
     console.warn(
       "[sns-scheduler] SLACK_SNS_CHANNEL not set, scheduler disabled",
@@ -102,7 +103,7 @@ export function stopSnsScheduler(): void {
  * Mac スリープや再起動で 4:00 AM の cron を逃した場合のフォールバック。
  * 4:00〜23:59 JST の間でのみ発動し、深夜再起動では重複しない。
  */
-export async function catchUpIfNeeded(client: any): Promise<void> {
+export async function catchUpIfNeeded(client: WebClient): Promise<void> {
   const now = new Date();
   const jstHour = new Date(
     now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }),
@@ -156,7 +157,7 @@ export async function catchUpIfNeeded(client: any): Promise<void> {
  * 実行中に CliUnavailableError が発生した場合も残りをスキップする。
  */
 export async function generateAllPlatformSuggestions(
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   // バッチ開始前の CLI ヘルスチェック
   const healthIssue = await checkCliHealth();

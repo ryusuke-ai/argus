@@ -2,9 +2,17 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { app } from "../app.js";
 import { SessionManager } from "../session-manager.js";
-import { getDefaultModel, splitText, type ToolCall, scanOutputDir, findNewArtifacts, uploadArtifactsToSlack } from "@argus/agent-core";
+import {
+  getDefaultModel,
+  splitText,
+  type ToolCall,
+  scanOutputDir,
+  findNewArtifacts,
+  uploadArtifactsToSlack,
+} from "@argus/agent-core";
 import { executeDeepResearch } from "./deep-research.js";
 import { markdownToMrkdwn } from "../utils/mrkdwn.js";
+import type { WebClient } from "@slack/web-api";
 import { db, gmailOutgoing } from "@argus/db";
 import { eq, and, gte } from "drizzle-orm";
 
@@ -156,7 +164,10 @@ async function fetchSlackFile(
     }
     const fileResponse = await fetch(redirectUrl);
     if (!fileResponse.ok) {
-      console.error("[message] Failed to fetch redirected URL:", fileResponse.status);
+      console.error(
+        "[message] Failed to fetch redirected URL:",
+        fileResponse.status,
+      );
       return null;
     }
     return Buffer.from(await fileResponse.arrayBuffer());
@@ -171,7 +182,9 @@ async function fetchSlackFile(
   // Content-Type を検証して HTML ページでないことを確認
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("text/html")) {
-    console.error("[message] Slack returned HTML instead of image (auth issue?)");
+    console.error(
+      "[message] Slack returned HTML instead of image (auth issue?)",
+    );
     return null;
   }
 
@@ -233,25 +246,29 @@ export function setupMessageHandler(): void {
       "thread_ts" in message && message.thread_ts
         ? message.thread_ts
         : message.ts;
-    const text = "text" in message && typeof message.text === "string" ? message.text : "";
+    const text =
+      "text" in message && typeof message.text === "string" ? message.text : "";
 
     // Extract image files from attachments
-    const imageFiles = extractImageFiles(message as unknown as Record<string, unknown>);
+    const imageFiles = extractImageFiles(
+      message as unknown as Record<string, unknown>,
+    );
 
     // Skip if no text AND no images
     if (text.trim().length === 0 && imageFiles.length === 0) {
       return;
     }
 
-    console.log(`[message] Received: "${text.slice(0, 50)}" images=${imageFiles.length} channel=${channel} thread=${threadTs}`);
+    console.log(
+      `[message] Received: "${text.slice(0, 50)}" images=${imageFiles.length} channel=${channel} thread=${threadTs}`,
+    );
 
     // Handle model commands
     const command = parseModelCommand(text);
     if (command) {
       if (command.action === "switch") {
         channelModelOverrides.set(channel, command.model);
-        const displayName =
-          MODEL_DISPLAY_NAMES[command.model] || command.model;
+        const displayName = MODEL_DISPLAY_NAMES[command.model] || command.model;
         await say({
           text: `モデルを ${displayName} に切り替えました。`,
           thread_ts: threadTs,
@@ -259,8 +276,7 @@ export function setupMessageHandler(): void {
       } else {
         const override = channelModelOverrides.get(channel);
         const currentModel = override || getDefaultModel();
-        const displayName =
-          MODEL_DISPLAY_NAMES[currentModel] || currentModel;
+        const displayName = MODEL_DISPLAY_NAMES[currentModel] || currentModel;
         const source = override ? "手動設定" : "自動検出";
         await say({
           text: `現在のモデル: ${displayName} (${source})`,
@@ -273,7 +289,9 @@ export function setupMessageHandler(): void {
     // Handle deep research trigger
     const researchTopic = parseDeepResearchTrigger(text);
     if (researchTopic) {
-      console.log(`[message] Deep research triggered: "${researchTopic.slice(0, 50)}"`);
+      console.log(
+        `[message] Deep research triggered: "${researchTopic.slice(0, 50)}"`,
+      );
       const model = channelModelOverrides.get(channel);
       // 非同期で実行（メッセージハンドラーをブロックしない）
       executeDeepResearch(researchTopic, channel, threadTs, say, model).catch(
@@ -317,9 +335,14 @@ export function setupMessageHandler(): void {
       );
       const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
 
-      console.log(`[message] Query done: success=${result.success} cost=${result.message.total_cost_usd}`);
+      console.log(
+        `[message] Query done: success=${result.success} cost=${result.message.total_cost_usd}`,
+      );
       if (!result.success) {
-        console.error("[message] Query failed:", JSON.stringify(result.message.content));
+        console.error(
+          "[message] Query failed:",
+          JSON.stringify(result.message.content),
+        );
       }
 
       // Extract text content from response blocks
@@ -336,7 +359,11 @@ export function setupMessageHandler(): void {
         : "(応答を生成できませんでした)";
 
       // Build execution summary line
-      const summary = formatExecutionSummary(result.toolCalls, result.message.total_cost_usd, durationSec);
+      const summary = formatExecutionSummary(
+        result.toolCalls,
+        result.message.total_cost_usd,
+        durationSec,
+      );
 
       // Block Kit でリッチなフォーマットで送信
       const blocks = buildResponseBlocks(replyText, summary);
@@ -350,7 +377,9 @@ export function setupMessageHandler(): void {
       const snapshotAfter = scanOutputDir(outputDir);
       const newArtifacts = findNewArtifacts(snapshotBefore, snapshotAfter);
       if (newArtifacts.length > 0) {
-        console.log(`[message] Found ${newArtifacts.length} new artifact(s), uploading to Slack`);
+        console.log(
+          `[message] Found ${newArtifacts.length} new artifact(s), uploading to Slack`,
+        );
         await uploadArtifactsToSlack({
           slackToken: process.env.SLACK_BOT_TOKEN!,
           channel,
@@ -437,8 +466,7 @@ async function postEmailDrafts(
   since: Date,
   channel: string,
   threadTs: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
+  client: WebClient,
 ): Promise<void> {
   try {
     const drafts = await db
@@ -452,9 +480,8 @@ async function postEmailDrafts(
       );
 
     for (const draft of drafts) {
-      const bodyPreview = draft.body.length > 300
-        ? draft.body.slice(0, 300) + "..."
-        : draft.body;
+      const bodyPreview =
+        draft.body.length > 300 ? draft.body.slice(0, 300) + "..." : draft.body;
 
       const blocks = [
         {
@@ -464,7 +491,11 @@ async function postEmailDrafts(
               type: "rich_text_section",
               elements: [
                 { type: "emoji", name: "email" },
-                { type: "text", text: " メール送信ドラフト — ", style: { bold: true } },
+                {
+                  type: "text",
+                  text: " メール送信ドラフト — ",
+                  style: { bold: true },
+                },
                 { type: "text", text: draft.subject, style: { bold: true } },
               ],
             },
@@ -472,9 +503,7 @@ async function postEmailDrafts(
         },
         {
           type: "context",
-          elements: [
-            { type: "mrkdwn", text: `To: ${draft.toAddress}` },
-          ],
+          elements: [{ type: "mrkdwn", text: `To: ${draft.toAddress}` }],
         },
         { type: "divider" },
         {
@@ -482,9 +511,7 @@ async function postEmailDrafts(
           elements: [
             {
               type: "rich_text_quote",
-              elements: [
-                { type: "text", text: bodyPreview },
-              ],
+              elements: [{ type: "text", text: bodyPreview }],
             },
           ],
         },
@@ -514,9 +541,7 @@ async function postEmailDrafts(
         },
         {
           type: "context",
-          elements: [
-            { type: "mrkdwn", text: "Gmail · ドラフト" },
-          ],
+          elements: [{ type: "mrkdwn", text: "Gmail · ドラフト" }],
         },
       ];
 
@@ -541,4 +566,13 @@ async function postEmailDrafts(
 }
 
 // Exported for testing
-export { parseModelCommand, parseDeepResearchTrigger, channelModelOverrides, markdownToMrkdwn, formatExecutionSummary, buildImagePrompt, extractImageFiles, buildResponseBlocks };
+export {
+  parseModelCommand,
+  parseDeepResearchTrigger,
+  channelModelOverrides,
+  markdownToMrkdwn,
+  formatExecutionSummary,
+  buildImagePrompt,
+  extractImageFiles,
+  buildResponseBlocks,
+};
