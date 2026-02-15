@@ -113,7 +113,7 @@ NODE_ENV=production
 1. [Railway](https://railway.app/) にログイン
 2. 「New Project」>「Deploy from GitHub repo」を選択
 3. Argus のリポジトリを接続
-4. Railway が `Dockerfile` を自動検出してビルド・デプロイを実行
+4. Railway の Dockerfile Path に `docker/Dockerfile` を指定してビルド・デプロイを実行
 
 以降、`main` ブランチに push するたびに自動デプロイされます。
 
@@ -146,7 +146,7 @@ railway up
 
 | 項目          | 値     | 備考                                 |
 | ------------- | ------ | ------------------------------------ |
-| Build Command | (空欄) | Dockerfile を自動検出                |
+| Build Command | (空欄) | `docker/Dockerfile` を指定           |
 | Start Command | (空欄) | Dockerfile の CMD を使用             |
 | Port          | `3150` | Railway が `PORT` 環境変数を自動設定 |
 
@@ -290,7 +290,7 @@ railway up
 # ローカルでビルドを実行して確認
 pnpm build
 
-# Dockerfile のビルドステージを確認
+# docker/Dockerfile のビルドステージを確認
 # Stage 1 の "RUN pnpm build" が正しく実行されているかチェック
 railway logs | grep "pnpm build"
 ```
@@ -428,7 +428,7 @@ Cloudflare提供のサブドメイン（`*.trycloudflare.com`）を使用する�
 6. 設定:
    - **Service Name**: `argus-tunnel`
    - **Root Directory**: `/`
-   - **Dockerfile Path**: `Dockerfile.tunnel`
+   - **Dockerfile Path**: `docker/Dockerfile.tunnel`
 
 #### 環境変数設定
 

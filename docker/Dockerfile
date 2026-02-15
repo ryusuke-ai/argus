@@ -46,8 +46,8 @@ RUN pnpm install --prod --frozen-lockfile && \
 # PM2設定ファイルをコピー
 COPY ecosystem.config.cjs ./
 
-# 起動スクリプトをコピー
-COPY docker-entrypoint.sh ./
+# 起動スクリプトをコピー（docker/ ディレクトリからの相対パス: docker build -f docker/Dockerfile . で実行）
+COPY docker/entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh
 
 # ダッシュボードのポート公開
