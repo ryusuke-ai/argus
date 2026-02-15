@@ -23,9 +23,32 @@
 
 各トピックに対して Task ツールで並列にサブエージェントを起動:
 
-- プロンプト: @prompts/research-prompt.md の内容 + トピック情報
-- subagent_type: "general-purpose"
-- model: "opus"
+#### サブエージェント委譲（5要素）
+
+1. **cwd**: `agent-output/YYYYMMDD-daily-news/`
+2. **input**: `work/reference.md`（各トピックの情報）
+3. **output**: `research.json`
+4. **ref**: @prompts/research-prompt.md
+5. **done**: research.json が researchSchema を通ること（`validate-json.js --schema research`）
+
+```
+Task(
+  subagent_type: "general-purpose",
+  model: "opus",
+  prompt: |
+    ## プロンプト
+    {prompts/research-prompt.md の内容}
+
+    ## トピック情報
+    {トピックのタイトル、URL、カテゴリ、概要}
+
+    ## 出力先
+    {cwd} 配下に結果をJSON形式で返す
+
+    ## 完了条件
+    各トピックの deep_analysis, key_points, implications が含まれていること
+)
+```
 
 ### 3. 結果を統合
 
