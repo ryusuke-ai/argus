@@ -88,7 +88,7 @@ argus/
 ├── package.json                 # ルート設定（scripts, devDependencies）
 ├── pnpm-workspace.yaml          # ワークスペース定義
 ├── tsconfig.json                # TypeScript 共通設定 + Project References
-├── Dockerfile                   # マルチステージビルド
+├── Dockerfile                   # マルチステージビルド（ビルド環境と本番環境を分けてイメージサイズを小さくする Docker の手法）
 ├── ecosystem.config.cjs         # PM2 設定（本番）
 └── .env                         # 環境変数（一本化）
 ```
@@ -168,7 +168,7 @@ export async function query(
 
 **学ぶべきポイント**:
 
-- `AbortController` によるタイムアウト制御
+- `AbortController`（実行中の処理を途中でキャンセルするための Web 標準 API）によるタイムアウト制御
 - SDK の `query()` は `AsyncGenerator<SDKMessage>` を返す
 - エラー時は **throw ではなく `errorResult()` で `success: false` を返す**（プロジェクト規約）
 
@@ -271,7 +271,7 @@ export function createDBObservationHooks(obsDB, dbSessionId): ArgusHooks {
 ### このセクションで学ぶこと
 
 - Drizzle ORM のスキーマ定義方法
-- Proxy による DB 接続の遅延初期化パターン
+- Proxy（オブジェクトへのアクセスを横取りして別の処理を挟める JavaScript の仕組み）による DB 接続の遅延初期化パターン
 - 3 つのエントリポイントによる選択的インポート
 
 ### ファイル構成と役割
@@ -449,7 +449,7 @@ await this.server.connect(new StdioServerTransport());
 
 > **平たく言うと**: Collector は「知識を書き込める」、Executor は「知識を読むだけ」。二重チェックで安全性を確保。
 
-**なぜ 2 層で権限分離するのか（Defence-in-Depth）**: ツール公開層だけでは、設定ミスやバグによって書き込みツールが Executor に見えてしまう可能性がある。ビジネスロジック層の `requireCollector()` が最終防衛線（defence-in-depth）として機能し、仮にツール公開層を突破されてもロール検証で書き込みを阻止する。この 2 層構造により、片方が破れても他方が安全性を保つ冗長設計になっている。
+**なぜ 2 層で権限分離するのか（Defence-in-Depth（多層防御: 1つの防御が破られても別の防御で守るセキュリティの基本原則））**: ツール公開層だけでは、設定ミスやバグによって書き込みツールが Executor に見えてしまう可能性がある。ビジネスロジック層の `requireCollector()` が最終防衛線（defence-in-depth）として機能し、仮にツール公開層を突破されてもロール検証で書き込みを阻止する。この 2 層構造により、片方が破れても他方が安全性を保つ冗長設計になっている。
 
 ### 2 パッケージの比較
 
@@ -491,7 +491,7 @@ type PersonalitySection =
 ### このセクションで学ぶこと
 
 - Google OAuth2 認証の実装と共有パターン
-- RFC 2047 メールヘッダデコード（文字化け対策）
+- RFC 2047（メールの件名や送信者名に日本語等の非ASCII文字を埋め込むための国際標準規格）メールヘッダデコード（文字化け対策）
 - MCP ツール定義における Description の工夫
 
 ### OAuth2 認証の共有設計
@@ -519,7 +519,7 @@ packages/google-calendar/src/calendar-client.ts
 
 ```typescript
 // gmail-client.ts — 日本語メールのヘッダデコード
-// CP1252 → UTF-8 の多重エンコーディング問題を最大3回の反復デコードで修正
+// CP1252（Windows で広く使われていた西欧文字の文字コード）→ UTF-8 の多重エンコーディング問題を最大3回の反復デコードで修正
 function decodeHeader(raw: string): string {
   let decoded = raw;
   for (let i = 0; i < 3; i++) {
@@ -639,7 +639,7 @@ function generateCodeChallenge(verifier: string): string {
 
 ```
 apps/slack-bot/src/
-├── index.ts               # ブートストラップ（ハンドラ登録順序が重要）
+├── index.ts               # ブートストラップ（アプリ起動時に行う初期設定処理）（ハンドラ登録順序が重要）
 ├── app.ts                 # CustomSocketModeReceiver（ping タイムアウト対策）
 ├── session-manager.ts     # 1 Thread = 1 Session の管理
 │
@@ -648,10 +648,10 @@ apps/slack-bot/src/
 │   ├── deep-research.ts   # ディープリサーチ（WebSearch 100回想定）
 │   ├── daily-plan.ts      # デイリープラン編集（スレッド返信→再生成）
 │   ├── daily-plan-actions.ts  # チェックボックスアクション
-│   ├── gmail-actions.ts   # Gmail 返信/送信の Block Kit アクション
+│   ├── gmail-actions.ts   # Gmail 返信/送信の Block Kit（Slack 公式のリッチメッセージ用 UI 部品集）アクション
 │   │
 │   ├── inbox/             # 受信処理パイプライン
-│   │   ├── index.ts       # タスクキュー（同時実行制限 MAX_CONCURRENT=3）
+│   │   ├── index.ts       # タスクキュー（処理を順番待ちの列に入れて管理する仕組み）（同時実行制限 MAX_CONCURRENT=3）
 │   │   ├── classifier.ts  # AI 分類 + キーワードフォールバック
 │   │   ├── executor.ts    # Agent SDK 実行 + フェーズ追跡
 │   │   ├── reporter.ts    # Block Kit レポート生成
@@ -662,7 +662,7 @@ apps/slack-bot/src/
 │       ├── actions.ts     # 承認/編集/スキップ/スケジュール
 │       ├── generation/    # コンテンツ生成（8ファイル）
 │       ├── platforms/     # プラットフォーム別公開処理（10ファイル）
-│       ├── scheduling/    # cron + 最適投稿時間
+│       ├── scheduling/    # cron（指定した時刻に自動でプログラムを実行するスケジュール機能）+ 最適投稿時間
 │       └── ui/            # Block Kit ビルダー + バリデーション
 │
 ├── canvas/
@@ -673,7 +673,7 @@ apps/slack-bot/src/
 │   └── deep-research.ts
 │
 └── utils/
-    ├── mrkdwn.ts          # Markdown → Slack mrkdwn 変換
+    ├── mrkdwn.ts          # Markdown → Slack mrkdwn（Slack 独自のテキスト書式。標準的な Markdown とは一部異なる）変換
     ├── progress-reporter.ts  # 単一メッセージ累積更新型の進捗表示
     └── reactions.ts       # リアクション操作の冪等ラッパー
 ```
@@ -715,7 +715,7 @@ setupMessageHandler(); // ↑ で処理されなかった残りのメッセー�
 ### 特徴的コード: アトミックなタスク取得
 
 ```typescript
-// 楽観的ロックで二重実行を防止
+// 楽観的ロック（排他ロックをかけず、更新条件で競合を検出する手法）で二重実行を防止
 const [claimed] = await db
   .update(inboxTasks)
   .set({ status: "running", startedAt: new Date() })
@@ -761,16 +761,16 @@ class CustomSocketModeReceiver implements Receiver {
 **`progress-reporter.ts`** — 単一メッセージ累積更新型:
 
 - スレッドに大量のメッセージを投稿する代わりに、`chat.update` で 1 つのメッセージを更新し続ける
-- 2 秒間隔のスロットルで Slack rate limit 対策
+- 2 秒間隔のスロットル（一定間隔より高頻度の実行を抑制する仕組み）で Slack rate limit（レートリミット: API 呼び出し回数の上限。超えるとエラーになる）対策
 - 完了フェーズの実績比率で残り時間を動的推定（比率の上限は 3.0 にクランプ）
 
-**`reactions.ts`** — 冪等ラッパー:
+**`reactions.ts`** — 冪等（べきとう: 同じ操作を何度実行しても結果が変わらない性質）ラッパー:
 
 - `already_reacted` / `no_reaction` エラーを静かにハンドリング
 
 **`mrkdwn.ts`** — コードブロック退避/復元パターン:
 
-- NUL 文字（`\0CB0\0`）をセンチネルとして使用
+- NUL 文字（`\0CB0\0`）をセンチネル（番兵値: データの区切り目印として使う、通常は出現しない特殊な値）として使用
 
 ### 理解度チェック
 
@@ -895,7 +895,7 @@ const results = await Promise.all([
 ]);
 ```
 
-**Consistency Checker が Claude を使わない（決定的な）理由**: チェック内容は tsconfig references の整合性、依存バージョンの一致、ビルド設定の一貫性など、正解が一意に決まるものばかりである。AI の判断が不要で、決定的（deterministic）に実行できることで毎回同じ結果が保証され、偽陽性が発生しない。これにより CI に組み込んでも信頼性が高く、結果の再現性も確保される。
+**Consistency Checker が Claude を使わない（決定的な）理由**: チェック内容は tsconfig references の整合性、依存バージョンの一致、ビルド設定の一貫性など、正解が一意に決まるものばかりである。AI の判断が不要で、決定的（deterministic: 同じ入力に対して常に同じ結果を返す性質。AI のようなランダム性がない）に実行できることで毎回同じ結果が保証され、偽陽性が発生しない。これにより CI に組み込んでも信頼性が高く、結果の再現性も確保される。
 
 ### 理解度チェック
 
@@ -909,9 +909,9 @@ const results = await Promise.all([
 
 ### このセクションで学ぶこと
 
-- Next.js 16 App Router の Server / Client Component 使い分け
+- Next.js 16 App Router の Server Component（サーバー側で実行される React コンポーネント。DB に直接アクセスできる）/ Client Component（ブラウザ側で実行されユーザー操作を扱うコンポーネント）使い分け
 - Server Component での直接 DB クエリ
-- Range Request 対応のメディア配信
+- Range Request（ファイルの一部分だけを取得する HTTP の仕組み。動画のシーク再生に必要）対応のメディア配信
 
 ### ファイル構成
 
@@ -956,7 +956,7 @@ apps/dashboard/src/
 
 **パターン**: ページ（Server）でデータをフェッチし、表示コンポーネントに props で渡す。インタラクティブ部分だけ `"use client"` にする。
 
-**`force-dynamic` による SSR 強制**: Next.js App Router ではページがデフォルトで静的生成（SSG）される。しかし DB クエリを含むページはリクエストごとに最新データを取得する必要があるため、`export const dynamic = "force-dynamic"` を指定してサーバーサイドレンダリング（SSR）を強制する。
+**`force-dynamic` による SSR 強制**: Next.js App Router ではページがデフォルトで静的生成（SSG: Static Site Generation。ビルド時にページの HTML を事前に作っておく方式）される。しかし DB クエリを含むページはリクエストごとに最新データを取得する必要があるため、`export const dynamic = "force-dynamic"` を指定してサーバーサイドレンダリング（SSR）を強制する。
 
 ```typescript
 // sessions/page.tsx 等 — ビルド時ではなくリクエスト時に DB クエリを実行
@@ -1028,16 +1028,16 @@ if (rangeHeader) {
 
 ### 主要設定ファイル一覧
 
-| ファイル              | 役割                                       | 重要ポイント                           |
-| --------------------- | ------------------------------------------ | -------------------------------------- |
-| `package.json`        | ルートスクリプト + 共有依存                | `pnpm -r test` で全パッケージテスト    |
-| `pnpm-workspace.yaml` | `packages/*`, `apps/*` を定義              | ワークスペースの登録                   |
-| `tsconfig.json`       | strict, ESM, **Project References**        | 各パッケージをビルド依存で接続（後述） |
-| `eslint.config.js`    | Flat Config (v9)                           | `_` プレフィックスの未使用変数を許可   |
-| `.prettierrc`         | ダブルクォート, セミコロンあり, 末尾カンマ | 統一フォーマット                       |
-| `.npmrc`              | `node-linker=hoisted`                      | フラットな node_modules（後述）        |
-| `.jscpd.json`         | コピペ検出（5%閾値）                       | テスト・型定義は除外                   |
-| `.gitattributes`      | Git LFS 管理                               | wav, png, mp4, ttf, mp3                |
+| ファイル              | 役割                                                                             | 重要ポイント                           |
+| --------------------- | -------------------------------------------------------------------------------- | -------------------------------------- |
+| `package.json`        | ルートスクリプト + 共有依存                                                      | `pnpm -r test` で全パッケージテスト    |
+| `pnpm-workspace.yaml` | `packages/*`, `apps/*` を定義                                                    | ワークスペースの登録                   |
+| `tsconfig.json`       | strict, ESM, **Project References**                                              | 各パッケージをビルド依存で接続（後述） |
+| `eslint.config.js`    | Flat Config (v9)                                                                 | `_` プレフィックスの未使用変数を許可   |
+| `.prettierrc`         | ダブルクォート, セミコロンあり, 末尾カンマ                                       | 統一フォーマット                       |
+| `.npmrc`              | `node-linker=hoisted`                                                            | フラットな node_modules（後述）        |
+| `.jscpd.json`         | コピペ検出（5%閾値（しきいち））                                                 | テスト・型定義は除外                   |
+| `.gitattributes`      | Git LFS（Large File Storage: 大きなファイルを Git で効率的に管理する仕組み）管理 | wav, png, mp4, ttf, mp3                |
 
 **`node-linker=hoisted` の理由**: pnpm のデフォルトはシンボリックリンクベースの厳密な node_modules 構造だが、一部のツール（Claude Agent SDK、Next.js のプラグイン等）がこの構造で正常に動作しない場合がある。`hoisted` を指定することで npm と同様のフラットな構造になり、これらのツールとの互換性を確保できる。
 
@@ -1081,7 +1081,7 @@ steps:
 
 **TypeScript Project References の目的**: Project References は TypeScript コンパイラにパッケージ間のビルド依存関係を認識させる機能。ルートの `tsconfig.json` に全パッケージへの `references` を定義することで、以下の 3 つの恩恵を得る:
 
-1. **インクリメンタルビルド**: 変更のあったパッケージだけを再ビルドできる（`tsc --build` で差分ビルド）
+1. **インクリメンタルビルド（変更があった部分だけを再ビルドする高速手法）**: 変更のあったパッケージだけを再ビルドできる（`tsc --build` で差分ビルド）
 2. **ビルド順序の自動解決**: パッケージ間の依存関係に基づき、正しい順序で自動的にビルドされる
 3. **独立した型チェック**: 各パッケージの型チェックが独立して高速に実行され、無関係なパッケージのエラーに影響されない
 
@@ -1263,7 +1263,7 @@ const [audit, secrets, typeErrors] = await Promise.all([
 [Code Patrol] Starting scan for 2026-02-15
 ```
 
-### パターン 8: Fire-and-forget
+### パターン 8: Fire-and-forget（撃ちっぱなし: 処理を開始するが結果を待たず、失敗しても無視する方式）
 
 非クリティカルな処理は `.catch()` で握り潰す:
 
@@ -1295,7 +1295,7 @@ function throttledUpdate() {
 
 Slack API の rate limit 対策として、Canvas 更新（10 秒）、進捗通知（2-8 秒）、パトロールフック（15 秒）で使用。
 
-### パターン 10: 型ガード付きフィルタ
+### パターン 10: 型ガード（値の型を絞り込む TypeScript の仕組み）付きフィルタ
 
 ```typescript
 // TypeScript の is 述語でフィルタ後の配列の型を絞る
