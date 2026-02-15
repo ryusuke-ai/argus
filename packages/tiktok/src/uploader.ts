@@ -96,7 +96,7 @@ export async function queryCreatorInfo(accessToken: string): Promise<{
 /**
  * Select the most public privacy level from available options
  */
-export function selectBestPrivacyLevel(options: string[]): string {
+function selectBestPrivacyLevel(options: string[]): string {
   for (const level of PRIVACY_LEVEL_PRIORITY) {
     if (options.includes(level)) {
       return level;

@@ -102,7 +102,6 @@ describe("uploader", () => {
 
       const result = await publishVideoByUrl({
         videoUrl: "",
-        title: "Test Video",
       });
 
       expect(result.success).toBe(false);
@@ -120,7 +119,6 @@ describe("uploader", () => {
 
       const result = await publishVideoByUrl({
         videoUrl: "https://example.com/video.mp4",
-        title: "Test Video",
       });
 
       expect(result.success).toBe(false);
@@ -176,7 +174,6 @@ describe("uploader", () => {
       // Run publishVideoByUrl and advance timers for polling
       const publishPromise = publishVideoByUrl({
         videoUrl: "https://example.com/video.mp4",
-        title: "Test Video",
       });
 
       // Advance timer for 1 poll interval (5s)

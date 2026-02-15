@@ -22,7 +22,6 @@ export async function publishToTikTok(input: {
 
   return publishVideoByUrl({
     videoUrl: input.videoPath,
-    title: input.caption,
   });
 }
 
