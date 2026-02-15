@@ -592,11 +592,14 @@ function generateCodeChallenge(verifier: string): string {
 
 **Inbox モード**: Direct Post ではなく `inbox/video/init/` を使用。理由: 「Direct Post requires app audit approval; Inbox works without audit」（コメントで明記）。
 
+**SNS 投稿ワークフロー**: tiktok パッケージは、Claude Code の `sns-publisher` スキルから呼び出される 10 媒体投稿ワークフローの一部。各媒体にはバリデーションルールと最適投稿時間の設定があり、`sns_posts` テーブルで投稿履歴を管理する。
+
 ### 理解度チェック
 
 1. slack-canvas が Slack SDK を使わない設計判断の理由を説明できるか？
 2. TikTok の PKCE 認証が Gmail の OAuth2 と異なる点は何か？
 3. r2-storage の `uploadVideo()` の関数名が実態と合わない理由は何か？
+4. SNS 投稿ワークフローにおける tiktok パッケージの役割と、`sns_posts` テーブルとの関係を説明できるか？
 
 ---
 
@@ -1261,33 +1264,63 @@ const textBlocks = content.filter(
 
 ## 14. 面接想定 Q&A
 
+> 各回答には **技術者向け** と **噛み砕いた説明** の両方を用意している。技術面接ではそのまま使い、非エンジニアへの説明では噛み砕いた方を参考にしてほしい。
+
 ### Q1: 「このプロジェクトのフォルダ構成を教えてください」
 
-**回答例**: pnpm モノレポで、`apps/`（3 アプリ）と `packages/`（9 パッケージ）に分離しています。`apps/` が実行可能なアプリケーション（slack-bot, dashboard, orchestrator）で、`packages/` が共有ライブラリ（agent-core, db, knowledge 等）です。依存は常に `apps/ → packages/` の一方向で、パッケージ間の依存は最小限です。
+**回答例**:
+
+> pnpm モノレポで、`apps/`（3 アプリ）と `packages/`（9 パッケージ）に分離しています。`apps/` が実行可能なアプリケーション（slack-bot, dashboard, orchestrator）で、`packages/` が共有ライブラリ（agent-core, db, knowledge 等）です。依存は常に `apps/ → packages/` の一方向で、パッケージ間の依存は最小限です。
+
+**噛み砕いた説明**: 会社のフロアを想像してほしい。`apps/` は各部署のオフィス、`packages/` は全社共有の会議室や倉庫。各部署は共有設備を使うが、部署同士が直接干渉しない設計。
 
 ### Q2: 「agent-core パッケージの設計思想を説明してください」
 
-**回答例**: agent-core は Claude Agent SDK のラッパーで、本番依存は SDK の 1 つだけという極めてスリムな設計です。DB への直接依存を避け、`SessionStore` や `ObservationDB` 等のインターフェースを定義して消費側に実装を注入する DI パターンを採用しています。これにより、テストが容易で、異なる永続化先への差し替えが可能です。
+**回答例**:
+
+> agent-core は Claude Agent SDK のラッパーで、本番依存は SDK の 1 つだけという極めてスリムな設計です。DB への直接依存を避け、`SessionStore` や `ObservationDB` 等のインターフェースを定義して消費側に実装を注入する DI パターンを採用しています。これにより、テストが容易で、異なる永続化先への差し替えが可能です。
+
+**噛み砕いた説明**: agent-core は「充電器の規格」のようなもの。本体（エージェント）とプラグ（データベースなど）を分離しておくことで、プラグを交換しても本体は変わらない。
 
 ### Q3: 「エラーハンドリングの設計方針を教えてください」
 
-**回答例**: プロジェクト全体で `success: boolean` フラグパターンを統一しています。例外を throw するのではなく、`{ success: false, error: "..." }` のような結果オブジェクトを返します。これにより、呼び出し側が try-catch を忘れてクラッシュするリスクを排除し、型システムでエラーケースの処理を強制できます。
+**回答例**:
+
+> プロジェクト全体で `success: boolean` フラグパターンを統一しています。例外を throw するのではなく、`{ success: false, error: "..." }` のような結果オブジェクトを返します。これにより、呼び出し側が try-catch を忘れてクラッシュするリスクを排除し、型システムでエラーケースの処理を強制できます。
+
+**噛み砕いた説明**: エラーが起きても「プログラム全体が止まる」のではなく、「この処理は失敗しました」という報告書を返す方式。ブレーカーが落ちて家中停電するのではなく、問題のある部屋だけ赤ランプが点く仕組み。
 
 ### Q4: 「Inbox パイプラインの設計を説明してください」
 
-**回答例**: 4 段階のパイプラインです。(1) classifier で AI（Haiku）またはキーワードベースでメッセージを分類、(2) タスクキューに投入（同時実行制限 3、アトミックなステータス更新で二重実行防止）、(3) executor で Agent SDK を実行（intent 別タイムアウト付き）、(4) reporter で Block Kit レポートを生成。起動時リカバリ機能もあり、クラッシュで `running` のまま取り残されたタスクを自動復元します。
+**回答例**:
+
+> 4 段階のパイプラインです。(1) classifier で AI（Haiku）またはキーワードベースでメッセージを分類、(2) タスクキューに投入（同時実行制限 3、アトミックなステータス更新で二重実行防止）、(3) executor で Agent SDK を実行（intent 別タイムアウト付き）、(4) reporter で Block Kit レポートを生成。起動時リカバリ機能もあり、クラッシュで `running` のまま取り残されたタスクを自動復元します。
+
+**噛み砕いた説明**: 届いたメッセージを「仕分け → 列に並べる → 処理する → 報告する」の 4 段階で処理する郵便局のような仕組み。同時に処理できる数に上限を設け、途中でシステムが落ちても未完了の仕事を自動で再開する。
 
 ### Q5: 「テスト戦略について教えてください」
 
-**回答例**: Vitest 4 でソースと同ディレクトリにテストをコロケーション配置しています。DB 接続はせず、`vi.mock()` で Drizzle のチェーンメソッドをモックします。Dashboard では jsdom + Testing Library で Server Component のテストも行っています。Next.js の `Link` や `usePathname` は `vi.mock()` で置換し、API テストでは `globalThis.fetch` を `vi.spyOn` でモックします。
+**回答例**:
+
+> Vitest 4 でソースと同ディレクトリにテストをコロケーション配置しています。DB 接続はせず、`vi.mock()` で Drizzle のチェーンメソッドをモックします。Dashboard では jsdom + Testing Library で Server Component のテストも行っています。Next.js の `Link` や `usePathname` は `vi.mock()` で置換し、API テストでは `globalThis.fetch` を `vi.spyOn` でモックします。
+
+**噛み砕いた説明**: 各ソースファイルのすぐ隣にテストファイルを置く「コロケーション」方式。本物のデータベースや AI を使わず、「ダミー」に差し替えてテストするので、速く・安く・確実に品質を確認できる。
 
 ### Q6: 「MCP サーバーの実装パターンを説明してください」
 
-**回答例**: 全 MCP サーバーで 5 ステップの統一パターンを使っています。(1) Server インスタンス生成、(2) ListToolsRequestSchema ハンドラでツール一覧返却、(3) CallToolRequestSchema ハンドラでツール実行、(4) StdioServerTransport で起動、(5) handleToolCall を public にしてテスト・外部呼び出し可能に。knowledge パッケージでは Collector/Executor のロールベース権限分離を 2 層（ツール公開層 + ビジネスロジック層）で実装しています。
+**回答例**:
+
+> 全 MCP サーバーで 5 ステップの統一パターンを使っています。(1) Server インスタンス生成、(2) ListToolsRequestSchema ハンドラでツール一覧返却、(3) CallToolRequestSchema ハンドラでツール実行、(4) StdioServerTransport で起動、(5) handleToolCall を public にしてテスト・外部呼び出し可能に。knowledge パッケージでは Collector/Executor のロールベース権限分離を 2 層（ツール公開層 + ビジネスロジック層）で実装しています。
+
+**噛み砕いた説明**: AI に「道具」を持たせるための統一テンプレート。全サーバーが同じ 5 ステップで作られているので、新しい道具を追加するときもテンプレートに沿うだけ。さらに「誰がどの道具を使えるか」を役割で制限している。
 
 ### Q7: 「Code Patrol の仕組みを教えてください」
 
-**回答例**: 週次（土曜 3:00 JST）で自動実行される 12 ステップのパイプラインです。まず pnpm audit・シークレット検出・tsc を並列スキャンし、問題があれば Claude に修正を依頼します。修正前に git stash で安全ネットを張り、修正後は pnpm build && pnpm test で検証。検証失敗時は git checkout でロールバックし、成功時は Block Kit レポートを Slack に投稿します。修正中のリアルタイム通知フック（15 秒スロットル）も備えています。
+**回答例**:
+
+> 週次（土曜 3:00 JST）で自動実行される 12 ステップのパイプラインです。まず pnpm audit・シークレット検出・tsc を並列スキャンし、問題があれば Claude に修正を依頼します。修正前に git stash で安全ネットを張り、修正後は pnpm build && pnpm test で検証。検証失敗時は git checkout でロールバックし、成功時は Block Kit レポートを Slack に投稿します。修正中のリアルタイム通知フック（15 秒スロットル）も備えています。
+
+**噛み砕いた説明**: 毎週土曜の深夜に「夜間警備員」が自動でコードの健康診断を行う仕組み。問題を見つけたら AI に修正を依頼し、修正が正しいか検証してから適用する。失敗したら元に戻すので安全。結果は Slack に報告書として届く。
 
 ---
 
