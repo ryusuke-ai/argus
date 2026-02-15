@@ -14,6 +14,12 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
+/** Duration in seconds (e.g., 60 = 1 minute). Used for short-form video platforms. */
+export type DurationSeconds = number;
+
+/** Duration in minutes (e.g., 30 = 30 minutes). Used for long-form audio/video content. */
+export type DurationMinutes = number;
+
 const HASHTAG_PATTERN = /#[^\s#]+/g;
 const EXTERNAL_LINK_PATTERN = /https?:\/\/[^\s]+/;
 const SHORTENED_URL_PATTERN = /(bit\.ly|t\.co|goo\.gl|tinyurl\.com)/i;
@@ -468,7 +474,7 @@ export function validateInstagramPost(
 export function validateTikTokMeta(
   description: string,
   hashtags: string[],
-  duration: number,
+  duration: DurationSeconds,
 ): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
@@ -615,7 +621,7 @@ export function validateYouTubeMeta(
 export function validatePodcastEpisode(
   title: string,
   description: string,
-  duration: number,
+  duration: DurationMinutes,
 ): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
