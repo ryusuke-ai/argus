@@ -73,10 +73,8 @@ export const OPTIMAL_TIMES: Record<Platform, TimeSlot[]> = {
     { hour: 21, minute: 0, dayConstraint: "any" },
   ],
   github: [{ hour: 10, minute: 0, dayConstraint: "weekday" }],
-  // 調査結果: 月曜 5:00-7:00 JST が推奨配信時間
-  // best-practices.md: "朝の通勤前に配信完了。アプリに新エピソードが並ぶ"
-  // 6:00 は推奨レンジの中間値。7:00 だと通勤ピーク開始時にギリギリ
-  podcast: [{ hour: 6, minute: 0, dayConstraint: "monday" }],
+  // 毎朝 6:00 JST に配信（通勤前のリスナー獲得に最適な時間帯）
+  podcast: [{ hour: 6, minute: 0, dayConstraint: "any" }],
   instagram: [
     { hour: 12, minute: 0, dayConstraint: "any" },
     { hour: 19, minute: 0, dayConstraint: "any" },

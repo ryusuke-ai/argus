@@ -128,12 +128,12 @@ describe("OPTIMAL_TIMES", () => {
     });
   });
 
-  it("podcast has 1 monday slot", () => {
+  it("podcast has 1 daily slot", () => {
     expect(OPTIMAL_TIMES.podcast).toHaveLength(1);
     expect(OPTIMAL_TIMES.podcast[0]).toEqual({
       hour: 6,
       minute: 0,
-      dayConstraint: "monday",
+      dayConstraint: "any",
     });
   });
 });

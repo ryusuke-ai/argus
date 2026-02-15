@@ -295,9 +295,9 @@ export async function generateAllPlatformSuggestions(
       return;
   }
 
-  // Podcast: 月曜のみ
+  // Podcast: 毎日
   const podcastCount = POSTS_PER_DAY.podcast;
-  if (podcastCount > 0 && dayOfWeek === 1) {
+  if (podcastCount > 0) {
     if (
       await runWithCliCheck(() =>
         generatePodcastSuggestion(client, baseCategory),
