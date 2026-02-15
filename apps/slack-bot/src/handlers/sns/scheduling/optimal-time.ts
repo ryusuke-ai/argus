@@ -3,7 +3,17 @@
  * Pure function module — no side effects, no throwing.
  */
 
-export type Platform = "x" | "qiita" | "zenn" | "note" | "youtube" | "threads" | "tiktok" | "github" | "podcast" | "instagram";
+export type Platform =
+  | "x"
+  | "qiita"
+  | "zenn"
+  | "note"
+  | "youtube"
+  | "threads"
+  | "tiktok"
+  | "github"
+  | "podcast"
+  | "instagram";
 
 export type TimeSlot = {
   hour: number;
@@ -44,27 +54,29 @@ export const OPTIMAL_TIMES: Record<Platform, TimeSlot[]> = {
     { hour: 8, minute: 30, dayConstraint: "any" },
     { hour: 12, minute: 15, dayConstraint: "any" },
   ],
+  // 調査結果: 18:00 JST が通常動画の基本公開時間（金曜に限らず平日全般）
+  // best-practices.md: "通常動画: 18:00 JST を基本に" + 18-21時が最高エンゲージメント
   youtube: [
-    { hour: 18, minute: 0, dayConstraint: "friday" },
+    { hour: 18, minute: 0, dayConstraint: "weekday" },
     { hour: 10, minute: 0, dayConstraint: "weekend" },
-    { hour: 12, minute: 30, dayConstraint: "weekday" },
   ],
   threads: [
     { hour: 7, minute: 30, dayConstraint: "any" },
     { hour: 12, minute: 0, dayConstraint: "any" },
     { hour: 20, minute: 0, dayConstraint: "any" },
   ],
+  // 調査結果: 20:00-22:00 がゴールデンタイム（最高エンゲージメント）
+  // best-practices.md: 21:00 が 20-22 時の中間値で最もアクティブ
   tiktok: [
     { hour: 7, minute: 0, dayConstraint: "any" },
     { hour: 17, minute: 0, dayConstraint: "weekday" },
-    { hour: 20, minute: 30, dayConstraint: "any" },
+    { hour: 21, minute: 0, dayConstraint: "any" },
   ],
-  github: [
-    { hour: 10, minute: 0, dayConstraint: "weekday" },
-  ],
-  podcast: [
-    { hour: 7, minute: 0, dayConstraint: "monday" },
-  ],
+  github: [{ hour: 10, minute: 0, dayConstraint: "weekday" }],
+  // 調査結果: 月曜 5:00-7:00 JST が推奨配信時間
+  // best-practices.md: "朝の通勤前に配信完了。アプリに新エピソードが並ぶ"
+  // 6:00 は推奨レンジの中間値。7:00 だと通勤ピーク開始時にギリギリ
+  podcast: [{ hour: 6, minute: 0, dayConstraint: "monday" }],
   instagram: [
     { hour: 12, minute: 0, dayConstraint: "any" },
     { hour: 19, minute: 0, dayConstraint: "any" },
@@ -115,7 +127,15 @@ function buildUTCFromJSTSlot(
   slot: TimeSlot,
 ): Date {
   // Build a date in JST, then subtract offset to get UTC
-  const jstMs = Date.UTC(jstYear, jstMonth, jstDay, slot.hour, slot.minute, 0, 0);
+  const jstMs = Date.UTC(
+    jstYear,
+    jstMonth,
+    jstDay,
+    slot.hour,
+    slot.minute,
+    0,
+    0,
+  );
   return new Date(jstMs - JST_OFFSET_MS);
 }
 
@@ -131,7 +151,9 @@ export function getNextOptimalTime(platform: Platform, now?: Date): Date {
   const slots = OPTIMAL_TIMES[platform];
 
   for (let dayOffset = 0; dayOffset < MAX_SEARCH_DAYS; dayOffset++) {
-    const candidateBase = new Date(currentTime.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+    const candidateBase = new Date(
+      currentTime.getTime() + dayOffset * 24 * 60 * 60 * 1000,
+    );
     const jst = toJST(candidateBase);
     const jstYear = jst.getUTCFullYear();
     const jstMonth = jst.getUTCMonth();
@@ -179,8 +201,14 @@ export function getDailyOptimalTimes(platform: Platform, now?: Date): Date[] {
   const count = POSTS_PER_DAY[platform];
   const result: Date[] = [];
 
-  for (let dayOffset = 0; dayOffset < MAX_SEARCH_DAYS && result.length < count; dayOffset++) {
-    const candidateBase = new Date(currentTime.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+  for (
+    let dayOffset = 0;
+    dayOffset < MAX_SEARCH_DAYS && result.length < count;
+    dayOffset++
+  ) {
+    const candidateBase = new Date(
+      currentTime.getTime() + dayOffset * 24 * 60 * 60 * 1000,
+    );
     const jst = toJST(candidateBase);
     const jstYear = jst.getUTCFullYear();
     const jstMonth = jst.getUTCMonth();
@@ -231,7 +259,11 @@ export function formatScheduledTime(scheduledAt: Date, now?: Date): string {
   const timeStr = `${hh}:${mm}`;
 
   // Check if same JST day
-  if (scheduledYear === nowYear && scheduledMonth === nowMonth && scheduledDay === nowDay) {
+  if (
+    scheduledYear === nowYear &&
+    scheduledMonth === nowMonth &&
+    scheduledDay === nowDay
+  ) {
     return `今日 ${timeStr}`;
   }
 
