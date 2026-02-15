@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Test script: Posts all 9 platform SNS suggestions with mock data to #argus-sns
-// Usage: node scripts/trigger-sns-test.mjs
+// Usage: node scripts/test/trigger-sns-test.mjs
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";

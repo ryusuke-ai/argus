@@ -3,7 +3,7 @@
  * Test script: Posts all platform SNS suggestions with REAL DB records to #argus-sns
  * Buttons will actually work (publish to real platforms when clicked).
  *
- * Usage: pnpm tsx --env-file=.env scripts/test-sns-all-platforms.ts
+ * Usage: pnpm tsx --env-file=.env scripts/test/test-sns-all-platforms.ts
  */
 
 import type { KnownBlock } from "@slack/types";
