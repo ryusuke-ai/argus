@@ -73,6 +73,7 @@ node .claude/skills/video-planner/scripts/summarize-dialogue.js \
 ```
 
 オプション:
+
 - `--max-length`: 各セリフの最大文字数（デフォルト: 30）
 
 要約形式の例（`work/dialogue-summary.md`）:
@@ -83,15 +84,18 @@ node .claude/skills/video-planner/scripts/summarize-dialogue.js \
 総セリフ数: 15
 
 ## opening (index 0-1)
+
 - 0: tsukuyomi: こんにちは！今日は〇〇について...
 - 1: ginga: よろしくお願いします...
 
 ## section-1 (index 2-5)
+
 - 2: tsukuyomi: まず〇〇とは...
 - 3: ginga: つまり...
-（省略）
+  （省略）
 
 ## ending (index 13-14)
+
 - 13: ginga: まとめると...
 - 14: tsukuyomi: ありがとうございました！
 ```
@@ -192,6 +196,7 @@ node ./.claude/skills/gen-ai-image/scripts/gen-ai-image.js \
 ```
 
 **用途例**:
+
 - 人物のシルエット・イラスト
 - 製品・ガジェットのイメージ
 - 抽象的なオブジェクト表現
@@ -246,6 +251,7 @@ node ./.claude/skills/gen-rich-image/scripts/generate.js \
 ### 将来の拡張
 
 新しい画像生成スキルが追加された場合:
+
 1. `imageInstructions.skill` に新しいスキル名を指定
 2. `imageInstructions.description` を詳細に記載
 3. `imageInstructions.options` でスキル固有オプションを指定
@@ -279,11 +285,13 @@ node .claude/skills/tts-dict/scripts/dict.js healthcheck
 ```
 
 **期待される出力:**
+
 ```
 ✅ ヘルスチェック完了 - 問題は検出されませんでした
 ```
 
 **失敗した場合:**
+
 1. マージコンフリクトがある → 手動で `dictionary.json` を修正
 2. COEIROINK未接続 → COEIROINKを起動
 3. 必須単語が未登録 → 表示されたコマンドを実行
@@ -321,10 +329,12 @@ node .claude/skills/tts-dict/scripts/dict.js verify Git GitHub user Claude Code
 ```
 
 **確認ポイント:**
+
 - 大文字の単語（Git, GitHub, Claude等）が正しく読まれるか
 - 一般的な英単語（user, code等）が意図通りか
 
 **問題がある場合の対処:**
+
 ```bash
 # 大文字小文字両方を個別に登録（COEIROINKは大文字小文字を区別する）
 node .claude/skills/tts-dict/scripts/dict.js add "Git" "ギット"
@@ -367,6 +377,7 @@ node .claude/skills/video-planner/scripts/verify-tts.js \
 ```
 
 出力ファイル:
+
 - `work/tts-verification-result.json` - 検証結果
 - `work/tts-transcription.json` - 文字起こし結果
 
@@ -395,10 +406,10 @@ node .claude/skills/tts/scripts/batch-tts.js \
 
 ### 出力ファイル名の形式
 
-| speaker | 出力ファイル名 |
-|---------|---------------|
+| speaker   | 出力ファイル名      |
+| --------- | ------------------- |
 | tsukuyomi | `001_tsukuyomi.wav` |
-| ginga | `002_ginga.wav` |
+| ginga     | `002_ginga.wav`     |
 
 ※ファイル名はdialogue.jsonのspeaker名（小文字）で統一される
 
@@ -418,13 +429,13 @@ node .claude/skills/video-planner/scripts/merge-script.js \
 
 ### オプション
 
-| オプション | デフォルト | 説明 |
-|-----------|-----------|------|
-| --title | dialogue.titleまたは"Untitled" | 動画タイトル |
-| --bgm | bgm | BGMファイル名 |
-| --bgm-volume | 0.15 | BGM音量 |
-| --images-dir | ./images | 画像ディレクトリ |
-| --audio-dir | ./parts | 音声ディレクトリ |
+| オプション   | デフォルト                     | 説明             |
+| ------------ | ------------------------------ | ---------------- |
+| --title      | dialogue.titleまたは"Untitled" | 動画タイトル     |
+| --bgm        | bgm                            | BGMファイル名    |
+| --bgm-volume | 0.15                           | BGM音量          |
+| --images-dir | ./images                       | 画像ディレクトリ |
+| --audio-dir  | ./parts                        | 音声ディレクトリ |
 
 ### ⚠️ 重要: パス形式について
 
@@ -445,11 +456,13 @@ node .claude/skills/video-planner/scripts/merge-script.js \
 ```
 
 有効なパス形式:
+
 - `./images` - 相対パス（推奨）
 - `/Users/.../images` - 絶対パス
 - `https://...` - URL
 
 無効なパス形式:
+
 - `agent-output/...` - プロジェクト相対パス（video-script.jsonから解決時に二重になる）
 - `images/...` - `./` なしの相対パス
 
@@ -469,6 +482,7 @@ cat video-script.json | head -50
 ```
 
 チェックリスト:
+
 - [ ] 全ての`audio`パスのファイルが存在するか
 - [ ] 全ての`image`パスのファイルが存在するか
 - [ ] scenesの数がdialogue.segmentsと一致しているか
@@ -477,12 +491,12 @@ cat video-script.json | head -50
 
 ## 成果物
 
-| ファイル | 説明 |
-|---------|------|
-| `work/direction.json` | 演出計画 |
-| `images/*.webp` | 説明画像 |
-| `parts/*.wav` | TTS音声 |
-| `video-script.json` | 完成した動画スクリプト |
+| ファイル              | 説明                   |
+| --------------------- | ---------------------- |
+| `work/direction.json` | 演出計画               |
+| `images/*.webp`       | 説明画像               |
+| `parts/*.wav`         | TTS音声                |
+| `video-script.json`   | 完成した動画スクリプト |
 
 ---
 
@@ -514,7 +528,7 @@ agent-output/video-{YYYYMMDD}-{topic}/
 
 **レンダリング前に必ずユーザーの承認を得ること。**
 
-satoru-daily-news から呼ばれた場合はこのステップをスキップし、そのままレンダリングに進む。
+daily-digest から呼ばれた場合はこのステップをスキップし、そのままレンダリングに進む。
 それ以外（YouTube/SNS動画など）では、以下の情報を提示して承認を求める:
 
 1. 動画タイトル

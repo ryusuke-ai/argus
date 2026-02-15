@@ -6,7 +6,7 @@
 
 ## 入力
 
-- `work/reference.md`（satoru-daily-news のリサーチ結果）
+- `work/reference.md`（daily-digest のリサーチ結果）
 - トピック一覧（タイトル + URL + カテゴリ + 概要）
 
 ## 出力
@@ -40,13 +40,14 @@ node .claude/skills/podcast-builder/scripts/validate-json.js --schema research -
 ### 5. トピック分類確認
 
 research.json 内の各トピックの media_type を確認:
+
 - `video` → video-planner に委譲
 - `podcast` → Phase 2 へ
 
 ## 裏取りルール
 
-| ソースの種類 | 扱い |
-|-------------|------|
-| 公式ソース（Anthropic, GitHub） | そのまま事実として使用 |
+| ソースの種類                                | 扱い                               |
+| ------------------------------------------- | ---------------------------------- |
+| 公式ソース（Anthropic, GitHub）             | そのまま事実として使用             |
 | コミュニティソース（note, Qiita, Zenn, HN） | 公式ソースまたは複数ソースで裏取り |
-| 裏が取れない情報 | 「〜という見方もある」として扱う |
+| 裏が取れない情報                            | 「〜という見方もある」として扱う   |
