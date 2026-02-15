@@ -5,7 +5,7 @@
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ARGUS_DIR="$(dirname "$SCRIPT_DIR")"
+ARGUS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LOG_FILE="$ARGUS_DIR/logs/startup.log"
 
 mkdir -p "$ARGUS_DIR/logs"
