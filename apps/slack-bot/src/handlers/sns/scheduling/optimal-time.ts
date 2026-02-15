@@ -73,8 +73,8 @@ export const OPTIMAL_TIMES: Record<Platform, TimeSlot[]> = {
     { hour: 21, minute: 0, dayConstraint: "any" },
   ],
   github: [{ hour: 10, minute: 0, dayConstraint: "weekday" }],
-  // 毎朝 6:00 JST に配信（通勤前のリスナー獲得に最適な時間帯）
-  podcast: [{ hour: 6, minute: 0, dayConstraint: "any" }],
+  // 毎朝 4:00 JST に配信
+  podcast: [{ hour: 4, minute: 0, dayConstraint: "any" }],
   instagram: [
     { hour: 12, minute: 0, dayConstraint: "any" },
     { hour: 19, minute: 0, dayConstraint: "any" },

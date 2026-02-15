@@ -131,7 +131,7 @@ describe("OPTIMAL_TIMES", () => {
   it("podcast has 1 daily slot", () => {
     expect(OPTIMAL_TIMES.podcast).toHaveLength(1);
     expect(OPTIMAL_TIMES.podcast[0]).toEqual({
-      hour: 6,
+      hour: 4,
       minute: 0,
       dayConstraint: "any",
     });
