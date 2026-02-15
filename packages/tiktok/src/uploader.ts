@@ -229,6 +229,8 @@ export async function publishVideoByUrl(
   const initResult = await initVideoByUrl({
     accessToken,
     videoUrl: input.videoUrl,
+    title: input.title,
+    privacyLevel,
   });
 
   if (!initResult.success || !initResult.publishId) {
@@ -267,6 +269,8 @@ export async function publishVideoByUrl(
 async function initVideoByUrl(params: {
   accessToken: string;
   videoUrl: string;
+  title?: string;
+  privacyLevel?: string;
 }): Promise<{
   success: boolean;
   publishId?: string;
@@ -274,6 +278,10 @@ async function initVideoByUrl(params: {
 }> {
   try {
     const body = {
+      post_info: {
+        title: params.title || "",
+        privacy_level: params.privacyLevel || "SELF_ONLY",
+      },
       source_info: {
         source: "PULL_FROM_URL",
         video_url: params.videoUrl,

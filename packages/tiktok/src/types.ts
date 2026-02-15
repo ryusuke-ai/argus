@@ -31,5 +31,6 @@ export interface TiktokCreatorInfo {
 
 export interface PublishVideoByUrlInput {
   videoUrl: string;
+  title?: string;
   privacyLevel?: string;
 }
