@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.34",
     "@anthropic-ai/sdk": "^0.74.0",
     "@argus/agent-core": "workspace:*",
     "@argus/db": "workspace:*",
@@ -21,6 +22,8 @@
     "@argus/tiktok": "workspace:*",
     "@slack/bolt": "^4.0.0",
     "@slack/socket-mode": "^2.0.0",
+    "@slack/types": "^2.19.0",
+    "@slack/web-api": "^7.13.0",
     "@supabase/supabase-js": "^2.95.3",
     "drizzle-orm": "^0.45.0",
     "node-cron": "^4.2.1",
