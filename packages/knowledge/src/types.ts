@@ -1,10 +1,8 @@
 import type { Knowledge } from "@argus/db";
+export type { Result } from "@argus/agent-core";
+import type { Result } from "@argus/agent-core";
 
 export type KnowledgeRole = "collector" | "executor";
-
-export type Result<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
 
 export interface LessonSummary {
   content: string;

@@ -1,5 +1,6 @@
 // apps/slack-bot/src/handlers/inbox/classifier.ts
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import { summarizeJa } from "@argus/agent-core";
 import {
   CLASSIFIER_SYSTEM_PROMPT,
@@ -7,6 +8,15 @@ import {
   type ClassificationResult,
   type Intent,
 } from "../../prompts/inbox-classifier.js";
+
+const classificationResultSchema = z.object({
+  intent: z.string(),
+  autonomyLevel: z.number(),
+  summary: z.string(),
+  executionPrompt: z.string(),
+  reasoning: z.string().optional().default(""),
+  clarifyQuestion: z.string().optional(),
+});
 
 const CLASSIFIER_MODEL = "claude-haiku-4-5-20251001";
 
@@ -88,14 +98,11 @@ export function parseClassificationResult(
     const jsonMatch =
       text.match(/```json\s*([\s\S]*?)```/) || text.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : text;
-    const parsed = JSON.parse(jsonStr.trim());
+    const raw = JSON.parse(jsonStr.trim());
+    const result = classificationResultSchema.safeParse(raw);
 
-    if (
-      typeof parsed.intent === "string" &&
-      typeof parsed.autonomyLevel === "number" &&
-      typeof parsed.summary === "string" &&
-      typeof parsed.executionPrompt === "string"
-    ) {
+    if (result.success) {
+      const parsed = result.data;
       // summary が長すぎる場合はキーワードベースの summarizeText でフォールバック
       let summary = parsed.summary;
       if (summary.length > 30 && originalText) {
@@ -105,14 +112,15 @@ export function parseClassificationResult(
         summary = summarizeJa(originalText);
       }
       return {
-        intent: parsed.intent,
+        intent: parsed.intent as Intent,
         autonomyLevel: 2,
         summary,
         executionPrompt: parsed.executionPrompt,
-        reasoning: parsed.reasoning || "",
+        reasoning: parsed.reasoning,
         clarifyQuestion: parsed.clarifyQuestion || undefined,
       };
     }
+    console.error("[inbox/classifier] Schema validation failed:", result.error);
   } catch {
     // パース失敗 → フォールスルー
   }

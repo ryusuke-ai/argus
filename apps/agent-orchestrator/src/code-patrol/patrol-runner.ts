@@ -4,6 +4,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { query } from "@argus/agent-core";
 import { KnowledgeServiceImpl } from "@argus/knowledge";
+import { z } from "zod";
 import {
   CODE_PATROL_SDK_OPTIONS,
   QUALITY_ANALYSIS_PROMPT,
@@ -37,6 +38,28 @@ import {
 } from "./report-builder.js";
 
 const execAsync = promisify(exec);
+
+const riskSchema = z.object({
+  riskLevel: z.string().optional(),
+  summary: z.string().optional(),
+  recommendations: z.array(z.string()).optional(),
+});
+
+const qualitySchema = z.object({
+  findings: z
+    .array(
+      z.object({
+        category: z.string().optional(),
+        severity: z.string().optional(),
+        file: z.string().optional(),
+        title: z.string().optional(),
+        suggestion: z.string().optional(),
+      }),
+    )
+    .optional(),
+  overallScore: z.number().optional(),
+  summary: z.string().optional(),
+});
 
 // --- Claude analysis (v1 fallback, still used for risk level) ---
 
@@ -129,11 +152,16 @@ export async function analyzeWithClaude(
       return fallbackAnalysis(scan);
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      riskLevel?: string;
-      summary?: string;
-      recommendations?: string[];
-    };
+    const raw: unknown = JSON.parse(jsonMatch[0]);
+    const parseResult = riskSchema.safeParse(raw);
+    if (!parseResult.success) {
+      console.error(
+        "[Code Patrol] Risk schema validation failed:",
+        parseResult.error.message,
+      );
+      return fallbackAnalysis(scan);
+    }
+    const parsed = parseResult.data;
 
     const validLevels = ["critical", "high", "medium", "low", "clean"];
     if (!parsed.riskLevel || !validLevels.includes(parsed.riskLevel)) {
@@ -289,17 +317,16 @@ export function parseQualityAnalysis(text: string): QualityAnalysis | null {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
 
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      findings?: Array<{
-        category?: string;
-        severity?: string;
-        file?: string;
-        title?: string;
-        suggestion?: string;
-      }>;
-      overallScore?: number;
-      summary?: string;
-    };
+    const raw: unknown = JSON.parse(jsonMatch[0]);
+    const parseResult = qualitySchema.safeParse(raw);
+    if (!parseResult.success) {
+      console.error(
+        "[Code Patrol] Quality schema validation failed:",
+        parseResult.error.message,
+      );
+      return null;
+    }
+    const parsed = parseResult.data;
 
     const validCategories = ["pattern", "structure", "best-practice"];
     const validSeverities = ["warning", "info"];

@@ -66,7 +66,6 @@ export class PersonalServiceImpl implements PersonalService {
       .where(
         or(
           ilike(personalNotes.name, pattern),
-          ilike(personalNotes.path, pattern),
           ilike(personalNotes.content, pattern),
         ),
       );

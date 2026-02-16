@@ -2,9 +2,12 @@
 // When a user replies to the daily plan thread, regenerate the plan based on their instructions.
 
 import { app } from "../app.js";
+import { z } from "zod";
 import { db, dailyPlans } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { query } from "@argus/agent-core";
+
+const blockKitArraySchema = z.array(z.record(z.string(), z.unknown()));
 
 /**
  * デイリープランのスレッドに返信された場合、
@@ -157,15 +160,24 @@ ${editInstruction}
 
     // Try direct JSON parse first, fall back to regex
     try {
-      const parsed = JSON.parse(text.trim());
-      if (Array.isArray(parsed)) return parsed as Record<string, unknown>[];
+      const raw = JSON.parse(text.trim());
+      const result = blockKitArraySchema.safeParse(raw);
+      if (result.success) return result.data;
     } catch {
       // Fall back to regex extraction
     }
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return null;
-    return JSON.parse(jsonMatch[0]) as Record<string, unknown>[];
+    try {
+      const raw = JSON.parse(jsonMatch[0]);
+      const result = blockKitArraySchema.safeParse(raw);
+      if (result.success) return result.data;
+      console.error("[daily-plan] Schema validation failed:", result.error);
+      return null;
+    } catch {
+      return null;
+    }
   } catch (error) {
     console.error("[daily-plan] Regeneration error:", error);
     return null;

@@ -12,6 +12,7 @@ vi.mock("@argus/db", () => {
     name: "name",
     content: "content",
     description: "description",
+    status: "status",
     updatedAt: "updatedAt",
   };
 
@@ -39,6 +40,7 @@ vi.mock("@argus/db", () => {
     const result = Object.assign(Promise.resolve(mockQueryResult), {
       limit: mockDb.limit,
       returning: mockDb.returning,
+      orderBy: mockDb.orderBy,
     });
     return result;
   });
@@ -68,6 +70,7 @@ describe("KnowledgeService", () => {
           name: "Test Knowledge",
           content: "Test content",
           description: "Test description",
+          status: "active",
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -89,6 +92,7 @@ describe("KnowledgeService", () => {
           name: "Test Knowledge",
           content: "Test content",
           description: "Test description",
+          status: "active",
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -109,6 +113,7 @@ describe("KnowledgeService", () => {
         name: "New Knowledge",
         content: "New content",
         description: "New description",
+        status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -135,6 +140,7 @@ describe("KnowledgeService", () => {
         name: "Old Name",
         content: "Old content",
         description: "Old description",
+        status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -167,13 +173,14 @@ describe("KnowledgeService", () => {
       }
     });
 
-    it("should allow archive operation", async () => {
+    it("should allow archive operation (soft delete)", async () => {
       const service = new KnowledgeServiceImpl("collector");
       const existingKnowledge: Knowledge = {
         id: "1",
         name: "To Archive",
         content: "Content",
         description: "Description",
+        status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -185,7 +192,10 @@ describe("KnowledgeService", () => {
 
       expect(result.success).toBe(true);
       expect(db.select).toHaveBeenCalled();
-      expect(db.delete).toHaveBeenCalled();
+      expect(db.update).toHaveBeenCalled();
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "archived" }),
+      );
     });
   });
 
@@ -198,6 +208,7 @@ describe("KnowledgeService", () => {
           name: "Test Knowledge",
           content: "Test content",
           description: "Test description",
+          status: "active",
           createdAt: new Date(),
           updatedAt: new Date(),
         },

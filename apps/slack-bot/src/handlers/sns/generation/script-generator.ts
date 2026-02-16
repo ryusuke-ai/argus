@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
 import { query } from "@argus/agent-core";
 import type { AgentResult } from "@argus/agent-core";
 
@@ -30,6 +31,30 @@ export interface VideoScript {
     }>;
   }>;
 }
+
+const videoScriptSchema = z.object({
+  title: z.string(),
+  theme: z.string(),
+  mode: z.enum(["dialogue", "narration"]),
+  estimatedDuration: z.string(),
+  sections: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      purpose: z.string(),
+      keyPoints: z.array(z.string()),
+      visualIdeas: z.array(z.string()),
+      dialogue: z.array(
+        z.object({
+          speaker: z.string(),
+          text: z.string(),
+          emotion: z.string().optional(),
+          visualNote: z.string().optional(),
+        }),
+      ),
+    }),
+  ),
+});
 
 export interface GenerateVideoScriptResult {
   success: boolean;
@@ -133,14 +158,33 @@ function extractJsonFromResult(
 
   const jsonStr = jsonMatch[1] || jsonMatch[0];
   try {
-    return { success: true, content: JSON.parse(jsonStr) as VideoScript };
-  } catch {
-    try {
-      const repaired = repairTruncatedJson(jsonStr);
-      return { success: true, content: JSON.parse(repaired) as VideoScript };
-    } catch {
-      return { success: false, error: "Failed to parse video script JSON" };
+    const raw = JSON.parse(jsonStr);
+    const result = videoScriptSchema.safeParse(raw);
+    if (result.success) {
+      return { success: true, content: result.data };
     }
+    console.error(
+      "[script-generator] Schema validation failed, trying repair:",
+      result.error,
+    );
+  } catch {
+    // JSON パース失敗 → 修復を試みる
+  }
+
+  try {
+    const repaired = repairTruncatedJson(jsonStr);
+    const raw = JSON.parse(repaired);
+    const result = videoScriptSchema.safeParse(raw);
+    if (result.success) {
+      return { success: true, content: result.data };
+    }
+    console.error(
+      "[script-generator] Schema validation failed after repair:",
+      result.error,
+    );
+    return { success: false, error: "Video script JSON does not match schema" };
+  } catch {
+    return { success: false, error: "Failed to parse video script JSON" };
   }
 }
 

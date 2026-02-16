@@ -53,10 +53,10 @@ export function generateCodeVerifier(): string {
 }
 
 /**
- * code_verifier から code_challenge を生成する（TikTok 仕様: hex エンコード SHA256）
+ * code_verifier から code_challenge を生成する（RFC 7636: Base64URL エンコード SHA256）
  */
 export function generateCodeChallenge(verifier: string): string {
-  return createHash("sha256").update(verifier).digest("hex");
+  return createHash("sha256").update(verifier).digest("base64url");
 }
 
 /**

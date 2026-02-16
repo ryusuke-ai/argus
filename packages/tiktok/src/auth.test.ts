@@ -69,6 +69,38 @@ beforeEach(() => {
 });
 
 describe("auth", () => {
+  describe("generateCodeVerifier / generateCodeChallenge", () => {
+    it("should generate a 64-character code_verifier with valid PKCE characters", async () => {
+      const { generateCodeVerifier } = await import("./auth.js");
+
+      const verifier = generateCodeVerifier();
+
+      expect(verifier.length).toBe(64);
+      // RFC 7636: unreserved characters [A-Za-z0-9-._~]
+      expect(verifier).toMatch(/^[A-Za-z0-9\-._~]+$/);
+    });
+
+    it("should generate a Base64URL-encoded code_challenge (RFC 7636)", async () => {
+      const { generateCodeChallenge } = await import("./auth.js");
+
+      const challenge = generateCodeChallenge("test-verifier");
+
+      // Base64URL: [A-Za-z0-9_-] のみ、パディング '=' なし
+      expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/);
+      // SHA256 の Base64URL エンコードは 43 文字（256bit / 6bit = 42.67 → 43文字）
+      expect(challenge.length).toBe(43);
+    });
+
+    it("should produce deterministic output for the same verifier", async () => {
+      const { generateCodeChallenge } = await import("./auth.js");
+
+      const challenge1 = generateCodeChallenge("deterministic-test");
+      const challenge2 = generateCodeChallenge("deterministic-test");
+
+      expect(challenge1).toBe(challenge2);
+    });
+  });
+
   describe("getAuthUrl", () => {
     it("should return a valid TikTok authorization URL with PKCE", async () => {
       const { getAuthUrl } = await import("./auth.js");

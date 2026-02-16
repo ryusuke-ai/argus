@@ -89,9 +89,21 @@ const YOUTUBE_TRIGGER_PATTERNS = [
   /動画.*作って/,
 ];
 
-function isTrigger(text: string): boolean {
-  return TRIGGER_PATTERNS.some((p) => p.test(text));
-}
+// --- ルーティングテーブル ---
+
+type RouteContext = {
+  text: string;
+  client: WebClient;
+  channel: string;
+  threadTs: string;
+};
+
+type TriggerRoute = {
+  patterns: RegExp[];
+  /** テキストがパターンにマッチするか判定する。デフォルトは some(p => p.test(text)) */
+  match?: (text: string) => boolean;
+  handler: (context: RouteContext) => Promise<void>;
+};
 
 function detectArticlePlatform(text: string): "qiita" | "zenn" | "note" | null {
   for (const { pattern, platform } of ARTICLE_TRIGGER_PATTERNS) {
@@ -100,12 +112,134 @@ function detectArticlePlatform(text: string): "qiita" | "zenn" | "note" | null {
   return null;
 }
 
-function isAllPlatformTrigger(text: string): boolean {
-  return ALL_PLATFORM_TRIGGER_PATTERNS.some((p) => p.test(text));
-}
+/**
+ * ルーティングテーブル: 配列の順序が優先度（先頭が最優先）
+ * 元の if-else チェーンの順序をそのまま維持:
+ *   1. 全プラットフォーム一括提案
+ *   2. 記事プラットフォーム（Qiita/Zenn/note）
+ *   3. YouTube
+ *   4. X 投稿
+ */
+const TRIGGER_ROUTES: TriggerRoute[] = [
+  {
+    patterns: ALL_PLATFORM_TRIGGER_PATTERNS,
+    handler: async ({ text, client, channel, threadTs }) => {
+      console.log(
+        `[sns] All-platform trigger detected: "${text.slice(0, 50)}"`,
+      );
 
-function isYouTubeTrigger(text: string): boolean {
-  return YOUTUBE_TRIGGER_PATTERNS.some((p) => p.test(text));
+      await client.chat.postMessage({
+        channel,
+        thread_ts: threadTs,
+        text: "全プラットフォームの投稿案を生成中... (X x3, Qiita, Zenn, note, YouTube, Threads x2, TikTok, GitHub, Podcast)",
+      });
+
+      try {
+        await generateAllPlatformSuggestions(client);
+        await client.chat.postMessage({
+          channel,
+          thread_ts: threadTs,
+          text: "全プラットフォームの投稿案の生成が完了しました",
+        });
+      } catch (error) {
+        console.error("[sns] All-platform generation error:", error);
+        await client.chat.postMessage({
+          channel,
+          thread_ts: threadTs,
+          text: `全プラットフォーム生成に失敗しました: ${error}`,
+        });
+      }
+    },
+  },
+  {
+    patterns: ARTICLE_TRIGGER_PATTERNS.map((a) => a.pattern),
+    match: (text) => detectArticlePlatform(text) !== null,
+    handler: async ({ text, client, channel, threadTs }) => {
+      const articlePlatform = detectArticlePlatform(text)!;
+      console.log(
+        `[sns] Article trigger detected: platform=${articlePlatform}, "${text.slice(0, 50)}"`,
+      );
+
+      await client.chat.postMessage({
+        channel,
+        thread_ts: threadTs,
+        text: `${articlePlatform} 記事を生成中...`,
+      });
+
+      try {
+        await generateArticleSuggestion(
+          client,
+          channel,
+          threadTs,
+          text,
+          articlePlatform,
+        );
+      } catch (error) {
+        console.error("[sns] Article generation error:", error);
+        await client.chat.postMessage({
+          channel,
+          thread_ts: threadTs,
+          text: `記事生成に失敗しました: ${error}`,
+        });
+      }
+    },
+  },
+  {
+    patterns: YOUTUBE_TRIGGER_PATTERNS,
+    handler: async ({ text, client, channel, threadTs }) => {
+      console.log(`[sns] YouTube trigger detected: "${text.slice(0, 50)}"`);
+
+      await client.chat.postMessage({
+        channel,
+        thread_ts: threadTs,
+        text: "YouTube 動画案を生成中...",
+      });
+
+      try {
+        await generateYouTubeSuggestionManual(client, channel, threadTs, text);
+      } catch (error) {
+        console.error("[sns] YouTube generation error:", error);
+        await client.chat.postMessage({
+          channel,
+          thread_ts: threadTs,
+          text: `YouTube 動画案の生成に失敗しました: ${error}`,
+        });
+      }
+    },
+  },
+  {
+    patterns: TRIGGER_PATTERNS,
+    handler: async ({ text, client, channel, threadTs }) => {
+      console.log(`[sns] X trigger detected: "${text.slice(0, 50)}"`);
+
+      await client.chat.postMessage({
+        channel,
+        thread_ts: threadTs,
+        text: "X 投稿案を生成中...",
+      });
+
+      try {
+        await generateXPostSuggestion(client, channel, threadTs, text);
+      } catch (error) {
+        console.error("[sns] Generation error:", error);
+        await client.chat.postMessage({
+          channel,
+          thread_ts: threadTs,
+          text: `生成に失敗しました: ${error}`,
+        });
+      }
+    },
+  },
+];
+
+function matchRoute(text: string): TriggerRoute | null {
+  for (const route of TRIGGER_ROUTES) {
+    const matched = route.match
+      ? route.match(text)
+      : route.patterns.some((p) => p.test(text));
+    if (matched) return route;
+  }
+  return null;
 }
 
 export function setupSnsHandler(): void {
@@ -127,116 +261,14 @@ export function setupSnsHandler(): void {
     const botInfo = await client.auth.test();
     if ("user" in message && message.user === botInfo.user_id) return;
 
-    // 全プラットフォーム一括提案
-    if (isAllPlatformTrigger(text)) {
-      console.log(
-        `[sns] All-platform trigger detected: "${text.slice(0, 50)}"`,
-      );
-
-      await client.chat.postMessage({
+    const route = matchRoute(text);
+    if (route) {
+      await route.handler({
+        text,
+        client,
         channel: SNS_CHANNEL,
-        thread_ts: message.ts,
-        text: "全プラットフォームの投稿案を生成中... (X x3, Qiita, Zenn, note, YouTube, Threads x2, TikTok, GitHub, Podcast)",
+        threadTs: message.ts!,
       });
-
-      try {
-        await generateAllPlatformSuggestions(client);
-        await client.chat.postMessage({
-          channel: SNS_CHANNEL,
-          thread_ts: message.ts,
-          text: "全プラットフォームの投稿案の生成が完了しました",
-        });
-      } catch (error) {
-        console.error("[sns] All-platform generation error:", error);
-        await client.chat.postMessage({
-          channel: SNS_CHANNEL,
-          thread_ts: message.ts,
-          text: `全プラットフォーム生成に失敗しました: ${error}`,
-        });
-      }
-      return;
-    }
-
-    // 記事プラットフォーム（Qiita/Zenn/note）の検出を先に行う
-    const articlePlatform = detectArticlePlatform(text);
-    if (articlePlatform) {
-      console.log(
-        `[sns] Article trigger detected: platform=${articlePlatform}, "${text.slice(0, 50)}"`,
-      );
-
-      await client.chat.postMessage({
-        channel: SNS_CHANNEL,
-        thread_ts: message.ts,
-        text: `${articlePlatform} 記事を生成中...`,
-      });
-
-      try {
-        await generateArticleSuggestion(
-          client,
-          SNS_CHANNEL,
-          message.ts!,
-          text,
-          articlePlatform,
-        );
-      } catch (error) {
-        console.error("[sns] Article generation error:", error);
-        await client.chat.postMessage({
-          channel: SNS_CHANNEL,
-          thread_ts: message.ts,
-          text: `記事生成に失敗しました: ${error}`,
-        });
-      }
-      return;
-    }
-
-    // YouTube の検出
-    if (isYouTubeTrigger(text)) {
-      console.log(`[sns] YouTube trigger detected: "${text.slice(0, 50)}"`);
-
-      await client.chat.postMessage({
-        channel: SNS_CHANNEL,
-        thread_ts: message.ts,
-        text: "YouTube 動画案を生成中...",
-      });
-
-      try {
-        await generateYouTubeSuggestionManual(
-          client,
-          SNS_CHANNEL,
-          message.ts!,
-          text,
-        );
-      } catch (error) {
-        console.error("[sns] YouTube generation error:", error);
-        await client.chat.postMessage({
-          channel: SNS_CHANNEL,
-          thread_ts: message.ts,
-          text: `YouTube 動画案の生成に失敗しました: ${error}`,
-        });
-      }
-      return;
-    }
-
-    // X 投稿の検出
-    if (isTrigger(text)) {
-      console.log(`[sns] X trigger detected: "${text.slice(0, 50)}"`);
-
-      await client.chat.postMessage({
-        channel: SNS_CHANNEL,
-        thread_ts: message.ts,
-        text: "X 投稿案を生成中...",
-      });
-
-      try {
-        await generateXPostSuggestion(client, SNS_CHANNEL, message.ts!, text);
-      } catch (error) {
-        console.error("[sns] Generation error:", error);
-        await client.chat.postMessage({
-          channel: SNS_CHANNEL,
-          thread_ts: message.ts,
-          text: `生成に失敗しました: ${error}`,
-        });
-      }
     }
   });
 

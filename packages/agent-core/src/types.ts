@@ -1,5 +1,9 @@
 // packages/agent-core/src/types.ts
 
+export type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
 export interface AgentResult {
   sessionId?: string;
   message: {

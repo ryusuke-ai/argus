@@ -3,6 +3,7 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { fireAndForget, type ArgusHooks } from "@argus/agent-core";
+import { z } from "zod";
 import type {
   ScanResult,
   RemediationAction,
@@ -12,6 +13,26 @@ import type {
 import { REPO_ROOT } from "./scanners.js";
 
 const execAsync = promisify(exec);
+
+const remediationSchema = z.object({
+  remediations: z
+    .array(
+      z.object({
+        category: z.string().optional(),
+        filesChanged: z.array(z.string()).optional(),
+        description: z.string().optional(),
+      }),
+    )
+    .optional(),
+  skipped: z
+    .array(
+      z.object({
+        category: z.string().optional(),
+        description: z.string().optional(),
+      }),
+    )
+    .optional(),
+});
 
 /**
  * Check if scan results have any issues worth fixing.
@@ -89,14 +110,16 @@ export function parseRemediationResult(text: string): {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return empty;
 
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      remediations?: Array<{
-        category?: string;
-        filesChanged?: string[];
-        description?: string;
-      }>;
-      skipped?: Array<{ category?: string; description?: string }>;
-    };
+    const raw: unknown = JSON.parse(jsonMatch[0]);
+    const parseResult = remediationSchema.safeParse(raw);
+    if (!parseResult.success) {
+      console.error(
+        "[Code Patrol] Remediation schema validation failed:",
+        parseResult.error.message,
+      );
+      return empty;
+    }
+    const parsed = parseResult.data;
 
     const validCategories = [
       "type-error",

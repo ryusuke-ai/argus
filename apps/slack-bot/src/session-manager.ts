@@ -443,6 +443,88 @@ export function formatToolProgress(
 }
 
 /**
+ * コマンドパターンと対応する日本語メッセージのマッピング。
+ * 配列の順序が優先度を決定する（先頭から順にマッチ）。
+ * formatter が string なら固定メッセージ、関数なら match 結果から動的生成。
+ */
+const COMMAND_PATTERNS: Array<
+  [RegExp, string | ((match: RegExpMatchArray) => string)]
+> = [
+  // pnpm / npm / yarn
+  [/^(pnpm|npm|yarn)\s+install/, "パッケージをインストールしています"],
+  [/^(pnpm|npm|yarn)\s+build/, "ビルドを実行しています"],
+  [/^(pnpm|npm|yarn)\s+test/, "テストを実行しています"],
+  [/^(pnpm|npm|yarn)\s+dev/, "開発サーバーを起動しています"],
+  [
+    /^(?:pnpm|npm|yarn)\s+run\s+(\S+)/,
+    (m) => `${m[1]} スクリプトを実行しています`,
+  ],
+
+  // git（具体的なサブコマンドを先に、汎用パターンを後に）
+  [/^git\s+clone/, "リポジトリをクローンしています"],
+  [/^git\s+pull/, "最新の変更を取得しています"],
+  [/^git\s+push/, "変更をプッシュしています"],
+  [/^git\s+commit/, "変更をコミットしています"],
+  [/^git\s+checkout/, "ブランチを切り替えています"],
+  [/^git\s+status/, "Gitの状態を確認しています"],
+  [/^git\s+diff/, "変更差分を確認しています"],
+  [/^git\s+log/, "コミット履歴を確認しています"],
+  [/^git\s+/, "Gitの操作を実行しています"],
+
+  // mkdir
+  [/^mkdir/, "ディレクトリを作成しています"],
+
+  // node / tsx / python scripts
+  [/^(node|tsx|ts-node)\s+/, "スクリプトを実行しています"],
+  [/^python/, "スクリプトを実行しています"],
+
+  // curl / wget
+  [/^(curl|wget)\s+/, "データをダウンロードしています"],
+
+  // ls / pwd / cat / head / tail / wc / find / grep
+  [/^(ls|dir)\b/, "ファイル一覧を確認しています"],
+  [/^pwd\b/, "作業ディレクトリを確認しています"],
+  [/^(cat|head|tail|less|more)\b/, "ファイルの内容を確認しています"],
+  [/^wc\b/, "ファイルの情報を確認しています"],
+  [/^(find|locate)\b/, "ファイルを検索しています"],
+  [/^(grep|rg|ag)\b/, "テキストを検索しています"],
+
+  // cp / mv / rm / chmod / touch
+  [/^cp\s+/, "ファイルをコピーしています"],
+  [/^mv\s+/, "ファイルを移動しています"],
+  [/^rm\s+/, "ファイルを削除しています"],
+  [/^chmod\b/, "ファイルの権限を変更しています"],
+  [/^touch\b/, "ファイルを作成しています"],
+
+  // tar / zip / unzip
+  [/^(tar|zip|unzip|gzip|gunzip)\b/, "ファイルを圧縮・展開しています"],
+
+  // ffmpeg / ffprobe
+  [/^ffmpeg/, "メディアファイルを変換しています"],
+  [/^ffprobe/, "メディアファイルの情報を確認しています"],
+
+  // docker（具体的なサブコマンドを先に）
+  [/^docker\s+build/, "Dockerイメージをビルドしています"],
+  [/^docker\s+run/, "Dockerコンテナを起動しています"],
+  [/^docker\s+/, "Dockerの操作を実行しています"],
+
+  // echo / printf
+  [/^(echo|printf)\b/, "出力を確認しています"],
+
+  // sleep / wait
+  [/^sleep\b/, "待機しています"],
+
+  // jq (JSON processing)
+  [/^jq\b/, "JSONデータを処理しています"],
+
+  // sed / awk (text processing)
+  [/^(sed|awk)\b/, "テキストを加工しています"],
+
+  // whisper (speech recognition)
+  [/whisper/, "音声認識を実行しています"],
+];
+
+/**
  * Summarize a shell command into a short Japanese description.
  * コマンドのパターンから自然な日本語メッセージを生成する。
  */
@@ -451,86 +533,12 @@ export function summarizeCommand(cmd: string): string {
   // パイプやチェインの最初のコマンドで判定
   const firstCmd = trimmed.split(/[|;&]/).at(0)?.trim() ?? trimmed;
 
-  // pnpm / npm / yarn
-  if (/^(pnpm|npm|yarn)\s+install/.test(firstCmd))
-    return "パッケージをインストールしています";
-  if (/^(pnpm|npm|yarn)\s+build/.test(firstCmd))
-    return "ビルドを実行しています";
-  if (/^(pnpm|npm|yarn)\s+test/.test(firstCmd)) return "テストを実行しています";
-  if (/^(pnpm|npm|yarn)\s+dev/.test(firstCmd))
-    return "開発サーバーを起動しています";
-  if (/^(pnpm|npm|yarn)\s+run\s+(\S+)/.test(firstCmd)) {
-    const match = firstCmd.match(/^(?:pnpm|npm|yarn)\s+run\s+(\S+)/);
-    return `${match![1]} スクリプトを実行しています`;
+  for (const [pattern, formatter] of COMMAND_PATTERNS) {
+    const match = firstCmd.match(pattern);
+    if (match) {
+      return typeof formatter === "string" ? formatter : formatter(match);
+    }
   }
-
-  // git
-  if (/^git\s+clone/.test(firstCmd)) return "リポジトリをクローンしています";
-  if (/^git\s+pull/.test(firstCmd)) return "最新の変更を取得しています";
-  if (/^git\s+push/.test(firstCmd)) return "変更をプッシュしています";
-  if (/^git\s+commit/.test(firstCmd)) return "変更をコミットしています";
-  if (/^git\s+checkout/.test(firstCmd)) return "ブランチを切り替えています";
-  if (/^git\s+status/.test(firstCmd)) return "Gitの状態を確認しています";
-  if (/^git\s+diff/.test(firstCmd)) return "変更差分を確認しています";
-  if (/^git\s+log/.test(firstCmd)) return "コミット履歴を確認しています";
-  if (/^git\s+/.test(firstCmd)) return "Gitの操作を実行しています";
-
-  // mkdir
-  if (/^mkdir/.test(firstCmd)) return "ディレクトリを作成しています";
-
-  // node / tsx / python scripts
-  if (/^(node|tsx|ts-node)\s+/.test(firstCmd))
-    return "スクリプトを実行しています";
-  if (/^python/.test(firstCmd)) return "スクリプトを実行しています";
-
-  // curl / wget
-  if (/^(curl|wget)\s+/.test(firstCmd)) return "データをダウンロードしています";
-
-  // ls / pwd / cat / head / tail / wc
-  if (/^(ls|dir)\b/.test(firstCmd)) return "ファイル一覧を確認しています";
-  if (/^pwd\b/.test(firstCmd)) return "作業ディレクトリを確認しています";
-  if (/^(cat|head|tail|less|more)\b/.test(firstCmd))
-    return "ファイルの内容を確認しています";
-  if (/^wc\b/.test(firstCmd)) return "ファイルの情報を確認しています";
-  if (/^(find|locate)\b/.test(firstCmd)) return "ファイルを検索しています";
-  if (/^(grep|rg|ag)\b/.test(firstCmd)) return "テキストを検索しています";
-
-  // cp / mv / rm / chmod / chown
-  if (/^cp\s+/.test(firstCmd)) return "ファイルをコピーしています";
-  if (/^mv\s+/.test(firstCmd)) return "ファイルを移動しています";
-  if (/^rm\s+/.test(firstCmd)) return "ファイルを削除しています";
-  if (/^chmod\b/.test(firstCmd)) return "ファイルの権限を変更しています";
-  if (/^touch\b/.test(firstCmd)) return "ファイルを作成しています";
-
-  // tar / zip / unzip
-  if (/^(tar|zip|unzip|gzip|gunzip)\b/.test(firstCmd))
-    return "ファイルを圧縮・展開しています";
-
-  // ffmpeg / ffprobe
-  if (/^ffmpeg/.test(firstCmd)) return "メディアファイルを変換しています";
-  if (/^ffprobe/.test(firstCmd))
-    return "メディアファイルの情報を確認しています";
-
-  // docker
-  if (/^docker\s+build/.test(firstCmd))
-    return "Dockerイメージをビルドしています";
-  if (/^docker\s+run/.test(firstCmd)) return "Dockerコンテナを起動しています";
-  if (/^docker\s+/.test(firstCmd)) return "Dockerの操作を実行しています";
-
-  // echo / printf (verification, checks)
-  if (/^(echo|printf)\b/.test(firstCmd)) return "出力を確認しています";
-
-  // sleep / wait
-  if (/^sleep\b/.test(firstCmd)) return "待機しています";
-
-  // jq (JSON processing)
-  if (/^jq\b/.test(firstCmd)) return "JSONデータを処理しています";
-
-  // sed / awk (text processing)
-  if (/^(sed|awk)\b/.test(firstCmd)) return "テキストを加工しています";
-
-  // whisper (speech recognition)
-  if (/whisper/.test(firstCmd)) return "音声認識を実行しています";
 
   // Fallback: generic message
   return "コマンドを実行しています";

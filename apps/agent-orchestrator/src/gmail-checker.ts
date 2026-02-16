@@ -11,9 +11,16 @@ import type { ClassificationResult } from "@argus/gmail";
 import { db, gmailMessages } from "@argus/db";
 import { eq } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import { updateGmailCanvas } from "./canvas/gmail-canvas.js";
 
 const anthropic = new Anthropic();
+
+const classificationSchema = z.object({
+  classification: z.enum(["needs_reply", "needs_attention", "other"]),
+  summary: z.string(),
+  draft_reply: z.string().nullable(),
+});
 
 /**
  * Urgent subject patterns — emails matching these bypass the pre-filter
@@ -299,17 +306,20 @@ needs_replyの場合のみdraft_replyに返信案を入れてください。他�
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
 
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      classification: string;
-      summary: string;
-      draft_reply: string | null;
-    };
+    const raw: unknown = JSON.parse(jsonMatch[0]);
+    const result = classificationSchema.safeParse(raw);
+    if (!result.success) {
+      console.error(
+        "[Gmail Checker] Classification schema validation failed:",
+        result.error.message,
+      );
+      return null;
+    }
 
     return {
-      classification:
-        parsed.classification as ClassificationResult["classification"],
-      summary: parsed.summary,
-      draftReply: parsed.draft_reply,
+      classification: result.data.classification,
+      summary: result.data.summary,
+      draftReply: result.data.draft_reply,
     };
   } catch (error) {
     console.error("[Gmail Checker] Classification error:", error);

@@ -18,9 +18,19 @@ import {
   type ObservationDB,
 } from "@argus/agent-core";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { notifySlack, uploadFileToSlack } from "./slack-notifier.js";
 import { updateExecutionCanvas } from "./canvas/execution-canvas.js";
 import * as path from "node:path";
+
+const agentConfigSchema = z
+  .object({
+    prompt: z.string().optional(),
+    allowedTools: z.array(z.string()).optional(),
+    allowedSkills: z.array(z.string()).optional(),
+    allowedCommands: z.array(z.string()).optional(),
+  })
+  .nullable();
 
 /**
  * Create observation hooks that log tool executions to the tasks table.
@@ -118,12 +128,22 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
   const startTime = Date.now();
 
   try {
-    const config = agent.config as {
-      prompt?: string;
-      allowedTools?: string[];
-      allowedSkills?: string[];
-      allowedCommands?: string[];
-    } | null;
+    const configResult = agentConfigSchema.safeParse(agent.config);
+    if (!configResult.success) {
+      const errorMessage = `Agent ${agent.name} has invalid config: ${configResult.error.message}`;
+      console.error(`[Agent Executor] ${errorMessage}`);
+      await db
+        .update(agentExecutions)
+        .set({
+          status: "error",
+          errorMessage,
+          completedAt: new Date(),
+          durationMs: Date.now() - startTime,
+        })
+        .where(eq(agentExecutions.id, execution.id));
+      return errorMessage;
+    }
+    const config = configResult.data;
     const prompt = config?.prompt;
 
     if (!prompt) {

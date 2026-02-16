@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import { db, messages } from "@argus/db";
 import { eq, asc } from "drizzle-orm";
 import { PersonalServiceImpl } from "@argus/knowledge-personal";
@@ -15,14 +16,23 @@ const SECTION_TO_PATH: Record<PersonalitySection, string> = {
 
 const VALID_SECTIONS = new Set<string>(Object.keys(SECTION_TO_PATH));
 
-interface PersonalityUpdate {
-  section: PersonalitySection;
-  content: string;
-}
+const personalityUpdateSchema = z.object({
+  section: z.enum([
+    "values",
+    "strengths",
+    "thinking",
+    "preferences",
+    "routines",
+    "identity",
+  ]),
+  content: z.string(),
+});
 
-interface AnalysisResult {
-  updates: PersonalityUpdate[];
-}
+const analysisResultSchema = z.object({
+  updates: z.array(personalityUpdateSchema),
+});
+
+type AnalysisResult = z.infer<typeof analysisResultSchema>;
 
 export class PersonalityLearner {
   private anthropic: Anthropic;
@@ -157,11 +167,16 @@ ${currentProfile}
     const jsonString = codeBlockMatch ? codeBlockMatch[1].trim() : text.trim();
 
     try {
-      const parsed = JSON.parse(jsonString) as AnalysisResult;
-      if (parsed && Array.isArray(parsed.updates)) {
-        return parsed;
+      const raw = JSON.parse(jsonString);
+      const result = analysisResultSchema.safeParse(raw);
+      if (result.success) {
+        return result.data;
       }
-      return null;
+      console.error(
+        "[PersonalityLearner] Schema validation failed:",
+        result.error,
+      );
+      return { updates: [] };
     } catch {
       return null;
     }

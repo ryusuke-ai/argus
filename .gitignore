@@ -92,3 +92,4 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.wrangler/

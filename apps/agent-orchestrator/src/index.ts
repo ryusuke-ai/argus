@@ -2,14 +2,14 @@
 // Express server with cron scheduler + Agent execution management
 // Port: 3950
 
-import "./env.js";
+import { env } from "./env.js";
 import express from "express";
 import { AgentScheduler } from "./scheduler.js";
 import { setupKnowledgeRoutes } from "./knowledge-api.js";
 import { generateDailyPlan } from "./daily-planner/index.js";
 
 const app = express();
-const PORT = process.env.PORT || 3950;
+const PORT = env.PORT;
 
 // Middleware
 app.use(express.json());

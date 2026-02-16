@@ -5,7 +5,7 @@ import {
   escapeIlike,
   type Knowledge,
 } from "@argus/db";
-import { desc, eq, or, ilike } from "drizzle-orm";
+import { and, desc, eq, or, ilike, ne } from "drizzle-orm";
 import type {
   KnowledgeService,
   KnowledgeRole,
@@ -27,7 +27,11 @@ export class KnowledgeServiceImpl implements KnowledgeService {
   }
 
   async list(): Promise<Knowledge[]> {
-    return db.select().from(knowledges).orderBy(desc(knowledges.updatedAt));
+    return db
+      .select()
+      .from(knowledges)
+      .where(ne(knowledges.status, "archived"))
+      .orderBy(desc(knowledges.updatedAt));
   }
 
   async getById(id: string): Promise<Knowledge | null> {
@@ -46,9 +50,12 @@ export class KnowledgeServiceImpl implements KnowledgeService {
       .select()
       .from(knowledges)
       .where(
-        or(
-          ilike(knowledges.name, `%${escaped}%`),
-          ilike(knowledges.content, `%${escaped}%`),
+        and(
+          ne(knowledges.status, "archived"),
+          or(
+            ilike(knowledges.name, `%${escaped}%`),
+            ilike(knowledges.content, `%${escaped}%`),
+          ),
         ),
       );
   }
@@ -104,7 +111,10 @@ export class KnowledgeServiceImpl implements KnowledgeService {
       return { success: false, error: `Knowledge with id ${id} not found` };
     }
 
-    await db.delete(knowledges).where(eq(knowledges.id, id));
+    await db
+      .update(knowledges)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(knowledges.id, id));
     return { success: true, data: undefined };
   }
 

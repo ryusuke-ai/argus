@@ -2,7 +2,13 @@
 // Re-export: 外部消費側（slack-bot, orchestrator, dashboard）の公開 API
 
 // Types
-export type { AgentResult, Block, ToolCall, QueryOptions } from "./types.js";
+export type {
+  Result,
+  AgentResult,
+  Block,
+  ToolCall,
+  QueryOptions,
+} from "./types.js";
 
 // Agent (execution loop) — SDK ベース
 export {
