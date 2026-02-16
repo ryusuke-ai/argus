@@ -1,59 +1,38 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  type Tool,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { McpBaseServer, type McpToolDefinition } from "@argus/agent-core";
 import { getGmailTools } from "./mcp-tools.js";
 import { sendNewEmail } from "./gmail-client.js";
 import { db, gmailOutgoing } from "@argus/db";
 
-export class GmailMcpServer {
-  private server: Server;
-  private tools: Tool[];
+// ── Zod schemas ──────────────────────────────────────────────
+
+const emailSchema = z.object({
+  to: z.string(),
+  subject: z.string(),
+  body: z.string(),
+});
+
+// ── Server ───────────────────────────────────────────────────
+
+export class GmailMcpServer extends McpBaseServer {
+  private tools: McpToolDefinition[];
 
   constructor() {
+    super("gmail-server", "0.1.0");
     this.tools = getGmailTools();
-    this.server = new Server(
-      { name: "gmail-server", version: "0.1.0" },
-      { capabilities: { tools: {} } },
-    );
-    this.setupHandlers();
   }
 
-  public getTools(): Tool[] {
+  protected getTools(): McpToolDefinition[] {
     return this.tools;
   }
 
-  private setupHandlers(): void {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: this.tools,
-    }));
-
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-      const result = await this.handleToolCall(
-        name,
-        (args ?? {}) as Record<string, unknown>,
-      );
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
-        ],
-      };
-    });
-  }
-
-  public async handleToolCall(
+  protected async handleToolCall(
     name: string,
     args: Record<string, unknown>,
   ): Promise<unknown> {
     switch (name) {
       case "compose_email": {
-        const to = args.to as string;
-        const subject = args.subject as string;
-        const body = args.body as string;
+        const { to, subject, body } = emailSchema.parse(args);
 
         // DB にドラフト保存
         const [draft] = await db
@@ -62,7 +41,7 @@ export class GmailMcpServer {
           .returning();
 
         return {
-          draftId: draft.id,
+          draftId: draft!.id,
           to,
           subject,
           body,
@@ -70,16 +49,21 @@ export class GmailMcpServer {
         };
       }
       case "send_email": {
-        const to = args.to as string;
-        const subject = args.subject as string;
-        const body = args.body as string;
+        const { to, subject, body } = emailSchema.parse(args);
 
-        await sendNewEmail(to, subject, body);
+        const sendResult = await sendNewEmail(to, subject, body);
+        if (!sendResult.success) {
+          return { success: false, error: sendResult.error };
+        }
 
         // DB に送信記録を保存
-        await db
-          .insert(gmailOutgoing)
-          .values({ toAddress: to, subject, body, status: "sent", sentAt: new Date() });
+        await db.insert(gmailOutgoing).values({
+          toAddress: to,
+          subject,
+          body,
+          status: "sent",
+          sentAt: new Date(),
+        });
 
         return {
           to,
@@ -92,9 +76,8 @@ export class GmailMcpServer {
     }
   }
 
-  public async start(): Promise<void> {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+  public override async start(): Promise<void> {
+    await super.start();
     console.error("Gmail MCP Server started");
   }
 }

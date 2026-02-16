@@ -1,120 +1,145 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  type Tool,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { McpBaseServer, type McpToolDefinition } from "@argus/agent-core";
 import type { PersonalService, PersonalitySection } from "./types.js";
 import { getReadTools, getWriteTools } from "./tools.js";
+
+// ── Zod schemas ──────────────────────────────────────────────
+
+const searchSchema = z.object({ query: z.string() });
+
+const readSchema = z.object({ path: z.string() });
+
+const listSchema = z.object({ category: z.string().optional() });
+
+const personalitySections = [
+  "identity",
+  "values",
+  "strengths",
+  "thinking",
+  "preferences",
+  "routines",
+] as const;
+
+const contextSchema = z.object({
+  section: z.enum(personalitySections).optional(),
+});
+
+const addSchema = z.object({
+  category: z.string(),
+  name: z.string(),
+  content: z.string(),
+});
+
+const updateSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+  mode: z.enum(["append", "replace"]),
+});
+
+// ── Result type (success flag pattern) ───────────────────────
+
+type ToolResult =
+  | { success: true; data: unknown }
+  | { success: false; error: string };
+
+// ── Server ───────────────────────────────────────────────────
 
 /**
  * MCP Server for Personal Knowledge management.
  * Provides all 6 tools (read + write) for personal notes.
  */
-export class PersonalMcpServer {
-  private server: Server;
-  private tools: Tool[];
+export class PersonalMcpServer extends McpBaseServer {
+  private tools: McpToolDefinition[];
 
   constructor(private service: PersonalService) {
+    super("knowledge-personal-server", "0.1.0");
     this.tools = [...getReadTools(), ...getWriteTools()];
-    this.server = new Server(
-      {
-        name: "knowledge-personal-server",
-        version: "0.1.0",
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      },
-    );
-
-    this.setupHandlers();
   }
 
-  /**
-   * Get the list of available tools.
-   */
-  public getTools(): Tool[] {
+  protected getTools(): McpToolDefinition[] {
     return this.tools;
   }
 
   /**
-   * Setup MCP protocol handlers for tools/list and tools/call.
+   * success flag パターンに対応する formatResult オーバーライド。
    */
-  private setupHandlers(): void {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: this.tools,
-    }));
-
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-
-      const result = await this.handleToolCall(
-        name,
-        (args ?? {}) as Record<string, unknown>,
-      );
-
+  protected override formatResult(result: unknown): CallToolResult {
+    const r = result as ToolResult;
+    if (r.success) {
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify(r.data, null, 2),
           },
         ],
       };
-    });
+    }
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: r.error,
+        },
+      ],
+      isError: true,
+    };
   }
 
   /**
    * Handle a tool call by routing to the appropriate service method.
-   * @throws Error if tool is unknown
    */
-  public async handleToolCall(
+  protected async handleToolCall(
     name: string,
     args: Record<string, unknown>,
-  ): Promise<unknown> {
+  ): Promise<ToolResult> {
     switch (name) {
-      case "personal_search":
-        return this.service.search(args.query as string);
+      case "personal_search": {
+        const { query } = searchSchema.parse(args);
+        return {
+          success: true,
+          data: await this.service.search(query),
+        };
+      }
 
-      case "personal_read":
-        return this.service.read(args.path as string);
+      case "personal_read": {
+        const { path } = readSchema.parse(args);
+        return this.service.read(path);
+      }
 
-      case "personal_list":
-        return this.service.list(args.category as string | undefined);
+      case "personal_list": {
+        const { category } = listSchema.parse(args);
+        return {
+          success: true,
+          data: await this.service.list(category),
+        };
+      }
 
-      case "personal_context":
+      case "personal_context": {
+        const { section } = contextSchema.parse(args);
         return this.service.getPersonalityContext(
-          args.section as PersonalitySection | undefined,
+          section as PersonalitySection | undefined,
         );
+      }
 
-      case "personal_add":
-        return this.service.add(
-          args.category as string,
-          args.name as string,
-          args.content as string,
-        );
+      case "personal_add": {
+        const { category, name: noteName, content } = addSchema.parse(args);
+        return this.service.add(category, noteName, content);
+      }
 
-      case "personal_update":
-        return this.service.update(
-          args.path as string,
-          args.content as string,
-          args.mode as "append" | "replace",
-        );
+      case "personal_update": {
+        const { path, content, mode } = updateSchema.parse(args);
+        return this.service.update(path, content, mode);
+      }
 
       default:
-        throw new Error(`Unknown tool: ${name}`);
+        return { success: false, error: `Unknown tool: ${name}` };
     }
   }
 
-  /**
-   * Start the MCP server with stdio transport.
-   */
-  public async start(): Promise<void> {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+  public override async start(): Promise<void> {
+    await super.start();
     console.error("Personal Knowledge MCP Server started");
   }
 }

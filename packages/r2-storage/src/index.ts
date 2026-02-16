@@ -1,1 +1,1 @@
-export { uploadVideo, deleteFile } from "./client.js";
+export { uploadFile, deleteFile } from "./client.js";

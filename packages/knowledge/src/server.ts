@@ -1,14 +1,37 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  type Tool,
-} from "@modelcontextprotocol/sdk/types.js";
-import { db, lessons } from "@argus/db";
-import { desc, ilike } from "drizzle-orm";
+import { z } from "zod";
+import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { McpBaseServer, type McpToolDefinition } from "@argus/agent-core";
 import type { KnowledgeService, KnowledgeRole } from "./types.js";
 import { getCommonTools, getCollectorTools } from "./tools/index.js";
+
+// ── Zod schemas ──────────────────────────────────────────────
+
+const searchSchema = z.object({ query: z.string() });
+
+const addSchema = z.object({
+  name: z.string(),
+  content: z.string(),
+  description: z.string().optional(),
+});
+
+const updateSchema = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+  content: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const archiveSchema = z.object({ id: z.string() });
+
+const searchLessonsSchema = z.object({ query: z.string() });
+
+// ── Result type (success flag pattern) ───────────────────────
+
+type ToolResult =
+  | { success: true; data: unknown }
+  | { success: false; error: string };
+
+// ── Server ───────────────────────────────────────────────────
 
 /**
  * MCP Server for Knowledge management.
@@ -16,35 +39,22 @@ import { getCommonTools, getCollectorTools } from "./tools/index.js";
  * - Collector: search, list, add, update, archive (5 tools)
  * - Executor: search, list (2 tools)
  */
-export class KnowledgeMcpServer {
-  private server: Server;
-  private tools: Tool[];
+export class KnowledgeMcpServer extends McpBaseServer {
+  private tools: McpToolDefinition[];
 
   constructor(
     private service: KnowledgeService,
     private role: KnowledgeRole,
   ) {
+    super("knowledge-server", "0.1.0");
     this.tools = this.initializeTools();
-    this.server = new Server(
-      {
-        name: "knowledge-server",
-        version: "0.1.0",
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      },
-    );
-
-    this.setupHandlers();
   }
 
   /**
    * Initialize tools based on role.
    * Collector gets all tools, Executor gets only read tools.
    */
-  private initializeTools(): Tool[] {
+  private initializeTools(): McpToolDefinition[] {
     const commonTools = getCommonTools();
     if (this.role === "collector") {
       return [...commonTools, ...getCollectorTools()];
@@ -52,138 +62,94 @@ export class KnowledgeMcpServer {
     return commonTools;
   }
 
-  /**
-   * Get the list of tools available for the current role.
-   */
-  public getTools(): Tool[] {
+  protected getTools(): McpToolDefinition[] {
     return this.tools;
   }
 
   /**
-   * Setup MCP protocol handlers for tools/list and tools/call.
+   * success flag パターンに対応する formatResult オーバーライド。
    */
-  private setupHandlers(): void {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: this.tools,
-    }));
-
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-
-      const result = await this.handleToolCall(
-        name,
-        (args ?? {}) as Record<string, unknown>,
-      );
-
+  protected override formatResult(result: unknown): CallToolResult {
+    const r = result as ToolResult;
+    if (r.success) {
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify(r.data, null, 2),
           },
         ],
       };
-    });
+    }
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: r.error,
+        },
+      ],
+      isError: true,
+    };
   }
 
   /**
    * Handle a tool call by routing to the appropriate service method.
-   * @throws Error if tool is unknown
    */
-  public async handleToolCall(
+  protected async handleToolCall(
     name: string,
     args: Record<string, unknown>,
-  ): Promise<unknown> {
+  ): Promise<ToolResult> {
     switch (name) {
-      case "knowledge_search":
-        return this.service.search(args.query as string);
+      case "knowledge_search": {
+        const { query } = searchSchema.parse(args);
+        return {
+          success: true,
+          data: await this.service.search(query),
+        };
+      }
 
       case "knowledge_list":
-        return this.service.list();
+        return { success: true, data: await this.service.list() };
 
-      case "knowledge_add":
-        return this.service.add(
-          args.name as string,
-          args.content as string,
-          args.description as string | undefined,
-        );
+      case "knowledge_add": {
+        const { name: entryName, content, description } = addSchema.parse(args);
+        return this.service.add(entryName, content, description);
+      }
 
-      case "knowledge_update":
-        return this.service.update(args.id as string, {
-          name: args.name as string | undefined,
-          content: args.content as string | undefined,
-          description: args.description as string | undefined,
-        });
-
-      case "knowledge_archive":
-        return this.service.archive(args.id as string);
-
-      case "search_lessons":
-        return this.searchLessons(args.query as string);
-
-      default:
-        throw new Error(`Unknown tool: ${name}`);
-    }
-  }
-
-  /**
-   * Search lessons by query keyword (ILIKE on content columns).
-   * Returns up to 5 most recent matching lessons.
-   */
-  private async searchLessons(query: string): Promise<unknown> {
-    const results = await db
-      .select({
-        content: lessons.errorPattern,
-        reflection: lessons.reflection,
-        resolution: lessons.resolution,
-        severity: lessons.severity,
-        createdAt: lessons.createdAt,
-      })
-      .from(lessons)
-      .where(ilike(lessons.errorPattern, `%${query}%`))
-      .orderBy(desc(lessons.createdAt))
-      .limit(5);
-
-    // Also search in reflection column
-    const reflectionResults = await db
-      .select({
-        content: lessons.errorPattern,
-        reflection: lessons.reflection,
-        resolution: lessons.resolution,
-        severity: lessons.severity,
-        createdAt: lessons.createdAt,
-      })
-      .from(lessons)
-      .where(ilike(lessons.reflection, `%${query}%`))
-      .orderBy(desc(lessons.createdAt))
-      .limit(5);
-
-    // Merge and deduplicate, keep top 5 newest
-    const seen = new Set<string>();
-    const merged = [];
-    for (const r of [...results, ...reflectionResults]) {
-      const key = `${r.content}-${r.createdAt.toISOString()}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push({
-          content: r.content,
-          reflection: r.reflection,
-          resolution: r.resolution,
-          severity: r.severity,
-          createdAt: r.createdAt,
+      case "knowledge_update": {
+        const {
+          id,
+          name: entryName,
+          content,
+          description,
+        } = updateSchema.parse(args);
+        return this.service.update(id, {
+          name: entryName,
+          content,
+          description,
         });
       }
+
+      case "knowledge_archive": {
+        const { id } = archiveSchema.parse(args);
+        return this.service.archive(id);
+      }
+
+      case "search_lessons": {
+        const { query } = searchLessonsSchema.parse(args);
+        return {
+          success: true,
+          data: await this.service.searchLessons(query),
+        };
+      }
+
+      default:
+        return { success: false, error: `Unknown tool: ${name}` };
     }
-    merged.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    return merged.slice(0, 5);
   }
 
-  /**
-   * Start the MCP server with stdio transport.
-   */
-  public async start(): Promise<void> {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+  public override async start(): Promise<void> {
+    await super.start();
     console.error(`Knowledge MCP Server started (role: ${this.role})`);
   }
 }

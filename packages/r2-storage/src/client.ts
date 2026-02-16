@@ -1,4 +1,8 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { createReadStream, statSync } from "node:fs";
 import { extname } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -19,7 +23,11 @@ function getConfig() {
   return { accountId, accessKeyId, secretAccessKey, bucketName, publicUrl };
 }
 
-function createClient(accountId: string, accessKeyId: string, secretAccessKey: string): S3Client {
+function createClient(
+  accountId: string,
+  accessKeyId: string,
+  secretAccessKey: string,
+): S3Client {
   return new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -59,9 +67,16 @@ function getContentType(filePath: string): string {
  * @param key - Optional custom object key (defaults to UUID + original extension)
  * @returns Public URL of the uploaded file
  */
-export async function uploadVideo(localPath: string, key?: string): Promise<string> {
+export async function uploadFile(
+  localPath: string,
+  key?: string,
+): Promise<string> {
   const config = getConfig();
-  const client = createClient(config.accountId, config.accessKeyId, config.secretAccessKey);
+  const client = createClient(
+    config.accountId,
+    config.accessKeyId,
+    config.secretAccessKey,
+  );
 
   const ext = extname(localPath);
   const objectKey = key ?? `${randomUUID()}${ext}`;
@@ -89,7 +104,11 @@ export async function uploadVideo(localPath: string, key?: string): Promise<stri
  */
 export async function deleteFile(key: string): Promise<void> {
   const config = getConfig();
-  const client = createClient(config.accountId, config.accessKeyId, config.secretAccessKey);
+  const client = createClient(
+    config.accountId,
+    config.accessKeyId,
+    config.secretAccessKey,
+  );
 
   const command = new DeleteObjectCommand({
     Bucket: config.bucketName,

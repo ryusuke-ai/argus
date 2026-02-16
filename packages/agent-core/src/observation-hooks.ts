@@ -59,7 +59,9 @@ export function createDBObservationHooks(
             status: "running",
           })
           .returning();
-        taskIds.set(toolUseId, { dbId: task.id, startTime: Date.now() });
+        if (task) {
+          taskIds.set(toolUseId, { dbId: task.id, startTime: Date.now() });
+        }
       } catch (err) {
         console.error(`${logPrefix} Failed to record PreToolUse`, err);
       }

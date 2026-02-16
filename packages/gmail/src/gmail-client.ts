@@ -1,29 +1,40 @@
 import { google, type gmail_v1 } from "googleapis";
 import { getAuthenticatedClient } from "./auth.js";
+import type { AuthResult } from "./auth.js";
 import type { GmailMessage } from "./types.js";
 
-export async function fetchUnreadMessages(): Promise<GmailMessage[]> {
-  const auth = await getAuthenticatedClient();
-  const gmail = google.gmail({ version: "v1", auth });
+export async function fetchUnreadMessages(): Promise<
+  AuthResult<GmailMessage[]>
+> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  const res = await gmail.users.messages.list({
-    userId: "me",
-    q: "is:unread in:inbox -category:promotions -category:social -category:updates -category:forums",
-    maxResults: 10,
-  });
+  try {
+    const gmail = google.gmail({ version: "v1", auth: authResult.data });
 
-  if (!res.data.messages || res.data.messages.length === 0) {
-    return [];
+    const res = await gmail.users.messages.list({
+      userId: "me",
+      q: "is:unread in:inbox -category:promotions -category:social -category:updates -category:forums",
+      maxResults: 10,
+    });
+
+    if (!res.data.messages || res.data.messages.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const messages: GmailMessage[] = [];
+    for (const msg of res.data.messages) {
+      if (!msg.id) continue;
+      const detail = await getMessage(gmail, msg.id);
+      if (detail) messages.push(detail);
+    }
+
+    return { success: true, data: messages };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Gmail] fetchUnreadMessages error:", message);
+    return { success: false, error: message };
   }
-
-  const messages: GmailMessage[] = [];
-  for (const msg of res.data.messages) {
-    if (!msg.id) continue;
-    const detail = await getMessage(gmail, msg.id);
-    if (detail) messages.push(detail);
-  }
-
-  return messages;
 }
 
 // Windows-1252 code points (0x80-0x9F range) → original byte values
@@ -250,66 +261,96 @@ export async function sendReply(
   to: string,
   subject: string,
   body: string,
-): Promise<void> {
-  const auth = await getAuthenticatedClient();
-  const gmail = google.gmail({ version: "v1", auth });
+): Promise<AuthResult<string>> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  // Build RFC 2822 formatted email
-  const reSubject = `Re: ${subject.replace(/^Re:\s*/i, "")}`;
-  const encodedSubject = `=?UTF-8?B?${Buffer.from(reSubject).toString("base64")}?=`;
-  const messageParts = [
-    `To: ${to}`,
-    `Subject: ${encodedSubject}`,
-    `In-Reply-To: ${messageId}`,
-    `References: ${messageId}`,
-    "Content-Type: text/plain; charset=utf-8",
-    "",
-    body,
-  ];
-  const raw = Buffer.from(messageParts.join("\r\n")).toString("base64url");
+  try {
+    const gmail = google.gmail({ version: "v1", auth: authResult.data });
 
-  await gmail.users.messages.send({
-    userId: "me",
-    requestBody: {
-      raw,
-      threadId,
-    },
-  });
+    // Build RFC 2822 formatted email
+    const reSubject = `Re: ${subject.replace(/^Re:\s*/i, "")}`;
+    const encodedSubject = `=?UTF-8?B?${Buffer.from(reSubject).toString("base64")}?=`;
+    const messageParts = [
+      `To: ${to}`,
+      `Subject: ${encodedSubject}`,
+      `In-Reply-To: ${messageId}`,
+      `References: ${messageId}`,
+      "Content-Type: text/plain; charset=utf-8",
+      "",
+      body,
+    ];
+    const raw = Buffer.from(messageParts.join("\r\n")).toString("base64url");
+
+    const res = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw,
+        threadId,
+      },
+    });
+
+    return { success: true, data: res.data.id || "" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Gmail] sendReply error:", message);
+    return { success: false, error: message };
+  }
 }
 
 export async function sendNewEmail(
   to: string,
   subject: string,
   body: string,
-): Promise<void> {
-  const auth = await getAuthenticatedClient();
-  const gmail = google.gmail({ version: "v1", auth });
+): Promise<AuthResult<string>> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  const encodedSubject = `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
-  const messageParts = [
-    `To: ${to}`,
-    `Subject: ${encodedSubject}`,
-    "Content-Type: text/plain; charset=utf-8",
-    "",
-    body,
-  ];
-  const raw = Buffer.from(messageParts.join("\r\n")).toString("base64url");
+  try {
+    const gmail = google.gmail({ version: "v1", auth: authResult.data });
 
-  await gmail.users.messages.send({
-    userId: "me",
-    requestBody: { raw },
-  });
+    const encodedSubject = `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
+    const messageParts = [
+      `To: ${to}`,
+      `Subject: ${encodedSubject}`,
+      "Content-Type: text/plain; charset=utf-8",
+      "",
+      body,
+    ];
+    const raw = Buffer.from(messageParts.join("\r\n")).toString("base64url");
+
+    const res = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: { raw },
+    });
+
+    return { success: true, data: res.data.id || "" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Gmail] sendNewEmail error:", message);
+    return { success: false, error: message };
+  }
 }
 
-export async function markAsRead(messageId: string): Promise<void> {
-  const auth = await getAuthenticatedClient();
-  const gmail = google.gmail({ version: "v1", auth });
+export async function markAsRead(messageId: string): Promise<AuthResult<void>> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  await gmail.users.messages.modify({
-    userId: "me",
-    id: messageId,
-    requestBody: {
-      removeLabelIds: ["UNREAD"],
-    },
-  });
+  try {
+    const gmail = google.gmail({ version: "v1", auth: authResult.data });
+
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: messageId,
+      requestBody: {
+        removeLabelIds: ["UNREAD"],
+      },
+    });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Gmail] markAsRead error:", message);
+    return { success: false, error: message };
+  }
 }

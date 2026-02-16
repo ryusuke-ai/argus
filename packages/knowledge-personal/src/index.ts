@@ -7,4 +7,5 @@ export type {
   SearchResult,
   MatchLine,
   PersonalitySection,
+  Result,
 } from "./types.js";

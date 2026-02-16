@@ -1,4 +1,4 @@
-import { db, personalNotes } from "@argus/db";
+import { db, personalNotes, escapeIlike } from "@argus/db";
 import { eq, or, ilike, asc } from "drizzle-orm";
 import type {
   NoteEntry,
@@ -6,6 +6,7 @@ import type {
   MatchLine,
   PersonalitySection,
   PersonalService,
+  Result,
 } from "./types.js";
 
 export class PersonalServiceImpl implements PersonalService {
@@ -34,27 +35,31 @@ export class PersonalServiceImpl implements PersonalService {
     return rows;
   }
 
-  async read(path: string): Promise<NoteEntry> {
+  async read(path: string): Promise<Result<NoteEntry>> {
     const rows = await db
       .select()
       .from(personalNotes)
       .where(eq(personalNotes.path, path));
 
     if (rows.length === 0) {
-      throw new Error(`Note not found: ${path}`);
+      return { success: false, error: `Note not found: ${path}` };
     }
 
     const row = rows[0];
     return {
-      path: row.path,
-      category: row.category,
-      name: row.name,
-      content: row.content,
+      success: true,
+      data: {
+        path: row.path,
+        category: row.category,
+        name: row.name,
+        content: row.content,
+      },
     };
   }
 
   async search(query: string): Promise<SearchResult[]> {
-    const pattern = `%${query}%`;
+    const escaped = escapeIlike(query);
+    const pattern = `%${escaped}%`;
     const rows = await db
       .select()
       .from(personalNotes)
@@ -121,7 +126,9 @@ export class PersonalServiceImpl implements PersonalService {
     return results;
   }
 
-  async getPersonalityContext(section?: PersonalitySection): Promise<string> {
+  async getPersonalityContext(
+    section?: PersonalitySection,
+  ): Promise<Result<string>> {
     if (section) {
       // 特定セクション: self/{section}.md を直接読む
       const path = `self/${section}.md`;
@@ -131,10 +138,10 @@ export class PersonalServiceImpl implements PersonalService {
         .where(eq(personalNotes.path, path));
 
       if (rows.length === 0) {
-        throw new Error(`Personal note not found: ${path}`);
+        return { success: false, error: `Personal note not found: ${path}` };
       }
 
-      return rows[0].content;
+      return { success: true, data: rows[0].content };
     }
 
     // セクション指定なし: self/ カテゴリの全ファイルを取得してサマリー
@@ -145,17 +152,20 @@ export class PersonalServiceImpl implements PersonalService {
       .orderBy(asc(personalNotes.path));
 
     if (rows.length === 0) {
-      throw new Error("No personal notes found in self/ category");
+      return {
+        success: false,
+        error: "No personal notes found in self/ category",
+      };
     }
 
-    return this.buildSummary(rows);
+    return { success: true, data: this.buildSummary(rows) };
   }
 
   async add(
     category: string,
     name: string,
     content: string,
-  ): Promise<NoteEntry> {
+  ): Promise<Result<NoteEntry>> {
     const path = `${category}/${name}.md`;
 
     try {
@@ -172,16 +182,21 @@ export class PersonalServiceImpl implements PersonalService {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new Error(`Note already exists: ${path}`);
+        return { success: false, error: `Note already exists: ${path}` };
       }
-      throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[PersonalService] add error:", message);
+      return { success: false, error: message };
     }
 
     return {
-      path,
-      category,
-      name,
-      content,
+      success: true,
+      data: {
+        path,
+        category,
+        name,
+        content,
+      },
     };
   }
 
@@ -189,7 +204,7 @@ export class PersonalServiceImpl implements PersonalService {
     path: string,
     content: string,
     mode: "append" | "replace",
-  ): Promise<NoteEntry> {
+  ): Promise<Result<NoteEntry>> {
     let newContent: string;
 
     if (mode === "append") {
@@ -199,7 +214,7 @@ export class PersonalServiceImpl implements PersonalService {
         .where(eq(personalNotes.path, path));
 
       if (existing.length === 0) {
-        throw new Error(`Note not found: ${path}`);
+        return { success: false, error: `Note not found: ${path}` };
       }
 
       newContent = existing[0].content + "\n" + content;
@@ -219,10 +234,10 @@ export class PersonalServiceImpl implements PersonalService {
       });
 
     if (result.length === 0) {
-      throw new Error(`Note not found: ${path}`);
+      return { success: false, error: `Note not found: ${path}` };
     }
 
-    return result[0];
+    return { success: true, data: result[0] };
   }
 
   // --- Private helpers ---

@@ -1,6 +1,5 @@
 import { randomBytes, createHash } from "node:crypto";
 import { db, tiktokTokens } from "@argus/db";
-import { eq } from "drizzle-orm";
 import type { TiktokTokens } from "./types.js";
 
 const TIKTOK_AUTH_BASE = "https://www.tiktok.com/v2/auth/authorize";
@@ -43,7 +42,8 @@ function getRedirectUri(): string {
  * PKCE code_verifier を生成する（TikTok 仕様: [A-Za-z0-9-._~], 43-128文字）
  */
 export function generateCodeVerifier(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
   const bytes = randomBytes(64);
   let result = "";
   for (let i = 0; i < 64; i++) {
@@ -62,7 +62,11 @@ export function generateCodeChallenge(verifier: string): string {
 /**
  * TikTok OAuth2 認証 URL を生成する（PKCE 対応）
  */
-export function getAuthUrl(codeVerifier?: string): { url: string; codeVerifier: string; state: string } {
+export function getAuthUrl(codeVerifier?: string): {
+  url: string;
+  codeVerifier: string;
+  state: string;
+} {
   const verifier = codeVerifier || generateCodeVerifier();
   const challenge = generateCodeChallenge(verifier);
   const state = randomBytes(16).toString("hex");
@@ -77,7 +81,11 @@ export function getAuthUrl(codeVerifier?: string): { url: string; codeVerifier: 
     code_challenge_method: "S256",
   });
 
-  return { url: `${TIKTOK_AUTH_BASE}?${params.toString()}`, codeVerifier: verifier, state };
+  return {
+    url: `${TIKTOK_AUTH_BASE}?${params.toString()}`,
+    codeVerifier: verifier,
+    state,
+  };
 }
 
 /**
@@ -177,8 +185,7 @@ export async function refreshTokenIfNeeded(): Promise<{
     if (data.error || !data.access_token) {
       return {
         success: false,
-        error:
-          data.error_description || data.error || "Token refresh failed",
+        error: data.error_description || data.error || "Token refresh failed",
       };
     }
 
@@ -203,32 +210,25 @@ export async function refreshTokenIfNeeded(): Promise<{
  * トークンを DB に保存する（openId で upsert）
  */
 export async function saveTokens(tokens: TiktokTokens): Promise<void> {
-  const existing = await db
-    .select()
-    .from(tiktokTokens)
-    .where(eq(tiktokTokens.openId, tokens.openId))
-    .limit(1);
-
-  if (existing.length > 0) {
-    await db
-      .update(tiktokTokens)
-      .set({
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        tokenExpiry: tokens.expiry,
-        scopes: tokens.scopes,
-        updatedAt: new Date(),
-      })
-      .where(eq(tiktokTokens.openId, tokens.openId));
-  } else {
-    await db.insert(tiktokTokens).values({
+  await db
+    .insert(tiktokTokens)
+    .values({
       openId: tokens.openId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       tokenExpiry: tokens.expiry,
       scopes: tokens.scopes,
+    })
+    .onConflictDoUpdate({
+      target: tiktokTokens.openId,
+      set: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        tokenExpiry: tokens.expiry,
+        scopes: tokens.scopes,
+        updatedAt: new Date(),
+      },
     });
-  }
 }
 
 /**

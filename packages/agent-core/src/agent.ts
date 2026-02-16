@@ -40,7 +40,7 @@ export async function checkCliHealth(): Promise<CliUnavailableReason | null> {
       stderr: string;
     }>((resolve, reject) => {
       const child = spawn(cliPath, ["--print", "health check"], {
-        env: envForSDKPublic() ?? process.env,
+        env: envForSDK() ?? process.env,
         stdio: ["ignore", "pipe", "pipe"],
         timeout: 30_000,
       });
@@ -116,9 +116,14 @@ export function getDefaultModel(): string {
 }
 
 /**
- * 新規セッションで Claude Agent SDK を実行。
+ * 新規セッションで Claude Agent SDK を使ってストリーミングクエリを実行する。
  * hooks を渡すと PreToolUse/PostToolUse がリアルタイムで発火する。
  * Max Plan (Claude Desktop) が起動中なら自動的にローカル実行を優先する。
+ * エラー時も throw せず、success: false の AgentResult を返す。
+ *
+ * @param prompt - Claude に送信するプロンプト
+ * @param options - モデル、hooks、タイムアウト等のオプション
+ * @returns セッション ID、応答メッセージ、ツール実行履歴を含む AgentResult
  */
 export async function query(
   prompt: string,
@@ -144,9 +149,14 @@ export async function query(
 }
 
 /**
- * 既存セッションを再開。
- * SDK の resume オプションで sessionId を指定し、会話を継続する。
+ * 既存セッションを再開して会話を継続する。
+ * SDK の resume オプションで sessionId を指定し、前回の会話コンテキストを引き継ぐ。
  * Max Plan (Claude Desktop) が起動中なら自動的にローカル実行を優先する。
+ *
+ * @param sessionId - 再開する Claude セッションの ID
+ * @param message - 続きのメッセージ
+ * @param options - モデル、hooks 等のオプション
+ * @returns セッション ID、応答メッセージ、ツール実行履歴を含む AgentResult
  */
 export async function resume(
   sessionId: string,
@@ -175,15 +185,9 @@ export async function resume(
  * Max Plan 利用時、ANTHROPIC_API_KEY を除外した環境変数マップを返す。
  * SDK の Options.env に渡すことで、子プロセス（Claude Code CLI）が
  * API ではなくローカル Claude Desktop に接続する。
+ * buildOptions() と checkCliHealth() の両方から使用される。
  */
 function envForSDK(): Record<string, string | undefined> | undefined {
-  return envForSDKPublic();
-}
-
-/**
- * envForSDK の公開版（checkCliHealth 等の外部関数から使う）。
- */
-function envForSDKPublic(): Record<string, string | undefined> | undefined {
   const {
     ANTHROPIC_API_KEY: _key,
     CLAUDECODE: _cc,

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@argus/db": "workspace:*",
+    "@argus/gmail": "workspace:*",
     "drizzle-orm": "^0.45.0"
   },
   "devDependencies": {

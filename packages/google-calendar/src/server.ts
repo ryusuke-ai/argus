@@ -1,71 +1,77 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  type Tool,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { McpBaseServer, type McpToolDefinition } from "@argus/agent-core";
 import { getCalendarTools } from "./tools.js";
 import * as calendarClient from "./calendar-client.js";
-import type {
-  CreateEventParams,
-  ListEventsParams,
-  UpdateEventParams,
-} from "./types.js";
 
-export class CalendarMcpServer {
-  private server: Server;
-  private tools: Tool[];
+// ── Zod schemas ──────────────────────────────────────────────
+
+const createEventSchema = z.object({
+  title: z.string(),
+  start: z.string(),
+  end: z.string().optional(),
+  description: z.string().optional(),
+  attendees: z.array(z.string()).optional(),
+  location: z.string().optional(),
+});
+
+const listEventsSchema = z.object({
+  timeMin: z.string(),
+  timeMax: z.string(),
+  maxResults: z.number().optional(),
+});
+
+const updateEventSchema = z.object({
+  eventId: z.string(),
+  title: z.string().optional(),
+  start: z.string().optional(),
+  end: z.string().optional(),
+  description: z.string().optional(),
+  location: z.string().optional(),
+});
+
+const deleteEventSchema = z.object({ eventId: z.string() });
+
+// ── Server ───────────────────────────────────────────────────
+
+export class CalendarMcpServer extends McpBaseServer {
+  private tools: McpToolDefinition[];
 
   constructor() {
+    super("google-calendar-server", "0.1.0");
     this.tools = getCalendarTools();
-    this.server = new Server(
-      { name: "google-calendar-server", version: "0.1.0" },
-      { capabilities: { tools: {} } },
-    );
-    this.setupHandlers();
   }
 
-  public getTools(): Tool[] {
+  protected getTools(): McpToolDefinition[] {
     return this.tools;
   }
 
-  private setupHandlers(): void {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: this.tools,
-    }));
-
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-      const result = await this.handleToolCall(
-        name,
-        (args ?? {}) as Record<string, unknown>,
-      );
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
-        ],
-      };
-    });
-  }
-
-  public async handleToolCall(
+  protected async handleToolCall(
     name: string,
     args: Record<string, unknown>,
   ): Promise<unknown> {
     switch (name) {
-      case "create_event":
-        return calendarClient.createEvent(
-          args as unknown as CreateEventParams,
-        );
-      case "list_events":
-        return calendarClient.listEvents(args as unknown as ListEventsParams);
-      case "update_event":
-        return calendarClient.updateEvent(
-          args as unknown as UpdateEventParams,
-        );
+      case "create_event": {
+        const params = createEventSchema.parse(args);
+        const result = await calendarClient.createEvent(params);
+        if (!result.success) return { success: false, error: result.error };
+        return result.data;
+      }
+      case "list_events": {
+        const params = listEventsSchema.parse(args);
+        const result = await calendarClient.listEvents(params);
+        if (!result.success) return { success: false, error: result.error };
+        return result.data;
+      }
+      case "update_event": {
+        const params = updateEventSchema.parse(args);
+        const result = await calendarClient.updateEvent(params);
+        if (!result.success) return { success: false, error: result.error };
+        return result.data;
+      }
       case "delete_event": {
-        await calendarClient.deleteEvent(args.eventId as string);
+        const { eventId } = deleteEventSchema.parse(args);
+        const result = await calendarClient.deleteEvent(eventId);
+        if (!result.success) return { success: false, error: result.error };
         return { success: true };
       }
       default:
@@ -73,9 +79,8 @@ export class CalendarMcpServer {
     }
   }
 
-  public async start(): Promise<void> {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+  public override async start(): Promise<void> {
+    await super.start();
     console.error("Google Calendar MCP Server started");
   }
 }

@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import type { calendar_v3 } from "googleapis";
 import { getAuthenticatedClient } from "@argus/gmail";
+import type { AuthResult } from "@argus/gmail";
 import type {
   CalendarEvent,
   CreateEventParams,
@@ -66,117 +67,151 @@ function toCalendarEvent(item: calendar_v3.Schema$Event): CalendarEvent {
 
 export async function createEvent(
   params: CreateEventParams,
-): Promise<CalendarEvent> {
-  const auth = await getAuthenticatedClient();
-  const calendar = google.calendar({ version: "v3", auth });
+): Promise<AuthResult<CalendarEvent>> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  const dateOnly = isDateOnly(params.start);
+  try {
+    const calendar = google.calendar({ version: "v3", auth: authResult.data });
 
-  let startField: { date?: string; dateTime?: string };
-  let endField: { date?: string; dateTime?: string };
+    const dateOnly = isDateOnly(params.start);
 
-  if (dateOnly) {
-    startField = { date: params.start };
-    endField = { date: params.end ?? params.start };
-  } else {
-    startField = { dateTime: params.start };
-    endField = { dateTime: params.end ?? addOneHour(params.start) };
+    let startField: { date?: string; dateTime?: string };
+    let endField: { date?: string; dateTime?: string };
+
+    if (dateOnly) {
+      startField = { date: params.start };
+      endField = { date: params.end ?? params.start };
+    } else {
+      startField = { dateTime: params.start };
+      endField = { dateTime: params.end ?? addOneHour(params.start) };
+    }
+
+    const requestBody: Partial<calendar_v3.Schema$Event> = {
+      summary: params.title,
+      start: startField,
+      end: endField,
+    };
+
+    if (params.description) {
+      requestBody.description = params.description;
+    }
+    if (params.location) {
+      requestBody.location = params.location;
+    }
+    if (params.attendees && params.attendees.length > 0) {
+      requestBody.attendees = params.attendees.map((email) => ({ email }));
+    }
+
+    const res = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody,
+    });
+
+    return { success: true, data: toCalendarEvent(res.data) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Calendar] createEvent error:", message);
+    return { success: false, error: message };
   }
-
-  const requestBody: Partial<calendar_v3.Schema$Event> = {
-    summary: params.title,
-    start: startField,
-    end: endField,
-  };
-
-  if (params.description) {
-    requestBody.description = params.description;
-  }
-  if (params.location) {
-    requestBody.location = params.location;
-  }
-  if (params.attendees && params.attendees.length > 0) {
-    requestBody.attendees = params.attendees.map((email) => ({ email }));
-  }
-
-  const res = await calendar.events.insert({
-    calendarId: "primary",
-    requestBody,
-  });
-
-  return toCalendarEvent(res.data);
 }
 
 export async function listEvents(
   params: ListEventsParams,
-): Promise<CalendarEvent[]> {
-  const auth = await getAuthenticatedClient();
-  const calendar = google.calendar({ version: "v3", auth });
+): Promise<AuthResult<CalendarEvent[]>> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  const res = await calendar.events.list({
-    calendarId: "primary",
-    timeMin: params.timeMin,
-    timeMax: params.timeMax,
-    maxResults: params.maxResults ?? 10,
-    singleEvents: true,
-    orderBy: "startTime",
-  });
+  try {
+    const calendar = google.calendar({ version: "v3", auth: authResult.data });
 
-  const items = res.data.items;
-  if (!items || items.length === 0) {
-    return [];
+    const res = await calendar.events.list({
+      calendarId: "primary",
+      timeMin: params.timeMin,
+      timeMax: params.timeMax,
+      maxResults: params.maxResults ?? 10,
+      singleEvents: true,
+      orderBy: "startTime",
+    });
+
+    const items = res.data.items;
+    if (!items || items.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    return { success: true, data: items.map(toCalendarEvent) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Calendar] listEvents error:", message);
+    return { success: false, error: message };
   }
-
-  return items.map(toCalendarEvent);
 }
 
 export async function updateEvent(
   params: UpdateEventParams,
-): Promise<CalendarEvent> {
-  const auth = await getAuthenticatedClient();
-  const calendar = google.calendar({ version: "v3", auth });
+): Promise<AuthResult<CalendarEvent>> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  const requestBody: Partial<calendar_v3.Schema$Event> = {};
+  try {
+    const calendar = google.calendar({ version: "v3", auth: authResult.data });
 
-  if (params.title !== undefined) {
-    requestBody.summary = params.title;
-  }
-  if (params.start !== undefined) {
-    if (isDateOnly(params.start)) {
-      requestBody.start = { date: params.start };
-    } else {
-      requestBody.start = { dateTime: params.start };
+    const requestBody: Partial<calendar_v3.Schema$Event> = {};
+
+    if (params.title !== undefined) {
+      requestBody.summary = params.title;
     }
-  }
-  if (params.end !== undefined) {
-    if (isDateOnly(params.end)) {
-      requestBody.end = { date: params.end };
-    } else {
-      requestBody.end = { dateTime: params.end };
+    if (params.start !== undefined) {
+      if (isDateOnly(params.start)) {
+        requestBody.start = { date: params.start };
+      } else {
+        requestBody.start = { dateTime: params.start };
+      }
     }
-  }
-  if (params.description !== undefined) {
-    requestBody.description = params.description;
-  }
-  if (params.location !== undefined) {
-    requestBody.location = params.location;
-  }
+    if (params.end !== undefined) {
+      if (isDateOnly(params.end)) {
+        requestBody.end = { date: params.end };
+      } else {
+        requestBody.end = { dateTime: params.end };
+      }
+    }
+    if (params.description !== undefined) {
+      requestBody.description = params.description;
+    }
+    if (params.location !== undefined) {
+      requestBody.location = params.location;
+    }
 
-  const res = await calendar.events.patch({
-    calendarId: "primary",
-    eventId: params.eventId,
-    requestBody,
-  });
+    const res = await calendar.events.patch({
+      calendarId: "primary",
+      eventId: params.eventId,
+      requestBody,
+    });
 
-  return toCalendarEvent(res.data);
+    return { success: true, data: toCalendarEvent(res.data) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Calendar] updateEvent error:", message);
+    return { success: false, error: message };
+  }
 }
 
-export async function deleteEvent(eventId: string): Promise<void> {
-  const auth = await getAuthenticatedClient();
-  const calendar = google.calendar({ version: "v3", auth });
+export async function deleteEvent(eventId: string): Promise<AuthResult<void>> {
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) return authResult;
 
-  await calendar.events.delete({
-    calendarId: "primary",
-    eventId,
-  });
+  try {
+    const calendar = google.calendar({ version: "v3", auth: authResult.data });
+
+    await calendar.events.delete({
+      calendarId: "primary",
+      eventId,
+    });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Calendar] deleteEvent error:", message);
+    return { success: false, error: message };
+  }
 }

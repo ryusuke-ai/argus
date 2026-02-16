@@ -20,9 +20,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@argus/agent-core": "workspace:*",
     "@argus/db": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "drizzle-orm": "^0.45.0"
+    "drizzle-orm": "^0.45.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

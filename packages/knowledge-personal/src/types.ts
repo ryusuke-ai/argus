@@ -1,3 +1,7 @@
+export type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
 export interface NoteEntry {
   path: string; // relative to data/ (e.g. "self/values.md")
   category: string; // top-level directory (e.g. "self")
@@ -27,15 +31,19 @@ export type PersonalitySection =
 
 export interface PersonalService {
   search(query: string): Promise<SearchResult[]>;
-  read(path: string): Promise<NoteEntry>;
+  read(path: string): Promise<Result<NoteEntry>>;
   list(
     category?: string,
   ): Promise<{ path: string; name: string; category: string }[]>;
-  getPersonalityContext(section?: PersonalitySection): Promise<string>;
-  add(category: string, name: string, content: string): Promise<NoteEntry>;
+  getPersonalityContext(section?: PersonalitySection): Promise<Result<string>>;
+  add(
+    category: string,
+    name: string,
+    content: string,
+  ): Promise<Result<NoteEntry>>;
   update(
     path: string,
     content: string,
     mode: "append" | "replace",
-  ): Promise<NoteEntry>;
+  ): Promise<Result<NoteEntry>>;
 }
