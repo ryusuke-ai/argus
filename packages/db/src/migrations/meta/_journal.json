@@ -43,6 +43,13 @@
       "when": 1770906522525,
       "tag": "0005_goofy_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771237470769,
+      "tag": "0006_tense_black_tarantula",
+      "breakpoints": true
     }
   ]
 }
