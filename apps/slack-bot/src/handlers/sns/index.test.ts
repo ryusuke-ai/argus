@@ -1,8 +1,34 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
-// Mock dependencies before imports
-const mockAppMessage = vi.fn();
-const mockSetupSnsActions = vi.fn();
+// vi.hoisted() ensures these references survive vi.resetModules()
+const {
+  mockAppMessage,
+  mockSetupSnsActions,
+  mockValidateXPost,
+  mockValidateThread,
+  mockValidateArticle,
+  mockValidateThreadsPost,
+  mockValidateInstagramPost,
+  mockValidateTikTokMeta,
+  mockValidateYouTubeMeta,
+  mockValidatePodcastEpisode,
+  mockValidateGitHubRepo,
+} = vi.hoisted(() => {
+  const validResult = () => ({ valid: true, warnings: [], errors: [] });
+  return {
+    mockAppMessage: vi.fn(),
+    mockSetupSnsActions: vi.fn(),
+    mockValidateXPost: vi.fn(validResult),
+    mockValidateThread: vi.fn(validResult),
+    mockValidateArticle: vi.fn(validResult),
+    mockValidateThreadsPost: vi.fn(validResult),
+    mockValidateInstagramPost: vi.fn(validResult),
+    mockValidateTikTokMeta: vi.fn(validResult),
+    mockValidateYouTubeMeta: vi.fn(validResult),
+    mockValidatePodcastEpisode: vi.fn(validResult),
+    mockValidateGitHubRepo: vi.fn(validResult),
+  };
+});
 
 vi.mock("../../app.js", () => ({
   app: {
@@ -50,23 +76,15 @@ vi.mock("./generation/generator.js", () => ({
 }));
 
 vi.mock("./ui/validator.js", () => ({
-  validateXPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
-  validateThread: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
-  validateArticle: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
-  validateThreadsPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
-  validateInstagramPost: vi.fn(() => ({
-    valid: true,
-    warnings: [],
-    errors: [],
-  })),
-  validateTikTokMeta: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
-  validateYouTubeMeta: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
-  validatePodcastEpisode: vi.fn(() => ({
-    valid: true,
-    warnings: [],
-    errors: [],
-  })),
-  validateGitHubRepo: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateXPost: mockValidateXPost,
+  validateThread: mockValidateThread,
+  validateArticle: mockValidateArticle,
+  validateThreadsPost: mockValidateThreadsPost,
+  validateInstagramPost: mockValidateInstagramPost,
+  validateTikTokMeta: mockValidateTikTokMeta,
+  validateYouTubeMeta: mockValidateYouTubeMeta,
+  validatePodcastEpisode: mockValidatePodcastEpisode,
+  validateGitHubRepo: mockValidateGitHubRepo,
 }));
 
 vi.mock("./scheduling/scheduler.js", () => ({
