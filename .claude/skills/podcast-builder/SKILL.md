@@ -56,8 +56,8 @@ podcast/
 
 > **注記**: 本スキルのキャラクターは daily-digest の satoru / masao とは別のキャラクターセット。
 
-- @characters/tsukuyomi.md — メインパーソナリティ
-- @characters/ginga.md — アシスタント・聞き役
+- @../shared/characters/tsukuyomi.md — メインパーソナリティ
+- @../shared/characters/ginga.md — アシスタント・聞き役
 
 ## リファレンス
 
