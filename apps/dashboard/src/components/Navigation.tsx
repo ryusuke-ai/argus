@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/knowledge" as const, label: "Knowledge", icon: "K" },
   { href: "/agents" as const, label: "Agents", icon: "A" },
   { href: "/files" as const, label: "Files", icon: "F" },
+  { href: "/tiktok" as const, label: "TikTok", icon: "T" },
 ];
 
 export default function Navigation() {

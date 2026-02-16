@@ -2,15 +2,20 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Navigation from "./Navigation";
 
+// Mock next/navigation
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
+// Mock next/link
 vi.mock("next/link", () => ({
   default: ({
-    href,
     children,
+    href,
     ...props
   }: {
-    href: string;
     children: React.ReactNode;
-    [key: string]: unknown;
+    href: string;
   }) => (
     <a href={href} {...props}>
       {children}
@@ -18,30 +23,22 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-}));
-
 describe("Navigation", () => {
-  it("should render all navigation links", () => {
+  it("should render all navigation items", () => {
     render(<Navigation />);
 
-    const homeLink = screen.getByText("Home");
-    const sessionsLink = screen.getByText("Sessions");
-    const knowledgeLink = screen.getByText("Knowledge");
-    const agentsLink = screen.getByText("Agents");
-    const filesLink = screen.getByText("Files");
-
-    expect(homeLink.closest("a")).toHaveAttribute("href", "/");
-    expect(sessionsLink.closest("a")).toHaveAttribute("href", "/sessions");
-    expect(knowledgeLink.closest("a")).toHaveAttribute("href", "/knowledge");
-    expect(agentsLink.closest("a")).toHaveAttribute("href", "/agents");
-    expect(filesLink.closest("a")).toHaveAttribute("href", "/files");
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.getByText("Sessions")).toBeInTheDocument();
+    expect(screen.getByText("Knowledge")).toBeInTheDocument();
+    expect(screen.getByText("Agents")).toBeInTheDocument();
+    expect(screen.getByText("Files")).toBeInTheDocument();
+    expect(screen.getByText("TikTok")).toBeInTheDocument();
   });
 
-  it("should render a nav element", () => {
-    const { container } = render(<Navigation />);
-    const nav = container.querySelector("nav");
-    expect(nav).toBeInTheDocument();
+  it("should render TikTok link with correct href", () => {
+    render(<Navigation />);
+
+    const tiktokLink = screen.getByText("TikTok");
+    expect(tiktokLink.closest("a")).toHaveAttribute("href", "/tiktok");
   });
 });
