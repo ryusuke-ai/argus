@@ -42,11 +42,11 @@ description: AIニュースの掛け合い動画＋ポッドキャストを制�
 
 **リサーチ → 並列生成（動画+ポッドキャスト） → 投稿**
 
-| Phase   | 詳細手順                   | 出力                             |
-| ------- | -------------------------- | -------------------------------- |
-| Phase 1 | @phases/phase1-research.md | work/reference.md, research.json |
-| Phase 2 | @phases/phase2-generate.md | output.mp4, podcast/podcast.mp3  |
-| Phase 3 | @phases/phase3-publish.md  | Slack 投稿                       |
+| Phase   | 詳細手順                   | 実行方法                            | 出力                             |
+| ------- | -------------------------- | ----------------------------------- | -------------------------------- |
+| Phase 1 | @phases/phase1-research.md | 直接 + **Task → サブエージェント**  | work/reference.md, research.json |
+| Phase 2 | @phases/phase2-generate.md | **Task → サブエージェント（並列）** | output.mp4, podcast/podcast.mp3  |
+| Phase 3 | @phases/phase3-publish.md  | 直接実行（Claude）                  | Slack 投稿                       |
 
 **重要**: 動画とポッドキャストは毎回必ず両方生成する。トピック分類による分岐は行わない。
 
