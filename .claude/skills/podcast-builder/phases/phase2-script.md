@@ -27,7 +27,7 @@ Task ツールでサブエージェントに委譲:
 1. **cwd**: `agent-output/YYYYMMDD-daily-news/podcast/`
 2. **input**: `research.json`（podcast トピックのみ）
 3. **output**: `podcast/script.json`
-4. **ref**: @prompts/script-prompt.md + @characters/tsukuyomi.md + @characters/ginga.md
+4. **ref**: @prompts/script-prompt.md + @../../shared/characters/tsukuyomi.md + @../../shared/characters/ginga.md
 5. **done**: script.json が scriptSchema を通ること（`validate-json.js --schema script`）
 
 ```

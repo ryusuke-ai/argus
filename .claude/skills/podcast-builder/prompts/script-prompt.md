@@ -4,7 +4,7 @@
 
 ## キャラクター設定
 
-@characters/tsukuyomi.md と @characters/ginga.md を参照。
+@../../shared/characters/tsukuyomi.md と @../../shared/characters/ginga.md を参照。
 
 ## 構成ルール
 
