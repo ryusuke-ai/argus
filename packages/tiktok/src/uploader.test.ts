@@ -205,6 +205,35 @@ describe("uploader", () => {
   });
 
   describe("directPostVideo", () => {
+    // Helper to create a mock video download response
+    function mockVideoDownloadResponse(size = 1024) {
+      const buffer = new ArrayBuffer(size);
+      return {
+        ok: true,
+        arrayBuffer: () => Promise.resolve(buffer),
+      };
+    }
+
+    // Helper to create a mock init response with upload_url
+    function mockInitResponse(publishId: string) {
+      return {
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              publish_id: publishId,
+              upload_url: "https://open-upload.tiktokapis.com/video/upload/",
+            },
+            error: { code: "ok", message: "" },
+          }),
+      };
+    }
+
+    // Helper to create a mock upload response
+    function mockUploadResponse() {
+      return { ok: true, text: () => Promise.resolve("") };
+    }
+
     it("should return error when videoUrl is empty", async () => {
       const { directPostVideo } = await import("./uploader.js");
 
@@ -235,158 +264,85 @@ describe("uploader", () => {
       expect(result.error).toBe("No TikTok tokens found");
     });
 
-    it("should call Direct Post endpoint (not inbox)", async () => {
+    it("should use FILE_UPLOAD with inbox endpoint", async () => {
       const { directPostVideo } = await import("./uploader.js");
 
-      // Direct Post init response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { publish_id: "pub_123" },
-            error: { code: "ok", message: "" },
-          }),
-      });
+      // 1. Video download
+      mockFetch.mockResolvedValueOnce(mockVideoDownloadResponse());
+      // 2. Init with FILE_UPLOAD
+      mockFetch.mockResolvedValueOnce(mockInitResponse("pub_123"));
+      // 3. PUT upload
+      mockFetch.mockResolvedValueOnce(mockUploadResponse());
 
-      // Poll status response - PUBLISH_COMPLETE
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: {
-              status: "PUBLISH_COMPLETE",
-              publish_id: "pub_123",
-              fail_reason: "",
-              publicaly_available_post_id: [7654321],
-            },
-            error: { code: "ok", message: "" },
-          }),
-      });
-
-      const publishPromise = directPostVideo({
+      const result = await directPostVideo({
         videoUrl: "https://example.com/video.mp4",
         privacyLevel: "PUBLIC_TO_EVERYONE",
       });
 
-      await vi.advanceTimersByTimeAsync(5_000);
-      const result = await publishPromise;
-
       expect(result.success).toBe(true);
       expect(result.publishId).toBe("pub_123");
 
-      // Verify Direct Post endpoint is called (NOT inbox)
-      const initCall = mockFetch.mock.calls[0];
+      // 3 fetch calls: download + init + upload (no polling)
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      // Verify inbox endpoint
+      const initCall = mockFetch.mock.calls[1];
       expect(initCall[0]).toBe(
-        "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/",
       );
-      expect(initCall[0]).not.toContain("inbox");
+
+      // Verify FILE_UPLOAD source
+      const initBody = JSON.parse(initCall[1].body);
+      expect(initBody.source_info.source).toBe("FILE_UPLOAD");
+      expect(initBody.source_info.video_size).toBe(1024);
     });
 
-    it("should include all post_info fields in request body", async () => {
+    it("should include title and privacy_level in request body", async () => {
       const { directPostVideo } = await import("./uploader.js");
 
-      // Direct Post init response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { publish_id: "pub_456" },
-            error: { code: "ok", message: "" },
-          }),
-      });
+      mockFetch.mockResolvedValueOnce(mockVideoDownloadResponse());
+      mockFetch.mockResolvedValueOnce(mockInitResponse("pub_456"));
+      mockFetch.mockResolvedValueOnce(mockUploadResponse());
 
-      // Poll status response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { status: "PUBLISH_COMPLETE", publish_id: "pub_456" },
-            error: { code: "ok", message: "" },
-          }),
-      });
-
-      const publishPromise = directPostVideo({
+      await directPostVideo({
         videoUrl: "https://example.com/video.mp4",
         title: "Test Video",
         privacyLevel: "MUTUAL_FOLLOW_FRIENDS",
-        disableComment: true,
-        disableDuet: true,
-        disableStitch: false,
-        brandContentToggle: true,
-        brandOrganicToggle: false,
-        isAigc: true,
       });
 
-      await vi.advanceTimersByTimeAsync(5_000);
-      await publishPromise;
-
-      const initCall = mockFetch.mock.calls[0];
+      const initCall = mockFetch.mock.calls[1];
       const initBody = JSON.parse(initCall[1].body);
 
-      // Verify post_info
       expect(initBody.post_info.title).toBe("Test Video");
       expect(initBody.post_info.privacy_level).toBe("MUTUAL_FOLLOW_FRIENDS");
-      expect(initBody.post_info.disable_comment).toBe(true);
-      expect(initBody.post_info.disable_duet).toBe(true);
-      expect(initBody.post_info.disable_stitch).toBe(false);
-      expect(initBody.post_info.brand_content_toggle).toBe(true);
-      expect(initBody.post_info.brand_organic_toggle).toBe(false);
-      expect(initBody.post_info.is_aigc).toBe(true);
-
-      // Verify source_info
-      expect(initBody.source_info.source).toBe("PULL_FROM_URL");
-      expect(initBody.source_info.video_url).toBe(
-        "https://example.com/video.mp4",
-      );
+      expect(initBody.source_info.source).toBe("FILE_UPLOAD");
     });
 
-    it("should use default values for optional post_info fields", async () => {
+    it("should use default title when not provided", async () => {
       const { directPostVideo } = await import("./uploader.js");
 
-      // Direct Post init response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { publish_id: "pub_789" },
-            error: { code: "ok", message: "" },
-          }),
-      });
+      mockFetch.mockResolvedValueOnce(mockVideoDownloadResponse());
+      mockFetch.mockResolvedValueOnce(mockInitResponse("pub_789"));
+      mockFetch.mockResolvedValueOnce(mockUploadResponse());
 
-      // Poll status response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { status: "PUBLISH_COMPLETE", publish_id: "pub_789" },
-            error: { code: "ok", message: "" },
-          }),
-      });
-
-      const publishPromise = directPostVideo({
+      await directPostVideo({
         videoUrl: "https://example.com/video.mp4",
         privacyLevel: "SELF_ONLY",
       });
 
-      await vi.advanceTimersByTimeAsync(5_000);
-      await publishPromise;
-
-      const initCall = mockFetch.mock.calls[0];
+      const initCall = mockFetch.mock.calls[1];
       const initBody = JSON.parse(initCall[1].body);
 
       expect(initBody.post_info.title).toBe("");
       expect(initBody.post_info.privacy_level).toBe("SELF_ONLY");
-      expect(initBody.post_info.disable_comment).toBe(false);
-      expect(initBody.post_info.disable_duet).toBe(false);
-      expect(initBody.post_info.disable_stitch).toBe(false);
-      expect(initBody.post_info.brand_content_toggle).toBe(false);
-      expect(initBody.post_info.brand_organic_toggle).toBe(false);
-      expect(initBody.post_info.is_aigc).toBe(false);
     });
 
-    it("should return error when Direct Post API returns error", async () => {
+    it("should return error when init API returns error", async () => {
       const { directPostVideo } = await import("./uploader.js");
 
+      // Video download
+      mockFetch.mockResolvedValueOnce(mockVideoDownloadResponse());
+      // Init error
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -408,43 +364,42 @@ describe("uploader", () => {
       expect(result.error).toBe("Too many posts");
     });
 
-    it("should return error when polling reports failure", async () => {
+    it("should return error when video download fails", async () => {
       const { directPostVideo } = await import("./uploader.js");
 
-      // Direct Post init response
       mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { publish_id: "pub_fail" },
-            error: { code: "ok", message: "" },
-          }),
+        ok: false,
+        status: 404,
       });
 
-      // Poll status response - FAILED
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: {
-              status: "FAILED",
-              publish_id: "pub_fail",
-              fail_reason: "video_resolution_too_low",
-            },
-            error: { code: "ok", message: "" },
-          }),
-      });
-
-      const publishPromise = directPostVideo({
+      const result = await directPostVideo({
         videoUrl: "https://example.com/video.mp4",
         privacyLevel: "PUBLIC_TO_EVERYONE",
       });
 
-      await vi.advanceTimersByTimeAsync(5_000);
-      const result = await publishPromise;
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Failed to download video");
+    });
+
+    it("should return error when upload PUT fails", async () => {
+      const { directPostVideo } = await import("./uploader.js");
+
+      mockFetch.mockResolvedValueOnce(mockVideoDownloadResponse());
+      mockFetch.mockResolvedValueOnce(mockInitResponse("pub_fail"));
+      // Upload fails
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve("Internal Server Error"),
+      });
+
+      const result = await directPostVideo({
+        videoUrl: "https://example.com/video.mp4",
+        privacyLevel: "PUBLIC_TO_EVERYONE",
+      });
 
       expect(result.success).toBe(false);
-      expect(result.publishId).toBe("pub_fail");
+      expect(result.error).toContain("Video upload failed");
     });
 
     it("should handle network errors gracefully", async () => {
@@ -464,80 +419,17 @@ describe("uploader", () => {
     it("should include privacyLevel in successful result", async () => {
       const { directPostVideo } = await import("./uploader.js");
 
-      // Direct Post init response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { publish_id: "pub_priv" },
-            error: { code: "ok", message: "" },
-          }),
-      });
+      mockFetch.mockResolvedValueOnce(mockVideoDownloadResponse());
+      mockFetch.mockResolvedValueOnce(mockInitResponse("pub_priv"));
+      mockFetch.mockResolvedValueOnce(mockUploadResponse());
 
-      // Poll status response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: {
-              status: "PUBLISH_COMPLETE",
-              publish_id: "pub_priv",
-            },
-            error: { code: "ok", message: "" },
-          }),
-      });
-
-      const publishPromise = directPostVideo({
+      const result = await directPostVideo({
         videoUrl: "https://example.com/video.mp4",
         privacyLevel: "FOLLOWER_OF_CREATOR",
       });
 
-      await vi.advanceTimersByTimeAsync(5_000);
-      const result = await publishPromise;
-
       expect(result.success).toBe(true);
       expect(result.privacyLevel).toBe("FOLLOWER_OF_CREATOR");
-    });
-  });
-
-  describe("pollPublishStatus (via directPostVideo)", () => {
-    it("should include failReason in error result from poll", async () => {
-      const { directPostVideo } = await import("./uploader.js");
-
-      // Direct Post init response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: { publish_id: "pub_reason" },
-            error: { code: "ok", message: "" },
-          }),
-      });
-
-      // Poll status response - FAILED with fail_reason
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: {
-              status: "FAILED",
-              publish_id: "pub_reason",
-              fail_reason: "video_resolution_too_low",
-            },
-            error: { code: "ok", message: "" },
-          }),
-      });
-
-      const publishPromise = directPostVideo({
-        videoUrl: "https://example.com/video.mp4",
-        privacyLevel: "PUBLIC_TO_EVERYONE",
-      });
-
-      await vi.advanceTimersByTimeAsync(5_000);
-      const result = await publishPromise;
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("video_resolution_too_low");
     });
   });
 });
