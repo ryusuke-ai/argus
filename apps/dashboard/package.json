@@ -13,6 +13,7 @@
   "dependencies": {
     "@argus/agent-core": "workspace:*",
     "@argus/db": "workspace:*",
+    "@argus/tiktok": "workspace:*",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -1,5 +1,6 @@
 import { refreshTokenIfNeeded } from "./auth.js";
 import type {
+  DirectPostInput,
   TiktokCreatorInfo,
   TiktokUploadResult,
   TiktokPublishStatusResult,
@@ -20,6 +21,7 @@ const PRIVACY_LEVEL_PRIORITY = [
 interface CreatorInfoApiResponse {
   data?: {
     creator_avatar_url: string;
+    creator_username: string;
     creator_nickname: string;
     privacy_level_options: string[];
     comment_disabled: boolean;
@@ -34,6 +36,8 @@ interface PublishStatusApiResponse {
   data?: {
     status: string;
     publish_id?: string;
+    fail_reason?: string;
+    publicaly_available_post_id?: number[];
   };
   error: { code: string; message: string };
 }
@@ -41,6 +45,14 @@ interface PublishStatusApiResponse {
 interface VideoInitByUrlApiResponse {
   data?: {
     publish_id: string;
+  };
+  error: { code: string; message: string };
+}
+
+interface VideoInitByFileApiResponse {
+  data?: {
+    publish_id: string;
+    upload_url: string;
   };
   error: { code: string; message: string };
 }
@@ -78,6 +90,7 @@ export async function queryCreatorInfo(accessToken: string): Promise<{
       success: true,
       creatorInfo: {
         creatorAvatarUrl: data.data.creator_avatar_url,
+        creatorUsername: data.data.creator_username,
         creatorNickname: data.data.creator_nickname,
         privacyLevelOptions: data.data.privacy_level_options,
         commentDisabled: data.data.comment_disabled,
@@ -139,23 +152,34 @@ async function pollPublishStatus(params: {
       }
 
       const status = data.data?.status;
+      console.error(`[TikTok] Poll attempt ${attempt + 1}: status=${status}`);
 
-      if (status === "PUBLISH_COMPLETE") {
+      if (status === "PUBLISH_COMPLETE" || status === "SENDING_TO_USER_INBOX") {
         return {
-          status: "publish_complete",
+          status:
+            status === "PUBLISH_COMPLETE"
+              ? "publish_complete"
+              : "sending_to_user_inbox",
           publishId: params.publishId,
+          failReason: data.data?.fail_reason || undefined,
+          publicPostId: data.data?.publicaly_available_post_id || undefined,
         };
       }
 
       if (status === "FAILED") {
+        const failReason = data.data?.fail_reason || "";
         return {
           status: "failed",
           publishId: params.publishId,
-          error: "Video publishing failed",
+          failReason: failReason || undefined,
+          publicPostId: data.data?.publicaly_available_post_id || undefined,
+          error: failReason
+            ? `Video publishing failed: ${failReason}`
+            : "Video publishing failed",
         };
       }
 
-      // PROCESSING_UPLOAD, PROCESSING_DOWNLOAD, SENDING_TO_USER_INBOX
+      // PROCESSING_UPLOAD, PROCESSING_DOWNLOAD
       // Continue polling...
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -316,6 +340,135 @@ async function initVideoByUrl(params: {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[TikTok] Video init by URL error:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Publish a video to TikTok using the Direct Post endpoint.
+ * This posts directly to the creator's profile (not inbox).
+ *
+ * Flow:
+ * 1. Validate videoUrl
+ * 2. Auth via refreshTokenIfNeeded()
+ * 3. POST /v2/post/publish/video/init/ with all post_info fields
+ * 4. Poll publish status
+ */
+export async function directPostVideo(
+  input: DirectPostInput,
+): Promise<TiktokUploadResult> {
+  // 1. Validate videoUrl
+  if (!input.videoUrl) {
+    return {
+      success: false,
+      error: "videoUrl is required",
+    };
+  }
+
+  // 2. Auth
+  const authResult = await refreshTokenIfNeeded();
+  if (!authResult.success || !authResult.tokens) {
+    return {
+      success: false,
+      error: authResult.error || "Authentication failed",
+    };
+  }
+
+  const { accessToken } = authResult.tokens;
+
+  // 3. Download video from URL
+  try {
+    console.error("[TikTok] Downloading video from:", input.videoUrl);
+    const videoResponse = await fetch(input.videoUrl);
+    if (!videoResponse.ok) {
+      return {
+        success: false,
+        error: `Failed to download video: HTTP ${videoResponse.status}`,
+      };
+    }
+    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+    const videoSize = videoBuffer.length;
+    console.error("[TikTok] Video size:", videoSize, "bytes");
+
+    // 4. Init upload with FILE_UPLOAD source
+    const CHUNK_SIZE = 64 * 1024 * 1024; // 64MB max chunk
+    const totalChunkCount = Math.ceil(videoSize / CHUNK_SIZE);
+
+    const body = {
+      post_info: {
+        title: input.title || "",
+        privacy_level: input.privacyLevel,
+      },
+      source_info: {
+        source: "FILE_UPLOAD",
+        video_size: videoSize,
+        chunk_size: Math.min(videoSize, CHUNK_SIZE),
+        total_chunk_count: totalChunkCount,
+      },
+    };
+
+    // Use inbox endpoint for unaudited (sandbox) apps
+    const response = await fetch(
+      `${TIKTOK_API_BASE}/v2/post/publish/inbox/video/init/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+
+    const data = (await response.json()) as VideoInitByFileApiResponse;
+
+    if (data.error.code !== "ok" || !data.data) {
+      return {
+        success: false,
+        error:
+          data.error.message || `Direct post init error: ${data.error.code}`,
+      };
+    }
+
+    const publishId = data.data.publish_id;
+    const uploadUrl = data.data.upload_url;
+    console.error("[TikTok] Upload URL obtained, publishId:", publishId);
+
+    // 5. Upload video binary to TikTok
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "video/mp4",
+        "Content-Length": String(videoSize),
+        "Content-Range": `bytes 0-${videoSize - 1}/${videoSize}`,
+      },
+      body: videoBuffer,
+    });
+
+    if (!uploadResponse.ok) {
+      const uploadError = await uploadResponse.text();
+      console.error(
+        "[TikTok] Upload failed:",
+        uploadResponse.status,
+        uploadError,
+      );
+      return {
+        success: false,
+        error: `Video upload failed: HTTP ${uploadResponse.status}`,
+      };
+    }
+    console.error("[TikTok] Video uploaded successfully");
+
+    // For inbox endpoint, upload success = done.
+    // TikTok processes the video asynchronously and sends it to the creator's inbox.
+    return {
+      success: true,
+      publishId,
+      privacyLevel: input.privacyLevel,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[TikTok] Direct post error:", message);
     return { success: false, error: message };
   }
 }

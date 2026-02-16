@@ -105,6 +105,9 @@ importers:
       '@argus/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@argus/tiktok':
+        specifier: workspace:*
+        version: link:../../packages/tiktok
       drizzle-orm:
         specifier: ^0.45.0
         version: 0.45.1(postgres@3.4.8)
