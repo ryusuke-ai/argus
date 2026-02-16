@@ -1,5 +1,6 @@
 import { refreshTokenIfNeeded } from "./auth.js";
 import type {
+  DirectPostInput,
   TiktokCreatorInfo,
   TiktokUploadResult,
   TiktokPublishStatusResult,
@@ -20,6 +21,7 @@ const PRIVACY_LEVEL_PRIORITY = [
 interface CreatorInfoApiResponse {
   data?: {
     creator_avatar_url: string;
+    creator_username: string;
     creator_nickname: string;
     privacy_level_options: string[];
     comment_disabled: boolean;
@@ -34,6 +36,8 @@ interface PublishStatusApiResponse {
   data?: {
     status: string;
     publish_id?: string;
+    fail_reason?: string;
+    publicaly_available_post_id?: number[];
   };
   error: { code: string; message: string };
 }
@@ -78,6 +82,7 @@ export async function queryCreatorInfo(accessToken: string): Promise<{
       success: true,
       creatorInfo: {
         creatorAvatarUrl: data.data.creator_avatar_url,
+        creatorUsername: data.data.creator_username,
         creatorNickname: data.data.creator_nickname,
         privacyLevelOptions: data.data.privacy_level_options,
         commentDisabled: data.data.comment_disabled,
@@ -144,14 +149,21 @@ async function pollPublishStatus(params: {
         return {
           status: "publish_complete",
           publishId: params.publishId,
+          failReason: data.data?.fail_reason || undefined,
+          publicPostId: data.data?.publicaly_available_post_id || undefined,
         };
       }
 
       if (status === "FAILED") {
+        const failReason = data.data?.fail_reason || "";
         return {
           status: "failed",
           publishId: params.publishId,
-          error: "Video publishing failed",
+          failReason: failReason || undefined,
+          publicPostId: data.data?.publicaly_available_post_id || undefined,
+          error: failReason
+            ? `Video publishing failed: ${failReason}`
+            : "Video publishing failed",
         };
       }
 
@@ -316,6 +328,107 @@ async function initVideoByUrl(params: {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[TikTok] Video init by URL error:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Publish a video to TikTok using the Direct Post endpoint.
+ * This posts directly to the creator's profile (not inbox).
+ *
+ * Flow:
+ * 1. Validate videoUrl
+ * 2. Auth via refreshTokenIfNeeded()
+ * 3. POST /v2/post/publish/video/init/ with all post_info fields
+ * 4. Poll publish status
+ */
+export async function directPostVideo(
+  input: DirectPostInput,
+): Promise<TiktokUploadResult> {
+  // 1. Validate videoUrl
+  if (!input.videoUrl) {
+    return {
+      success: false,
+      error: "videoUrl is required",
+    };
+  }
+
+  // 2. Auth
+  const authResult = await refreshTokenIfNeeded();
+  if (!authResult.success || !authResult.tokens) {
+    return {
+      success: false,
+      error: authResult.error || "Authentication failed",
+    };
+  }
+
+  const { accessToken } = authResult.tokens;
+
+  // 3. POST to Direct Post endpoint
+  try {
+    const body = {
+      post_info: {
+        title: input.title || "",
+        privacy_level: input.privacyLevel,
+        disable_comment: input.disableComment ?? false,
+        disable_duet: input.disableDuet ?? false,
+        disable_stitch: input.disableStitch ?? false,
+        brand_content_toggle: input.brandContentToggle ?? false,
+        brand_organic_toggle: input.brandOrganicToggle ?? false,
+        is_aigc: input.isAigc ?? false,
+      },
+      source_info: {
+        source: "PULL_FROM_URL",
+        video_url: input.videoUrl,
+      },
+    };
+
+    const response = await fetch(
+      `${TIKTOK_API_BASE}/v2/post/publish/video/init/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+
+    const data = (await response.json()) as VideoInitByUrlApiResponse;
+
+    if (data.error.code !== "ok" || !data.data) {
+      return {
+        success: false,
+        error: data.error.message || `Direct post error: ${data.error.code}`,
+      };
+    }
+
+    const publishId = data.data.publish_id;
+
+    // 4. Poll publish status
+    const statusResult = await pollPublishStatus({
+      accessToken,
+      publishId,
+    });
+
+    if (statusResult.status === "failed") {
+      return {
+        success: false,
+        publishId,
+        privacyLevel: input.privacyLevel,
+        error: statusResult.error || "Publishing failed",
+      };
+    }
+
+    return {
+      success: true,
+      publishId,
+      privacyLevel: input.privacyLevel,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[TikTok] Direct post error:", message);
     return { success: false, error: message };
   }
 }
