@@ -31,11 +31,13 @@ description: ディープリサーチ結果からラジオ風ポッドキャス�
 [Phase 3] TTS + 音声合成 → podcast.mp3
 ```
 
-詳細:
+## Phase参照
 
-- @phases/phase1-research.md
-- @phases/phase2-script.md
-- @phases/phase3-audio.md
+| Phase   | 詳細手順                   | 実行方法                    | 出力          |
+| ------- | -------------------------- | --------------------------- | ------------- |
+| Phase 1 | @phases/phase1-research.md | 直接実行（Claude）          | research.json |
+| Phase 2 | @phases/phase2-script.md   | **Task → サブエージェント** | script.json   |
+| Phase 3 | @phases/phase3-audio.md    | スクリプト + スキル         | podcast.mp3   |
 
 ## 作業ディレクトリ
 
@@ -61,9 +63,24 @@ podcast/
 
 ## リファレンス
 
-- プロンプト: @prompts/research-prompt.md, @prompts/script-prompt.md
-- スキーマ: @schemas/zod-schemas.js
-- 音声仕様: @references/audio-format.md
+### プロンプト（prompts/）
+
+| ファイル                    | 用途               |
+| --------------------------- | ------------------ |
+| @prompts/research-prompt.md | リサーチプロンプト |
+| @prompts/script-prompt.md   | スクリプト生成     |
+
+### スキーマ（schemas/）
+
+| ファイル                | 用途              |
+| ----------------------- | ----------------- |
+| @schemas/zod-schemas.js | Zodバリデーション |
+
+### リファレンス（references/）
+
+| ファイル                    | 用途     |
+| --------------------------- | -------- |
+| @references/audio-format.md | 音声仕様 |
 
 ## スクリプト
 
