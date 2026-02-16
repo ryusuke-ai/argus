@@ -1,6 +1,9 @@
 // Slack Web API を使ってメッセージを送信するシンプルなユーティリティ
 // SLACK_BOT_TOKEN と SLACK_NOTIFICATION_CHANNEL 環境変数を使用
 
+import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
+
 export async function notifySlack(text: string): Promise<boolean> {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   const NOTIFICATION_CHANNEL = process.env.SLACK_NOTIFICATION_CHANNEL;
@@ -49,10 +52,8 @@ export async function uploadFileToSlack(
   }
 
   try {
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const fileContent = fs.readFileSync(filePath);
-    const fileName = path.basename(filePath);
+    const fileContent = await readFile(filePath);
+    const fileName = basename(filePath);
 
     const formData = new FormData();
     formData.append("channel", channel);
@@ -70,7 +71,10 @@ export async function uploadFileToSlack(
 
     const data = (await response.json()) as { ok: boolean; error?: string };
     if (!data.ok) {
-      console.error(`[Slack Notifier] Upload failed for ${fileName}:`, data.error);
+      console.error(
+        `[Slack Notifier] Upload failed for ${fileName}:`,
+        data.error,
+      );
       return false;
     }
     console.log(`[Slack Notifier] Uploaded ${fileName}`);

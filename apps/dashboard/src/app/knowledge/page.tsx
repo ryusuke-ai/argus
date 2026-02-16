@@ -9,7 +9,8 @@ export default async function KnowledgePage() {
   const allKnowledge = await db
     .select()
     .from(knowledges)
-    .orderBy(desc(knowledges.updatedAt));
+    .orderBy(desc(knowledges.updatedAt))
+    .limit(50);
 
   return (
     <main className="p-8 max-w-5xl">

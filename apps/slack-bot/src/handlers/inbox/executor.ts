@@ -4,9 +4,15 @@ import { resolve, dirname } from "node:path";
 import {
   query,
   resume,
+  createMcpServers,
   type AgentResult,
   type ArgusHooks,
 } from "@argus/agent-core";
+
+const MONOREPO_ROOT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../..",
+);
 
 /** Intent 別のタイムアウト設定（ms） */
 const TIMEOUT_BY_INTENT: Record<string, number> = {
@@ -103,13 +109,13 @@ function buildSystemPrompt(): string {
 メール送信を指示された場合は、必ずこの send_email ツールを使用してください。Bash でコードを書いて送信しようとしないでください。
 
 ### Personal Knowledge MCP
-ユーザーの個人情報（目標、経験・エピソード、価値観、強み、習慣、TODO 等）を保存・検索するナレッジベースです。
+ユーザーの個人情報（価値観、強み、思考スタイル、好み、習慣等）を保存・検索するナレッジベースです。
 ユーザーの個人情報に関する質問を受けたら、**必ず最初に personal_list でファイル一覧を確認**し、該当しそうなファイルを personal_read で読んでください。
 
-- **personal_list**: ノート一覧を取得（category でフィルタ可能: personality, areas, ideas, todo）
-- **personal_read**: 指定パスのノートを読む（例: "personality/goals.md"）
+- **personal_list**: ノート一覧を取得（category でフィルタ可能: self）
+- **personal_read**: 指定パスのノートを読む（例: "self/values.md"）
 - **personal_search**: キーワードでノート内容を横断検索
-- **personal_context**: パーソナリティ情報を取得（section: values, strengths, weaknesses, habits, thinking, likes, dislikes）
+- **personal_context**: パーソナリティ情報を取得（section: identity, values, strengths, thinking, preferences, routines）
 - **personal_add**: 新規ノートを作成
 - **personal_update**: 既存ノートを更新（append または replace）
 
@@ -147,57 +153,7 @@ export class InboxExecutor {
       },
       disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
       mcpServers: {
-        "google-calendar": {
-          command: "node",
-          args: [
-            resolve(
-              dirname(fileURLToPath(import.meta.url)),
-              "../../../../../packages/google-calendar/dist/cli.js",
-            ),
-          ],
-          env: {
-            GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID || "",
-            GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
-            GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
-            DATABASE_URL: process.env.DATABASE_URL || "",
-            PATH:
-              process.env.PATH ||
-              "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-          },
-        },
-        gmail: {
-          command: "node",
-          args: [
-            resolve(
-              dirname(fileURLToPath(import.meta.url)),
-              "../../../../../packages/gmail/dist/mcp-cli.js",
-            ),
-          ],
-          env: {
-            GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID || "",
-            GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
-            GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
-            DATABASE_URL: process.env.DATABASE_URL || "",
-            PATH:
-              process.env.PATH ||
-              "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-          },
-        },
-        "knowledge-personal": {
-          command: "node",
-          args: [
-            resolve(
-              dirname(fileURLToPath(import.meta.url)),
-              "../../../../../packages/knowledge-personal/dist/cli.js",
-            ),
-          ],
-          env: {
-            DATABASE_URL: process.env.DATABASE_URL || "",
-            PATH:
-              process.env.PATH ||
-              "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-          },
-        },
+        ...createMcpServers(MONOREPO_ROOT),
       },
     };
   }

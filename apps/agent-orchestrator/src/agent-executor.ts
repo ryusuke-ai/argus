@@ -12,6 +12,7 @@ import {
   scanOutputDir,
   findNewArtifacts,
   createDBObservationHooks,
+  fireAndForget,
   type AgentResult,
   type ArgusHooks,
   type ObservationDB,
@@ -59,9 +60,12 @@ export async function executeAgent(agentId: string): Promise<void> {
       .where(eq(agents.id, agentId))
       .limit(1);
     const agentName = agent?.name ?? agentId;
-    await notifySlack(
-      `:x: *Agent execution failed*\n*Agent:* ${agentName}\n*Error:* ${firstError.slice(0, 300)}${firstError.length > 300 ? "..." : ""}`,
-    ).catch(() => {});
+    fireAndForget(
+      notifySlack(
+        `:x: *Agent execution failed*\n*Agent:* ${agentName}\n*Error:* ${firstError.slice(0, 300)}${firstError.length > 300 ? "..." : ""}`,
+      ),
+      "Slack notify permanent error",
+    );
     return;
   }
 
@@ -84,9 +88,12 @@ export async function executeAgent(agentId: string): Promise<void> {
     .where(eq(agents.id, agentId))
     .limit(1);
   const agentName = agent?.name ?? agentId;
-  await notifySlack(
-    `:x: *Agent execution failed (after retry)*\n*Agent:* ${agentName}\n*Error:* ${retryError.slice(0, 300)}${retryError.length > 300 ? "..." : ""}`,
-  ).catch(() => {});
+  fireAndForget(
+    notifySlack(
+      `:x: *Agent execution failed (after retry)*\n*Agent:* ${agentName}\n*Error:* ${retryError.slice(0, 300)}${retryError.length > 300 ? "..." : ""}`,
+    ),
+    "Slack notify retry failure",
+  );
 }
 
 /**
@@ -120,7 +127,18 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     const prompt = config?.prompt;
 
     if (!prompt) {
-      throw new Error(`Agent ${agent.name} has no prompt configured`);
+      const errorMessage = `Agent ${agent.name} has no prompt configured`;
+      console.error(`[Agent Executor] ${errorMessage}`);
+      await db
+        .update(agentExecutions)
+        .set({
+          status: "error",
+          errorMessage,
+          completedAt: new Date(),
+          durationMs: Date.now() - startTime,
+        })
+        .where(eq(agentExecutions.id, execution.id));
+      return errorMessage;
     }
 
     const [session] = await db
@@ -154,7 +172,26 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
         .filter((block) => block.type === "text")
         .map((block) => block.text)
         .join("\n");
-      throw new Error(errorText || "Agent execution failed");
+      const errorMessage = errorText || "Agent execution failed";
+      console.error(`[Agent Executor] ${errorMessage}`);
+      await db
+        .update(agentExecutions)
+        .set({
+          status: "error",
+          errorMessage,
+          completedAt: new Date(),
+          durationMs: Date.now() - startTime,
+          sessionId: session.id,
+        })
+        .where(eq(agentExecutions.id, execution.id));
+
+      // Update execution canvas (fire-and-forget)
+      fireAndForget(
+        updateExecutionCanvas(),
+        "execution canvas update on error",
+      );
+
+      return errorMessage;
     }
 
     await db
@@ -163,7 +200,7 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
         status: "success",
         completedAt: new Date(),
         durationMs: Date.now() - startTime,
-        output: result as unknown as Record<string, unknown>,
+        output: JSON.parse(JSON.stringify(result)) as Record<string, unknown>,
         sessionId: session.id,
       })
       .where(eq(agentExecutions.id, execution.id));
@@ -201,7 +238,10 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     }
 
     // Update execution canvas (fire-and-forget)
-    updateExecutionCanvas().catch(() => {});
+    fireAndForget(
+      updateExecutionCanvas(),
+      "execution canvas update on success",
+    );
 
     return null; // success
   } catch (error) {
@@ -228,7 +268,7 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     console.error(`[Agent Executor] Error: ${errorMessage}`);
 
     // Update execution canvas (fire-and-forget)
-    updateExecutionCanvas().catch(() => {});
+    fireAndForget(updateExecutionCanvas(), "execution canvas update on catch");
 
     return errorMessage;
   }

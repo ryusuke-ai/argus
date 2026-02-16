@@ -3,6 +3,11 @@ import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { addReaction } from "../../utils/reactions.js";
+import {
+  parseXPostContent,
+  parseYouTubeContent,
+  parseInstagramContent,
+} from "./content-schemas.js";
 import type { YouTubeMetadataContent, InstagramContent } from "./types.js";
 import {
   buildXPostBlocks,
@@ -29,7 +34,7 @@ export function setupSnsActions(): void {
   // 投稿ボタン
   app.action("sns_publish", async ({ ack, body, client }) => {
     const ba = body as BlockAction;
-    await handleSnsPublish(0, ack, client, {
+    await handleSnsPublish(ack, client, {
       actions: ba.actions?.map((a) => ({
         value: "value" in a ? (a.value as string) : undefined,
       })),
@@ -60,10 +65,11 @@ export function setupSnsActions(): void {
     const triggerId = ba.trigger_id;
     if (!triggerId) return;
 
-    const content = post.content as unknown as {
-      text: string;
-      category?: string;
-    };
+    const content = parseXPostContent(post.content);
+    if (!content) {
+      console.error("[sns] Invalid X post content for post:", postId);
+      return;
+    }
 
     await client.views.open({
       trigger_id: triggerId,
@@ -187,9 +193,11 @@ export function setupSnsActions(): void {
 
     if (!post) return;
 
-    const content = post.content as unknown as YouTubeMetadataContent & {
-      script?: Record<string, unknown>;
-    };
+    const content = parseYouTubeContent(post.content);
+    if (!content) {
+      console.error("[sns] Invalid YouTube content for post:", postId);
+      return;
+    }
     const channelId = ba.channel?.id;
     const messageTs = ba.message?.ts;
 
@@ -216,11 +224,17 @@ export function setupSnsActions(): void {
         });
 
         // 非同期でレンダリングスキルを起動
-        renderWithSkill(postId, content, channelId, messageTs, client).catch(
-          (err) => {
-            console.error("[sns] Render skill error:", err);
+        renderWithSkill(
+          postId,
+          content as YouTubeMetadataContent & {
+            script?: { title?: string; [key: string]: unknown };
           },
-        );
+          channelId,
+          messageTs,
+          client,
+        ).catch((err) => {
+          console.error("[sns] Render skill error:", err);
+        });
       }
     } catch (error) {
       console.error("[sns] Approve script error:", error);
@@ -306,10 +320,11 @@ export function setupSnsActions(): void {
 
     if (!post) return;
 
-    const content = post.content as unknown as InstagramContent & {
-      imagePrompt?: string;
-      imageUrl?: string;
-    };
+    const content = parseInstagramContent(post.content);
+    if (!content) {
+      console.error("[sns] Invalid Instagram content for post:", postId);
+      return;
+    }
     const channelId = ba.channel?.id;
     const messageTs = ba.message?.ts;
 
@@ -337,7 +352,10 @@ export function setupSnsActions(): void {
 
         generateImageWithSkill(
           postId,
-          content,
+          content as InstagramContent & {
+            imageUrl?: string;
+            imagePath?: string;
+          },
           channelId,
           messageTs,
           client,
@@ -456,11 +474,16 @@ export function setupSnsActions(): void {
 
     try {
       const platform = post.platform as Platform;
-      const content = post.content as unknown as {
-        suggestedScheduledAt?: string;
-      };
-      const scheduledAt = content?.suggestedScheduledAt
-        ? new Date(content.suggestedScheduledAt)
+      const rawContent =
+        post.content && typeof post.content === "object"
+          ? (post.content as Record<string, unknown>)
+          : {};
+      const suggestedScheduledAt =
+        typeof rawContent.suggestedScheduledAt === "string"
+          ? rawContent.suggestedScheduledAt
+          : undefined;
+      const scheduledAt = suggestedScheduledAt
+        ? new Date(suggestedScheduledAt)
         : getNextOptimalTime(platform);
       const timeLabel = formatScheduledTime(scheduledAt);
 

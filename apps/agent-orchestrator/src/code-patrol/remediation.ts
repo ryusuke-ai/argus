@@ -2,7 +2,7 @@
 
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import type { ArgusHooks } from "@argus/agent-core";
+import { fireAndForget, type ArgusHooks } from "@argus/agent-core";
 import type {
   ScanResult,
   RemediationAction,
@@ -280,9 +280,10 @@ export function createPatrolHooks(
               ? String((toolInput as { file_path: string }).file_path)
               : "unknown";
           const shortPath = filePath.split("/").slice(-2).join("/");
-          await notifyFn(
-            `\u{1F527} [${editCount}件目の修正] ${shortPath}`,
-          ).catch(() => {});
+          fireAndForget(
+            notifyFn(`\u{1F527} [${editCount}件目の修正] ${shortPath}`),
+            "patrol progress notification",
+          );
         }
       }
     },

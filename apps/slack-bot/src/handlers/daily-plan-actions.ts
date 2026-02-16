@@ -70,7 +70,7 @@ export function setupDailyPlanActions(): void {
           if (parsed.id) {
             await db
               .update(gmailMessages)
-              .set({ status: "resolved" })
+              .set({ status: "dismissed" })
               .where(eq(gmailMessages.id, parsed.id));
           }
           break;

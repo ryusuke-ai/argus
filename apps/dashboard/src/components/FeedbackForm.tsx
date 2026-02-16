@@ -42,6 +42,7 @@ export default function FeedbackForm({ sessionId }: Props) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Send a message to this session..."
+          aria-label="フィードバックメッセージ"
           className="w-full p-3 border rounded-lg resize-y min-h-[100px]"
           disabled={sending}
         />

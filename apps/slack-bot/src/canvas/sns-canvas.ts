@@ -137,7 +137,7 @@ const PENDING_STATUSES = [
   "rendering",
   "image_ready",
   "rendered",
-];
+] as const;
 
 export function buildSnsCanvasMarkdown(posts: SnsPost[]): string {
   const now = new Date();
@@ -151,7 +151,9 @@ export function buildSnsCanvasMarkdown(posts: SnsPost[]): string {
   lines.push("---");
 
   // Pending posts
-  const pendingPosts = posts.filter((p) => PENDING_STATUSES.includes(p.status));
+  const pendingPosts = posts.filter((p) =>
+    (PENDING_STATUSES as readonly string[]).includes(p.status),
+  );
   lines.push("## \u672A\u51E6\u7406");
   lines.push("");
 
@@ -233,7 +235,7 @@ export async function updateSnsCanvas(): Promise<void> {
       .from(snsPosts)
       .where(
         or(
-          inArray(snsPosts.status, PENDING_STATUSES),
+          inArray(snsPosts.status, [...PENDING_STATUSES]),
           gte(snsPosts.publishedAt, sevenDaysAgo),
         ),
       )

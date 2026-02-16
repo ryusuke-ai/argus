@@ -371,13 +371,17 @@ Rolled back: ${report.rolledBack}
 Cost: $${report.costUsd.toFixed(2)}
 `;
 
-    await knowledgeService.add(
+    const result = await knowledgeService.add(
       `Code Patrol Report - ${report.date}`,
       content,
       `Weekly security scan report. Risk level: ${report.riskLevel}. Auto-fixes: ${report.remediations.length}`,
     );
 
-    console.log("[Code Patrol] Report saved to Knowledge");
+    if (result.success) {
+      console.log("[Code Patrol] Report saved to Knowledge");
+    } else {
+      console.error("[Code Patrol] Knowledge save error:", result.error);
+    }
   } catch (error) {
     console.error("[Code Patrol] Knowledge save error:", error);
   }

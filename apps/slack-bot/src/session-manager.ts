@@ -13,16 +13,25 @@ import {
   resume,
   extractText,
   createDBObservationHooks,
+  createMcpServers,
   type AgentResult,
   type Block,
   type ArgusHooks,
   type ObservationDB,
 } from "@argus/agent-core";
+import { PersonalServiceImpl } from "@argus/knowledge-personal";
+import { PersonalityLearner } from "./personality-learner.js";
 import { eq, and } from "drizzle-orm";
+
+const MONOREPO_ROOT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../..",
+);
 
 export type ProgressCallback = (message: string) => Promise<void>;
 
 const PROGRESS_THROTTLE_MS = 5000;
+const LEARNING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Slack bot 用の SDK オプション。
@@ -70,13 +79,13 @@ const SLACK_SDK_OPTIONS = {
 - ログイン操作後は「ログインしました」と報告し、認証情報はレスポンスに含めない（セキュリティ配慮）
 
 ## Personal Knowledge MCP
-ユーザーの個人情報（目標、経験・エピソード、価値観、強み、習慣、TODO 等）を保存・検索するナレッジベースです。
+ユーザーの個人情報（価値観、強み、思考スタイル、好み、習慣等）を保存・検索するナレッジベースです。
 ユーザーの個人情報に関する質問を受けたら、**必ず最初に personal_list でファイル一覧を確認**し、該当しそうなファイルを personal_read で読んでください。
 
-- **personal_list**: ノート一覧を取得（category でフィルタ可能: personality, areas, ideas, todo）
-- **personal_read**: 指定パスのノートを読む（例: "personality/goals.md"）
+- **personal_list**: ノート一覧を取得（category でフィルタ可能: self）
+- **personal_read**: 指定パスのノートを読む（例: "self/values.md"）
 - **personal_search**: キーワードでノート内容を横断検索
-- **personal_context**: パーソナリティ情報を取得（section: values, strengths, weaknesses, habits, thinking, likes, dislikes）
+- **personal_context**: パーソナリティ情報を取得（section: identity, values, strengths, thinking, preferences, routines）
 - **personal_add**: 新規ノートを作成
 - **personal_update**: 既存ノートを更新（append または replace）
 
@@ -89,54 +98,7 @@ const SLACK_SDK_OPTIONS = {
   disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
   additionalDirectories: ["/tmp/argus-slack-images"],
   mcpServers: {
-    "google-calendar": {
-      command: "node",
-      args: [
-        resolve(
-          dirname(fileURLToPath(import.meta.url)),
-          "../../../packages/google-calendar/dist/cli.js",
-        ),
-      ],
-      env: {
-        GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID || "",
-        GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
-        GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
-        DATABASE_URL: process.env.DATABASE_URL || "",
-        PATH:
-          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-      },
-    },
-    gmail: {
-      command: "node",
-      args: [
-        resolve(
-          dirname(fileURLToPath(import.meta.url)),
-          "../../../packages/gmail/dist/mcp-cli.js",
-        ),
-      ],
-      env: {
-        GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID || "",
-        GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET || "",
-        GMAIL_ADDRESS: process.env.GMAIL_ADDRESS || "",
-        DATABASE_URL: process.env.DATABASE_URL || "",
-        PATH:
-          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-      },
-    },
-    "knowledge-personal": {
-      command: "node",
-      args: [
-        resolve(
-          dirname(fileURLToPath(import.meta.url)),
-          "../../../packages/knowledge-personal/dist/cli.js",
-        ),
-      ],
-      env: {
-        DATABASE_URL: process.env.DATABASE_URL || "",
-        PATH:
-          process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-      },
-    },
+    ...createMcpServers(MONOREPO_ROOT),
   },
 };
 
@@ -172,6 +134,9 @@ export function needsPlaywright(text: string): boolean {
 }
 
 export class SessionManager {
+  private learningTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private learner = new PersonalityLearner();
+
   /**
    * Get or create a session based on Slack channel and thread timestamp.
    * Each Slack thread maps to one session.
@@ -225,7 +190,7 @@ export class SessionManager {
     const hooks = this.createObservationHooks(session.id, onProgress);
 
     // Playwright MCP をキーワード検出時のみ追加（~7,000トークン節約）
-    const sdkOptions = needsPlaywright(messageText)
+    let sdkOptions = needsPlaywright(messageText)
       ? {
           ...SLACK_SDK_OPTIONS,
           mcpServers: {
@@ -233,7 +198,31 @@ export class SessionManager {
             playwright: PLAYWRIGHT_MCP,
           },
         }
-      : SLACK_SDK_OPTIONS;
+      : { ...SLACK_SDK_OPTIONS };
+
+    // 新規セッション時にパーソナリティコンテキストを注入
+    if (!session.sessionId) {
+      try {
+        const personalService = new PersonalServiceImpl();
+        const summary = await personalService.getPersonalityContext();
+        const basePrompt = sdkOptions.systemPrompt;
+        sdkOptions = {
+          ...sdkOptions,
+          systemPrompt: {
+            ...basePrompt,
+            append:
+              basePrompt.append +
+              "\n\n## あなたが話しているユーザーについて\n" +
+              summary,
+          },
+        };
+      } catch (err) {
+        console.error(
+          "[SessionManager] Failed to load personality context",
+          err,
+        );
+      }
+    }
 
     if (session.sessionId) {
       // Existing session - resume conversation
@@ -285,7 +274,30 @@ export class SessionManager {
     const assistantText = this.extractText(result.message.content);
     await this.saveMessage(session.id, assistantText, "assistant");
 
+    // Reset learning timer (debounce: 10 min after last message)
+    this.resetLearningTimer(session.id);
+
     return result;
+  }
+
+  /**
+   * Reset the learning timer for a session.
+   * After 10 minutes of inactivity, trigger personality learning.
+   */
+  private resetLearningTimer(sessionId: string): void {
+    const existing = this.learningTimers.get(sessionId);
+    if (existing) {
+      clearTimeout(existing);
+    }
+
+    const timer = setTimeout(() => {
+      this.learningTimers.delete(sessionId);
+      this.learner.analyze(sessionId).catch((err) => {
+        console.error("[SessionManager] Learning failed", err);
+      });
+    }, LEARNING_TIMEOUT_MS);
+
+    this.learningTimers.set(sessionId, timer);
   }
 
   /**

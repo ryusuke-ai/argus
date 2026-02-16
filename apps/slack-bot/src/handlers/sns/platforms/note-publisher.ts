@@ -1,9 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Browser, type BrowserContext } from "playwright";
 
@@ -158,7 +153,7 @@ async function login(
   context: BrowserContext,
   email: string,
   password: string,
-): Promise<void> {
+): Promise<{ success: true } | { success: false; error: string }> {
   const page = await context.newPage();
   try {
     await page.goto("https://note.com/login", {
@@ -167,10 +162,16 @@ async function login(
     });
 
     // note.com login form selectors (verified via E2E)
-    await page.locator('input[placeholder*="mail@example.com"]').first().fill(email);
+    await page
+      .locator('input[placeholder*="mail@example.com"]')
+      .first()
+      .fill(email);
     await page.locator('input[type="password"]').first().fill(password);
     await page.waitForTimeout(500);
-    await page.locator('button:has-text("ログイン")').first().click({ force: true });
+    await page
+      .locator('button:has-text("ログイン")')
+      .first()
+      .click({ force: true });
 
     // Wait until we navigate away from the login page
     await page.waitForURL((url) => !url.pathname.includes("/login"), {
@@ -180,8 +181,18 @@ async function login(
     // Verify login succeeded by checking we are not on an error page
     const currentUrl = page.url();
     if (currentUrl.includes("/login")) {
-      throw new Error("Login failed: still on login page after submission");
+      return {
+        success: false,
+        error: "Login failed: still on login page after submission",
+      };
     }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Login failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
   } finally {
     await page.close();
   }
@@ -190,7 +201,7 @@ async function login(
 async function createArticle(
   context: BrowserContext,
   input: NoteArticleInput,
-): Promise<string> {
+): Promise<{ success: true; url: string } | { success: false; error: string }> {
   const page = await context.newPage();
   try {
     // note.com/new は editor.note.com/new にリダイレクトされる場合がある
@@ -210,15 +221,19 @@ async function createArticle(
       '[data-placeholder="記事タイトル"]',
       '[contenteditable="true"][data-placeholder]',
       'h1[contenteditable="true"]',
-      '.ProseMirror h1',
+      ".ProseMirror h1",
     ];
 
     let titleFilled = false;
     for (const selector of titleSelectors) {
       const loc = page.locator(selector).first();
-      const visible = await loc.isVisible({ timeout: 2_000 }).catch(() => false);
+      const visible = await loc
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false);
       if (visible) {
-        const tagName = await loc.evaluate((el) => (el as unknown as { tagName: string }).tagName.toLowerCase());
+        const tagName = await loc.evaluate((el) =>
+          (el as unknown as { tagName: string }).tagName.toLowerCase(),
+        );
         if (tagName === "textarea" || tagName === "input") {
           await loc.fill(input.title);
         } else {
@@ -234,9 +249,10 @@ async function createArticle(
       // デバッグ用スクリーンショット
       const screenshotPath = "/tmp/note-debug-title.png";
       await page.screenshot({ path: screenshotPath, fullPage: true });
-      throw new Error(
-        `タイトル入力欄が見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
-      );
+      return {
+        success: false,
+        error: `タイトル入力欄が見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
+      };
     }
 
     // --- 本文入力 ---
@@ -249,7 +265,9 @@ async function createArticle(
     let bodyFilled = false;
     for (const selector of bodySelectors) {
       const loc = page.locator(selector).first();
-      const visible = await loc.isVisible({ timeout: 3_000 }).catch(() => false);
+      const visible = await loc
+        .isVisible({ timeout: 3_000 })
+        .catch(() => false);
       if (visible) {
         await loc.click();
         await page.keyboard.insertText(input.body);
@@ -261,9 +279,10 @@ async function createArticle(
     if (!bodyFilled) {
       const screenshotPath = "/tmp/note-debug-body.png";
       await page.screenshot({ path: screenshotPath, fullPage: true });
-      throw new Error(
-        `本文エディタが見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
-      );
+      return {
+        success: false,
+        error: `本文エディタが見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
+      };
     }
 
     // --- 公開ボタン ---
@@ -277,7 +296,9 @@ async function createArticle(
     let publishClicked = false;
     for (const selector of publishButtonSelectors) {
       const loc = page.locator(selector).first();
-      const visible = await loc.isVisible({ timeout: 2_000 }).catch(() => false);
+      const visible = await loc
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false);
       if (visible) {
         await loc.click();
         publishClicked = true;
@@ -288,9 +309,10 @@ async function createArticle(
     if (!publishClicked) {
       const screenshotPath = "/tmp/note-debug-publish.png";
       await page.screenshot({ path: screenshotPath, fullPage: true });
-      throw new Error(
-        `公開ボタンが見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
-      );
+      return {
+        success: false,
+        error: `公開ボタンが見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
+      };
     }
 
     await page.waitForTimeout(2_000);
@@ -329,9 +351,10 @@ async function createArticle(
     if (!submitted) {
       const screenshotPath = "/tmp/note-debug-submit.png";
       await page.screenshot({ path: screenshotPath, fullPage: true });
-      throw new Error(
-        `投稿ボタンが見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
-      );
+      return {
+        success: false,
+        error: `投稿ボタンが見つかりません (URL: ${page.url()})。スクリーンショット: ${screenshotPath}`,
+      };
     }
 
     // --- 投稿完了待ち ---
@@ -344,7 +367,7 @@ async function createArticle(
       { timeout: 60_000 },
     );
 
-    return page.url();
+    return { success: true, url: page.url() };
   } finally {
     await page.close();
   }
@@ -388,7 +411,16 @@ export async function publishToNote(
     // Check login status; if not logged in, perform login
     const loggedIn = await isLoggedIn(context);
     if (!loggedIn) {
-      await login(context, email, password);
+      const loginResult = await login(context, email, password);
+      if (!loginResult.success) {
+        console.error("[note-publisher] login failed:", loginResult.error);
+        const draftResult = await saveNoteDraft(input);
+        return {
+          success: false,
+          draftPath: draftResult.draftPath,
+          error: `Browser automation failed: ${loginResult.error}`,
+        };
+      }
     }
 
     // Persist cookies after successful login
@@ -396,16 +428,28 @@ export async function publishToNote(
     saveCookies(cookies as SerializedCookie[]);
 
     // Create and publish the article
-    const articleUrl = await createArticle(context, input);
+    const articleResult = await createArticle(context, input);
+    if (!articleResult.success) {
+      console.error(
+        "[note-publisher] article creation failed:",
+        articleResult.error,
+      );
+      const draftResult = await saveNoteDraft(input);
+      return {
+        success: false,
+        draftPath: draftResult.draftPath,
+        error: `Browser automation failed: ${articleResult.error}`,
+      };
+    }
 
     return {
       success: true,
-      url: articleUrl,
+      url: articleResult.url,
     };
   } catch (error) {
     console.error("[note-publisher] publish failed", error);
 
-    // Try to save draft as fallback on browser automation failure
+    // Try to save draft as fallback on unexpected errors
     const draftResult = await saveNoteDraft(input);
     return {
       success: false,

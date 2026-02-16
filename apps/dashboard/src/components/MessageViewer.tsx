@@ -2,6 +2,7 @@
 
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { formatDate } from "@/lib/format";
 
 interface Message {
   id: string;
@@ -33,14 +34,12 @@ export default function MessageViewer({ messages }: MessageViewerProps) {
           <div className="flex justify-between items-start mb-2">
             <span className="font-semibold capitalize">{message.role}</span>
             <span className="text-sm text-gray-500">
-              {message.createdAt.toLocaleString()}
+              {formatDate(message.createdAt)}
             </span>
           </div>
           {message.role === "assistant" ? (
             <div className="prose prose-sm max-w-none prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-code:text-pink-600">
-              <Markdown remarkPlugins={[remarkGfm]}>
-                {message.content}
-              </Markdown>
+              <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
             </div>
           ) : (
             <div className="whitespace-pre-wrap">{message.content}</div>

@@ -6,6 +6,7 @@ import MessageViewer from "@/components/MessageViewer";
 import ToolCallList from "@/components/ToolCallList";
 import FeedbackForm from "@/components/FeedbackForm";
 import Link from "next/link";
+import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -52,16 +53,20 @@ export default async function SessionDetailPage({ params }: PageProps) {
       </h1>
       <div className="flex gap-4 text-sm text-slate-500 mb-8">
         {session.slackChannel && <span>Channel: {session.slackChannel}</span>}
-        <span>Created: {session.createdAt.toLocaleString()}</span>
+        <span>Created: {formatDate(session.createdAt)}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <h2 className="text-xl font-semibold text-slate-800 mb-4">Messages</h2>
+          <h2 className="text-xl font-semibold text-slate-800 mb-4">
+            Messages
+          </h2>
           <MessageViewer messages={sessionMessages} />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-slate-800 mb-4">Tool Calls</h2>
+          <h2 className="text-xl font-semibold text-slate-800 mb-4">
+            Tool Calls
+          </h2>
           <ToolCallList toolCalls={toolCalls} />
         </div>
       </div>

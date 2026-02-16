@@ -1,3 +1,5 @@
+import { formatDate } from "@/lib/format";
+
 interface Knowledge {
   id: string;
   name: string;
@@ -16,18 +18,23 @@ export default function KnowledgeList({ knowledge }: KnowledgeListProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div
+      aria-label="ナレッジ一覧"
+      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+    >
       {knowledge.map((item) => (
         <div
           key={item.id}
           className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition"
         >
-          <h2 className="text-lg font-semibold text-slate-800 mb-2">{item.name}</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-2">
+            {item.name}
+          </h2>
           {item.description && (
             <p className="text-slate-500 text-sm mb-3">{item.description}</p>
           )}
           <div className="text-xs text-slate-400 mb-3">
-            Updated: {item.updatedAt.toLocaleString()}
+            Updated: {formatDate(item.updatedAt)}
           </div>
           <details className="text-sm">
             <summary className="cursor-pointer text-blue-600 hover:underline font-medium">

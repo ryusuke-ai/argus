@@ -7,7 +7,7 @@ interface YouTubeUploadInput {
   title: string;
   description: string;
   tags: string[];
-  categoryId: string;      // "28" = Science & Technology
+  categoryId: string; // "28" = Science & Technology
   privacyStatus: "private" | "unlisted" | "public";
   thumbnailPath?: string;
 }
@@ -23,17 +23,21 @@ export async function uploadToYouTube(
   input: YouTubeUploadInput,
 ): Promise<YouTubeUploadResult> {
   if (!existsSync(input.videoPath)) {
-    return { success: false, error: `Video file not found: ${input.videoPath}` };
+    return {
+      success: false,
+      error: `Video file not found: ${input.videoPath}`,
+    };
   }
 
-  let auth;
-  try {
-    auth = await getAuthenticatedClient();
-  } catch (error) {
-    return { success: false, error: `YouTube auth failed: ${error}` };
+  const authResult = await getAuthenticatedClient();
+  if (!authResult.success) {
+    return {
+      success: false,
+      error: `YouTube auth failed: ${authResult.error}`,
+    };
   }
 
-  const youtube = google.youtube({ version: "v3", auth });
+  const youtube = google.youtube({ version: "v3", auth: authResult.data });
 
   try {
     const response = await youtube.videos.insert({
@@ -56,7 +60,10 @@ export async function uploadToYouTube(
 
     const videoId = response.data.id;
     if (!videoId) {
-      return { success: false, error: "Upload succeeded but no video ID returned" };
+      return {
+        success: false,
+        error: "Upload succeeded but no video ID returned",
+      };
     }
 
     // サムネイル設定

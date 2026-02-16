@@ -113,7 +113,9 @@ function repairTruncatedJson(jsonStr: string): string {
 /**
  * AgentResult のテキストブロックから JSON を抽出してパースする。
  */
-function extractJsonFromResult(result: AgentResult): VideoScript {
+function extractJsonFromResult(
+  result: AgentResult,
+): { success: true; content: VideoScript } | { success: false; error: string } {
   const textBlocks = result.message.content.filter(
     (block): block is { type: "text"; text: string } =>
       block.type === "text" && typeof block.text === "string",
@@ -126,18 +128,18 @@ function extractJsonFromResult(result: AgentResult): VideoScript {
     responseText.match(/(\{[\s\S]*\})/);
 
   if (!jsonMatch) {
-    throw new Error("No JSON found in response");
+    return { success: false, error: "No JSON found in response" };
   }
 
   const jsonStr = jsonMatch[1] || jsonMatch[0];
   try {
-    return JSON.parse(jsonStr) as VideoScript;
+    return { success: true, content: JSON.parse(jsonStr) as VideoScript };
   } catch {
     try {
       const repaired = repairTruncatedJson(jsonStr);
-      return JSON.parse(repaired) as VideoScript;
+      return { success: true, content: JSON.parse(repaired) as VideoScript };
     } catch {
-      throw new Error("Failed to parse video script JSON");
+      return { success: false, error: "Failed to parse video script JSON" };
     }
   }
 }
@@ -174,9 +176,16 @@ export async function generateVideoScript(metadata: {
       },
     });
 
-    const content = extractJsonFromResult(result);
+    const extractResult = extractJsonFromResult(result);
+    if (!extractResult.success) {
+      console.error(
+        "[script-generator] JSON extraction failed:",
+        extractResult.error,
+      );
+      return { success: false, error: extractResult.error };
+    }
 
-    return { success: true, content };
+    return { success: true, content: extractResult.content };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[script-generator] Generation failed:", message);

@@ -15,7 +15,10 @@ export default function Navigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed top-0 left-0 w-56 h-screen bg-slate-800 text-slate-300 flex flex-col">
+    <nav
+      aria-label="メインナビゲーション"
+      className="fixed top-0 left-0 w-56 h-screen bg-slate-800 text-slate-300 flex flex-col"
+    >
       <div className="px-5 py-6 border-b border-slate-700">
         <h1 className="text-lg font-bold text-white tracking-wide">Argus</h1>
         <p className="text-xs text-slate-500 mt-1">AI Agent Dashboard</p>
@@ -30,7 +33,7 @@ export default function Navigation() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
                 isActive
                   ? "bg-blue-600 text-white"
                   : "text-slate-300 hover:bg-slate-700 hover:text-white"

@@ -37,7 +37,10 @@ export default function ToolCallList({ toolCalls }: Props) {
           </p>
         )}
       </div>
-      <div className="space-y-2 max-h-[600px] overflow-y-auto">
+      <div
+        aria-label="ツールコール一覧"
+        className="space-y-2 max-h-[600px] overflow-y-auto"
+      >
         {toolCalls.map((call) => (
           <details
             key={call.id}

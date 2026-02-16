@@ -6,13 +6,14 @@ import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { query } from "@argus/agent-core";
 import { swapReaction } from "../../../utils/reactions.js";
-import type {
-  YouTubeMetadataContent,
-  TikTokScript,
-  InstagramContent,
-  PodcastContent,
-} from "../types.js";
-import { uploadVideo as r2Upload } from "@argus/r2-storage";
+import type { InstagramContent, YouTubeMetadataContent } from "../types.js";
+import {
+  parseYouTubeContent,
+  parsePodcastContent,
+  parseTikTokContent,
+  type ParsedTikTokContent,
+} from "../content-schemas.js";
+import { uploadFile as r2Upload } from "@argus/r2-storage";
 import { generateVideoScript } from "./script-generator.js";
 import {
   buildScriptProposalBlocks,
@@ -50,7 +51,11 @@ export async function generateAndPostScript(
 
   if (!post) return;
 
-  const content = post.content as unknown as YouTubeMetadataContent;
+  const content = parseYouTubeContent(post.content);
+  if (!content) {
+    console.error("[sns] Invalid YouTube content for post:", post.id);
+    return;
+  }
 
   try {
     const result = await generateVideoScript({
@@ -148,7 +153,11 @@ export async function generatePodcastAudio(
 
   if (!post) return;
 
-  const content = post.content as unknown as PodcastContent;
+  const content = parsePodcastContent(post.content);
+  if (!content) {
+    console.error("[sns] Invalid Podcast content for post:", post.id);
+    return;
+  }
 
   const progressTimer = setInterval(async () => {
     try {
@@ -295,10 +304,11 @@ export async function generateTikTokVideo(
 
   if (!post) return;
 
-  const content = post.content as unknown as TikTokScript & {
-    videoPath?: string;
-    videoUrl?: string;
-  };
+  const content = parseTikTokContent(post.content);
+  if (!content) {
+    console.error("[sns] Invalid TikTok content for post:", post.id);
+    return;
+  }
 
   const progressTimer = setInterval(async () => {
     try {
@@ -444,7 +454,7 @@ CTA: ${content.script?.cta?.narration || ""}
 
 export async function createInstagramReelProposal(
   videoUrl: string,
-  tiktokContent: TikTokScript & { category?: string },
+  tiktokContent: ParsedTikTokContent & { category?: string },
   channelId: string,
   client: WebClient,
 ): Promise<void> {
@@ -559,7 +569,7 @@ gen-ai-image スキルを使って画像を生成し、出力パスを報告し�
     } else {
       await db
         .update(snsPosts)
-        .set({ status: "render_failed", updatedAt: new Date() })
+        .set({ status: "failed", updatedAt: new Date() })
         .where(eq(snsPosts.id, postId));
 
       await client.chat.postMessage({
@@ -574,7 +584,7 @@ gen-ai-image スキルを使って画像を生成し、出力パスを報告し�
 
     await db
       .update(snsPosts)
-      .set({ status: "render_failed", updatedAt: new Date() })
+      .set({ status: "failed", updatedAt: new Date() })
       .where(eq(snsPosts.id, postId));
 
     await client.chat.postMessage({
@@ -639,7 +649,7 @@ export async function renderWithSkill(
       // パス抽出失敗
       await db
         .update(snsPosts)
-        .set({ status: "render_failed", updatedAt: new Date() })
+        .set({ status: "failed", updatedAt: new Date() })
         .where(eq(snsPosts.id, postId));
 
       const responsePreview = result.message.content
@@ -660,7 +670,7 @@ export async function renderWithSkill(
 
     await db
       .update(snsPosts)
-      .set({ status: "render_failed", updatedAt: new Date() })
+      .set({ status: "failed", updatedAt: new Date() })
       .where(eq(snsPosts.id, postId));
 
     await client.chat.postMessage({

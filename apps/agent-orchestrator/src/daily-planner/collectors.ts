@@ -84,14 +84,28 @@ export async function collectCalendarEvents(
       console.log("[Daily Planner] No Gmail tokens found. Skipping calendar.");
       return [];
     }
-    await refreshTokenIfNeeded();
+    const refreshResult = await refreshTokenIfNeeded();
+    if (!refreshResult.success) {
+      console.error(
+        "[Daily Planner] Token refresh failed:",
+        refreshResult.error,
+      );
+      return [];
+    }
 
     const timeMin = `${date}T00:00:00+09:00`;
     const timeMax = `${date}T23:59:59+09:00`;
 
-    const events = await listEvents({ timeMin, timeMax, maxResults: 50 });
+    const eventsResult = await listEvents({ timeMin, timeMax, maxResults: 50 });
+    if (!eventsResult.success) {
+      console.error(
+        "[Daily Planner] Calendar fetch error:",
+        eventsResult.error,
+      );
+      return [];
+    }
 
-    return events.map((e) => ({
+    return eventsResult.data.map((e) => ({
       title: e.title,
       start: e.start,
       end: e.end || undefined,

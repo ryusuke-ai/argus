@@ -3,6 +3,11 @@ import { app } from "../app.js";
 import { sendReply, sendNewEmail } from "@argus/gmail";
 import { db, gmailMessages, gmailOutgoing } from "@argus/db";
 import { eq } from "drizzle-orm";
+import {
+  extractActionValue,
+  extractMessageRef,
+  updateGmailActionBlocks,
+} from "./gmail-actions-helpers.js";
 
 export function setupGmailActionHandlers(): void {
   // 返信ボタン
@@ -10,9 +15,7 @@ export function setupGmailActionHandlers(): void {
     await ack();
 
     const ba = body as BlockAction;
-    const action = ba.actions?.[0];
-    const gmailMessageDbId =
-      action && "value" in action ? (action.value as string) : undefined;
+    const gmailMessageDbId = extractActionValue(ba);
     if (!gmailMessageDbId) return;
 
     // DB からメール情報取得
@@ -30,55 +33,18 @@ export function setupGmailActionHandlers(): void {
       return;
     }
 
-    try {
-      // Gmail API で返信送信
-      await sendReply(
-        record.gmailId,
-        record.threadId,
-        record.fromAddress,
-        record.subject,
-        record.draftReply,
-      );
+    // Gmail API で返信送信
+    const replyResult = await sendReply(
+      record.gmailId,
+      record.threadId,
+      record.fromAddress,
+      record.subject,
+      record.draftReply,
+    );
 
-      // DB 更新
-      await db
-        .update(gmailMessages)
-        .set({ status: "replied", repliedAt: new Date() })
-        .where(eq(gmailMessages.id, gmailMessageDbId));
-
-      // Slack メッセージを更新（ボタンを削除し「返信済み」表示）
-      const channelId = ba.channel?.id;
-      const messageTs = ba.message?.ts;
-      if (channelId && messageTs) {
-        await client.chat.update({
-          channel: channelId,
-          ts: messageTs,
-          blocks: [
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `✅ *返信済み* — ${record.subject}`,
-              },
-            },
-            {
-              type: "context",
-              elements: [
-                {
-                  type: "mrkdwn",
-                  text: `To: ${record.fromAddress} | ${new Date().toLocaleString("ja-JP")}`,
-                },
-              ],
-            },
-          ],
-          text: `✅ 返信済み: ${record.subject}`,
-        });
-      }
-    } catch (error) {
-      console.error("[Gmail Action] Reply failed:", error);
-      // エラー時: Slack にエラーメッセージを追加
-      const channelId = ba.channel?.id;
-      const messageTs = ba.message?.ts;
+    if (!replyResult.success) {
+      console.error("[Gmail Action] Reply failed:", replyResult.error);
+      const { channelId, messageTs } = extractMessageRef(ba);
       if (channelId && messageTs) {
         await client.chat.postMessage({
           channel: channelId,
@@ -86,6 +52,27 @@ export function setupGmailActionHandlers(): void {
           text: "❌ 返信の送信に失敗しました。もう一度お試しください。",
         });
       }
+      return;
+    }
+
+    // DB 更新
+    await db
+      .update(gmailMessages)
+      .set({ status: "replied", repliedAt: new Date() })
+      .where(eq(gmailMessages.id, gmailMessageDbId));
+
+    // Slack メッセージを更新（ボタンを削除し「返信済み」表示）
+    const { channelId, messageTs } = extractMessageRef(ba);
+    if (channelId && messageTs) {
+      await updateGmailActionBlocks(
+        client,
+        channelId,
+        messageTs,
+        "✅",
+        "返信済み",
+        record.subject,
+        { to: record.fromAddress, showTimestamp: true },
+      );
     }
   });
 
@@ -94,9 +81,7 @@ export function setupGmailActionHandlers(): void {
     await ack();
 
     const ba = body as BlockAction;
-    const action = ba.actions?.[0];
-    const gmailMessageDbId =
-      action && "value" in action ? (action.value as string) : undefined;
+    const gmailMessageDbId = extractActionValue(ba);
     if (!gmailMessageDbId) return;
 
     // DB からメール情報取得
@@ -167,47 +152,34 @@ export function setupGmailActionHandlers(): void {
 
     if (!record) return;
 
-    try {
-      await sendReply(
-        record.gmailId,
-        record.threadId,
-        record.fromAddress,
+    const editReplyResult = await sendReply(
+      record.gmailId,
+      record.threadId,
+      record.fromAddress,
+      record.subject,
+      editedText,
+    );
+
+    if (!editReplyResult.success) {
+      console.error("[Gmail Action] Edit reply failed:", editReplyResult.error);
+      return;
+    }
+
+    await db
+      .update(gmailMessages)
+      .set({ status: "replied", repliedAt: new Date() })
+      .where(eq(gmailMessages.id, gmailMessageDbId));
+
+    if (channelId && messageTs) {
+      await updateGmailActionBlocks(
+        client,
+        channelId,
+        messageTs,
+        "✅",
+        "返信済み（編集あり）",
         record.subject,
-        editedText,
+        { to: record.fromAddress, showTimestamp: true },
       );
-
-      await db
-        .update(gmailMessages)
-        .set({ status: "replied", repliedAt: new Date() })
-        .where(eq(gmailMessages.id, gmailMessageDbId));
-
-      if (channelId && messageTs) {
-        await client.chat.update({
-          channel: channelId,
-          ts: messageTs,
-          blocks: [
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `✅ *返信済み（編集あり）* — ${record.subject}`,
-              },
-            },
-            {
-              type: "context",
-              elements: [
-                {
-                  type: "mrkdwn",
-                  text: `To: ${record.fromAddress} | ${new Date().toLocaleString("ja-JP")}`,
-                },
-              ],
-            },
-          ],
-          text: `✅ 返信済み（編集あり）: ${record.subject}`,
-        });
-      }
-    } catch (error) {
-      console.error("[Gmail Action] Edit reply failed:", error);
     }
   });
 
@@ -216,9 +188,7 @@ export function setupGmailActionHandlers(): void {
     await ack();
 
     const ba = body as BlockAction;
-    const action = ba.actions?.[0];
-    const gmailMessageDbId =
-      action && "value" in action ? (action.value as string) : undefined;
+    const gmailMessageDbId = extractActionValue(ba);
     if (!gmailMessageDbId) return;
 
     const [record] = await db
@@ -232,23 +202,16 @@ export function setupGmailActionHandlers(): void {
       .set({ status: "skipped" })
       .where(eq(gmailMessages.id, gmailMessageDbId));
 
-    const channelId = ba.channel?.id;
-    const messageTs = ba.message?.ts;
+    const { channelId, messageTs } = extractMessageRef(ba);
     if (channelId && messageTs) {
-      await client.chat.update({
-        channel: channelId,
-        ts: messageTs,
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `⏭️ *スキップ済み* — ${record?.subject || "（不明）"}`,
-            },
-          },
-        ],
-        text: `⏭️ スキップ済み: ${record?.subject || ""}`,
-      });
+      await updateGmailActionBlocks(
+        client,
+        channelId,
+        messageTs,
+        "⏭️",
+        "スキップ済み",
+        record?.subject || "（不明）",
+      );
     }
   });
 
@@ -259,9 +222,7 @@ export function setupGmailActionHandlers(): void {
     await ack();
 
     const ba = body as BlockAction;
-    const action = ba.actions?.[0];
-    const draftId =
-      action && "value" in action ? (action.value as string) : undefined;
+    const draftId = extractActionValue(ba);
     if (!draftId) return;
 
     const [draft] = await db
@@ -275,45 +236,15 @@ export function setupGmailActionHandlers(): void {
       return;
     }
 
-    try {
-      await sendNewEmail(draft.toAddress, draft.subject, draft.body);
+    const sendResult = await sendNewEmail(
+      draft.toAddress,
+      draft.subject,
+      draft.body,
+    );
 
-      await db
-        .update(gmailOutgoing)
-        .set({ status: "sent", sentAt: new Date() })
-        .where(eq(gmailOutgoing.id, draftId));
-
-      const channelId = ba.channel?.id;
-      const messageTs = ba.message?.ts;
-      if (channelId && messageTs) {
-        await client.chat.update({
-          channel: channelId,
-          ts: messageTs,
-          blocks: [
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `✅ *送信済み* — ${draft.subject}`,
-              },
-            },
-            {
-              type: "context",
-              elements: [
-                {
-                  type: "mrkdwn",
-                  text: `To: ${draft.toAddress} | ${new Date().toLocaleString("ja-JP")}`,
-                },
-              ],
-            },
-          ],
-          text: `✅ 送信済み: ${draft.subject}`,
-        });
-      }
-    } catch (error) {
-      console.error("[Gmail Action] Send new email failed:", error);
-      const channelId = ba.channel?.id;
-      const messageTs = ba.message?.ts;
+    if (!sendResult.success) {
+      console.error("[Gmail Action] Send new email failed:", sendResult.error);
+      const { channelId, messageTs } = extractMessageRef(ba);
       if (channelId && messageTs) {
         await client.chat.postMessage({
           channel: channelId,
@@ -321,6 +252,25 @@ export function setupGmailActionHandlers(): void {
           text: "❌ メール送信に失敗しました。もう一度お試しください。",
         });
       }
+      return;
+    }
+
+    await db
+      .update(gmailOutgoing)
+      .set({ status: "sent", sentAt: new Date() })
+      .where(eq(gmailOutgoing.id, draftId));
+
+    const { channelId, messageTs } = extractMessageRef(ba);
+    if (channelId && messageTs) {
+      await updateGmailActionBlocks(
+        client,
+        channelId,
+        messageTs,
+        "✅",
+        "送信済み",
+        draft.subject,
+        { to: draft.toAddress, showTimestamp: true },
+      );
     }
   });
 
@@ -329,9 +279,7 @@ export function setupGmailActionHandlers(): void {
     await ack();
 
     const ba = body as BlockAction;
-    const action = ba.actions?.[0];
-    const draftId =
-      action && "value" in action ? (action.value as string) : undefined;
+    const draftId = extractActionValue(ba);
     if (!draftId) return;
 
     const [draft] = await db
@@ -409,47 +357,37 @@ export function setupGmailActionHandlers(): void {
 
     if (!draftId || !to || !subject || !body) return;
 
-    try {
-      await sendNewEmail(to, subject, body);
+    const editSendResult = await sendNewEmail(to, subject, body);
 
-      await db
-        .update(gmailOutgoing)
-        .set({
-          toAddress: to,
-          subject,
-          body,
-          status: "sent",
-          sentAt: new Date(),
-        })
-        .where(eq(gmailOutgoing.id, draftId));
+    if (!editSendResult.success) {
+      console.error(
+        "[Gmail Action] Edit new email failed:",
+        editSendResult.error,
+      );
+      return;
+    }
 
-      if (channelId && messageTs) {
-        await client.chat.update({
-          channel: channelId,
-          ts: messageTs,
-          blocks: [
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `✅ *送信済み（編集あり）* — ${subject}`,
-              },
-            },
-            {
-              type: "context",
-              elements: [
-                {
-                  type: "mrkdwn",
-                  text: `To: ${to} | ${new Date().toLocaleString("ja-JP")}`,
-                },
-              ],
-            },
-          ],
-          text: `✅ 送信済み（編集あり）: ${subject}`,
-        });
-      }
-    } catch (error) {
-      console.error("[Gmail Action] Edit new email failed:", error);
+    await db
+      .update(gmailOutgoing)
+      .set({
+        toAddress: to,
+        subject,
+        body,
+        status: "sent",
+        sentAt: new Date(),
+      })
+      .where(eq(gmailOutgoing.id, draftId));
+
+    if (channelId && messageTs) {
+      await updateGmailActionBlocks(
+        client,
+        channelId,
+        messageTs,
+        "✅",
+        "送信済み（編集あり）",
+        subject,
+        { to, showTimestamp: true },
+      );
     }
   });
 
@@ -458,9 +396,7 @@ export function setupGmailActionHandlers(): void {
     await ack();
 
     const ba = body as BlockAction;
-    const action = ba.actions?.[0];
-    const draftId =
-      action && "value" in action ? (action.value as string) : undefined;
+    const draftId = extractActionValue(ba);
     if (!draftId) return;
 
     const [draft] = await db
@@ -474,23 +410,16 @@ export function setupGmailActionHandlers(): void {
       .set({ status: "cancelled" })
       .where(eq(gmailOutgoing.id, draftId));
 
-    const channelId = ba.channel?.id;
-    const messageTs = ba.message?.ts;
+    const { channelId, messageTs } = extractMessageRef(ba);
     if (channelId && messageTs) {
-      await client.chat.update({
-        channel: channelId,
-        ts: messageTs,
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `❌ *キャンセル* — ${draft?.subject || "（不明）"}`,
-            },
-          },
-        ],
-        text: `❌ キャンセル: ${draft?.subject || ""}`,
-      });
+      await updateGmailActionBlocks(
+        client,
+        channelId,
+        messageTs,
+        "❌",
+        "キャンセル",
+        draft?.subject || "（不明）",
+      );
     }
   });
 

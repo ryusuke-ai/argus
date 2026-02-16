@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatDate } from "@/lib/format";
 
 interface Session {
   id: string;
@@ -20,10 +21,11 @@ export default function SessionList({ sessions }: SessionListProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div role="list" aria-label="セッション一覧" className="space-y-3">
       {sessions.map((session) => (
         <Link
           key={session.id}
+          role="listitem"
           href={`/sessions/${session.id}`}
           className="block bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-md transition"
         >
@@ -39,8 +41,10 @@ export default function SessionList({ sessions }: SessionListProps) {
               )}
             </div>
             <div className="text-right text-sm text-slate-400 space-y-1">
-              <p>Updated: {session.updatedAt.toLocaleString()}</p>
-              <p className="text-slate-500 font-medium">{session.messageCount} messages</p>
+              <p>Updated: {formatDate(session.updatedAt)}</p>
+              <p className="text-slate-500 font-medium">
+                {session.messageCount} messages
+              </p>
             </div>
           </div>
         </Link>

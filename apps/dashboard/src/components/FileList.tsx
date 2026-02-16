@@ -28,10 +28,15 @@ export default function FileList({ entries }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div aria-label="生成ファイル一覧" className="space-y-4">
       {entries.map((entry) => (
-        <div key={entry.dir} className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-base font-semibold font-mono text-slate-800 mb-3">{entry.dir}</h2>
+        <div
+          key={entry.dir}
+          className="bg-white border border-slate-200 rounded-xl p-5"
+        >
+          <h2 className="text-base font-semibold font-mono text-slate-800 mb-3">
+            {entry.dir}
+          </h2>
           <div className="space-y-3">
             {entry.files.map((file) => (
               <div key={file.name} className="flex items-center gap-4">

@@ -1,3 +1,4 @@
+import { fireAndForget } from "@argus/agent-core";
 import type { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";
 import { db, snsPosts, type SnsPost } from "@argus/db";
@@ -14,16 +15,16 @@ import { publishToGitHub } from "./github-publisher.js";
 import { publishToInstagram } from "./instagram-publisher.js";
 import { buildPublishedBlocks } from "../ui/reporter.js";
 import { addReaction } from "../../../utils/reactions.js";
-import type {
-  XPostContent,
-  ArticleContent,
-  YouTubeMetadataContent,
-  TikTokScript,
-  InstagramContent,
-  ThreadsContent,
-  GitHubContent,
-  PodcastContent,
-} from "../types.js";
+import {
+  parseXPostContent,
+  parseArticleContent,
+  parseYouTubeContent,
+  parseTikTokContent,
+  parseInstagramContent,
+  parseThreadsContent,
+  parseGitHubContent,
+  parsePodcastContent,
+} from "../content-schemas.js";
 import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
 import { getPlatformLabel } from "../scheduling/scheduler-utils.js";
 import { normalizeMediaPath } from "../generation/artifact-extractors.js";
@@ -154,19 +155,18 @@ export async function pollScheduledPosts(client: WebClient): Promise<void> {
       if (post.slackChannel && post.slackMessageTs) {
         const platformLabel = getPlatformLabel(post.platform);
         const errorMsg = error instanceof Error ? error.message : String(error);
-        await client.chat
-          .postMessage({
+        fireAndForget(
+          client.chat.postMessage({
             channel: post.slackChannel,
             thread_ts: post.slackMessageTs,
             text: `${platformLabel} のスケジュール投稿で予期せぬエラーが発生しました: ${errorMsg}`,
-          })
-          .catch(() => {});
-        await addReaction(
-          client,
-          post.slackChannel,
-          post.slackMessageTs,
-          "x",
-        ).catch(() => {});
+          }),
+          "scheduled post error notification",
+        );
+        fireAndForget(
+          addReaction(client, post.slackChannel, post.slackMessageTs, "x"),
+          "scheduled post error reaction",
+        );
       }
     }
   }
@@ -180,9 +180,10 @@ export async function publishPost(
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   switch (post.platform) {
     case "x": {
-      const content = post.content as unknown as XPostContent & {
-        text?: string;
-      };
+      const content = parseXPostContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid X post content" };
+      }
       const text = content.text || "";
       const parts = text.split("\n---\n").map((p: string) => p.trim());
       const isThread = parts.length > 1;
@@ -200,7 +201,10 @@ export async function publishPost(
     }
 
     case "qiita": {
-      const content = post.content as unknown as ArticleContent;
+      const content = parseArticleContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid Qiita article content" };
+      }
       const result = await publishToQiita({
         title: content.title,
         body: content.body,
@@ -212,7 +216,10 @@ export async function publishPost(
     }
 
     case "zenn": {
-      const content = post.content as unknown as ArticleContent;
+      const content = parseArticleContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid Zenn article content" };
+      }
       const slug = content.title
         .toLowerCase()
         .replace(/[^\w\s]/g, "")
@@ -224,7 +231,9 @@ export async function publishPost(
         title: content.title,
         emoji: "🔧",
         type: "tech",
-        topics: (content.tags || []).slice(0, 5),
+        topics: (content.tags || [])
+          .map((t) => (typeof t === "string" ? t : t.name))
+          .slice(0, 5),
         body: content.body,
         published: true,
       });
@@ -232,21 +241,26 @@ export async function publishPost(
     }
 
     case "note": {
-      const content = post.content as unknown as ArticleContent;
+      const content = parseArticleContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid note article content" };
+      }
       const result = await publishToNote({
         title: content.title,
         body: content.body,
-        tags: content.tags || [],
+        tags: (content.tags || []).map((t) =>
+          typeof t === "string" ? t : t.name,
+        ),
         isPaid: false,
       });
       return { success: result.success, url: result.url, error: result.error };
     }
 
     case "youtube": {
-      const content = post.content as unknown as YouTubeMetadataContent & {
-        videoPath?: string;
-        thumbnailPath?: string;
-      };
+      const content = parseYouTubeContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid YouTube content" };
+      }
       const result = await uploadToYouTube({
         videoPath: normalizeMediaPath(content.videoPath || ""),
         title: content.title,
@@ -262,7 +276,10 @@ export async function publishPost(
     }
 
     case "threads": {
-      const content = post.content as unknown as ThreadsContent;
+      const content = parseThreadsContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid Threads content" };
+      }
       const result = await publishToThreads({
         text: content.text || "",
       });
@@ -270,11 +287,10 @@ export async function publishPost(
     }
 
     case "tiktok": {
-      const content = post.content as unknown as TikTokScript & {
-        videoPath?: string;
-        videoUrl?: string;
-        text?: string;
-      };
+      const content = parseTikTokContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid TikTok content" };
+      }
       const result = await publishToTikTok({
         videoPath: content.videoPath || content.videoUrl || "",
         caption: content.title || content.text || "",
@@ -283,7 +299,10 @@ export async function publishPost(
     }
 
     case "github": {
-      const content = post.content as unknown as GitHubContent;
+      const content = parseGitHubContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid GitHub content" };
+      }
       const result = await publishToGitHub({
         name: content.name,
         description: content.description,
@@ -295,10 +314,10 @@ export async function publishPost(
     }
 
     case "instagram": {
-      const content = post.content as unknown as InstagramContent & {
-        imageUrl?: string;
-        videoUrl?: string;
-      };
+      const content = parseInstagramContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid Instagram content" };
+      }
       const igResult = await publishToInstagram({
         imageUrl: content.imageUrl,
         videoUrl: content.videoUrl,
@@ -313,7 +332,10 @@ export async function publishPost(
     }
 
     case "podcast": {
-      const content = post.content as unknown as PodcastContent;
+      const content = parsePodcastContent(post.content);
+      if (!content) {
+        return { success: false, error: "Invalid Podcast content" };
+      }
       const result = await publishPodcast({
         title: content.title || "",
         description: content.description || "",

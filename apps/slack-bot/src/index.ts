@@ -1,6 +1,4 @@
-
-
-
+import { env } from "./env.js";
 import { app } from "./app.js";
 import { setupMessageHandler } from "./handlers/message.js";
 import { setupGmailActionHandlers } from "./handlers/gmail-actions.js";
@@ -8,9 +6,9 @@ import { setupDailyPlanActions } from "./handlers/daily-plan-actions.js";
 import { setupInboxHandler } from "./handlers/inbox/index.js";
 import { setupDailyPlanHandler } from "./handlers/daily-plan.js";
 import { setupSnsHandler } from "./handlers/sns/index.js";
-import { createServer } from "http";
+import { createServer } from "node:http";
 
-const PORT = process.env.PORT || 3939;
+const PORT = env.PORT;
 
 // Setup handlers (channel-specific BEFORE generic message handler to intercept their channels)
 setupSnsHandler();
@@ -37,7 +35,9 @@ const server = createServer((req, res) => {
 
 server.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {
-    console.log(`[Health] Port ${PORT} in use, skipping health check server (Socket Mode still active)`);
+    console.log(
+      `[Health] Port ${PORT} in use, skipping health check server (Socket Mode still active)`,
+    );
   } else {
     console.error("[Health] Server error:", err);
   }

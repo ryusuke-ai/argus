@@ -140,10 +140,19 @@ export async function checkGmail(): Promise<void> {
   }
 
   // 2. トークンリフレッシュ
-  await refreshTokenIfNeeded();
+  const refreshResult = await refreshTokenIfNeeded();
+  if (!refreshResult.success) {
+    console.error("[Gmail Checker] Token refresh failed:", refreshResult.error);
+    return;
+  }
 
   // 3. 未読メール取得
-  const messages = await fetchUnreadMessages();
+  const fetchResult = await fetchUnreadMessages();
+  if (!fetchResult.success) {
+    console.error("[Gmail Checker] Fetch failed:", fetchResult.error);
+    return;
+  }
+  const messages = fetchResult.data;
   if (messages.length === 0) return;
 
   console.log(`[Gmail Checker] Found ${messages.length} unread messages`);

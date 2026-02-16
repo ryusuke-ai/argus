@@ -1,5 +1,6 @@
 // apps/slack-bot/src/handlers/inbox/classifier.ts
 import Anthropic from "@anthropic-ai/sdk";
+import { summarizeJa } from "@argus/agent-core";
 import {
   CLASSIFIER_SYSTEM_PROMPT,
   buildClassifierUserPrompt,
@@ -66,7 +67,7 @@ export async function classifyMessage(
     console.log(
       `[inbox/classifier] GUARD: summary too long (${result.summary.length} chars: "${result.summary}"), truncating`,
     );
-    result.summary = summarizeText(messageText);
+    result.summary = summarizeJa(messageText);
   }
 
   console.log(
@@ -101,7 +102,7 @@ export function parseClassificationResult(
         console.log(
           `[inbox/classifier] AI summary too long (${summary.length} chars), using summarizeText fallback`,
         );
-        summary = summarizeText(originalText);
+        summary = summarizeJa(originalText);
       }
       return {
         intent: parsed.intent,
@@ -120,165 +121,6 @@ export function parseClassificationResult(
     "[inbox/classifier] Failed to parse classification, using keyword fallback",
   );
   return keywordClassification(originalText || "");
-}
-
-// --- テキスト要約（キーワード分類用） ---
-
-/**
- * フィラー・丁寧語・依頼表現を除去して名詞句の要約を生成する。
- * 「私の目標を教えてください。」→「目標の確認」
- */
-export function summarizeText(text: string): string {
-  let s = text.trim();
-  // 改行をスペースに正規化（正規表現の .* が改行をまたげないため）
-  s = s.replace(/\n/g, " ");
-  // Slack のリンク記法を除去（<mailto:foo@bar.com|foo@bar.com> → 空、<http://...|label> → label）
-  // メールアドレスは要約には不要なので完全に除去
-  s = s.replace(/<mailto:[^>]+>\s*/g, "");
-  s = s.replace(/[\w.-]+@[\w.-]+\s*/g, "");
-  s = s.replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, "$2");
-  s = s.replace(/<(https?:\/\/[^>]+)>/g, "");
-  // メタデータ（件名は「...」、本文は「...」等）を除去
-  s = s.replace(/[。、]\s*件名[はが]?[「『].*$/g, "");
-  s = s.replace(/[。、]\s*本文[はが]?[「『].*$/g, "");
-  // 末尾の句読点・記号を除去
-  s = s.replace(/[。、.!！？?\s]+$/g, "");
-  // 先頭の助詞を除去（メールアドレス除去後に残る「に」「を」等）
-  s = s.replace(/^[にをはがで]\s*/g, "");
-  // フィラー・接続詞を除去
-  s = s.replace(
-    /^(そしたら|それでは|では|じゃあ|あと|ちなみに|ところで)\s*/g,
-    "",
-  );
-  // 冒頭の主語（私の、自分の等）を除去
-  s = s.replace(/^(私の|自分の|僕の|俺の|うちの|わたしの)\s*/g, "");
-
-  // 末尾の依頼・質問表現を除去し、アクション種別を検出
-  let action = "";
-  const actionPatterns: Array<{ pattern: RegExp; suffix: string }> = [
-    // 「〜を教えてください」→ 「〜の確認」
-    {
-      pattern: /を?(?:教えて|おしえて)(?:ください|下さい|くれ|もらえますか?)?$/,
-      suffix: "の確認",
-    },
-    // 「〜を調べてください」→ 「〜の調査」
-    {
-      pattern:
-        /を?(?:調べて|しらべて|調査して|リサーチして)(?:ください|下さい|くれ)?$/,
-      suffix: "の調査",
-    },
-    // 「〜を作ってください」→ 「〜の作成」
-    {
-      pattern:
-        /を?(?:作って|作成して|生成して|書いて)(?:ください|下さい|くれ|ほしい)?$/,
-      suffix: "の作成",
-    },
-    // 「〜を修正してください」→ 「〜の修正」
-    {
-      pattern:
-        /を?(?:修正して|直して|変更して|改善して|更新して)(?:ください|下さい|くれ)?$/,
-      suffix: "の修正",
-    },
-    // 「〜を追加してください」→ 「〜の追加」
-    {
-      pattern: /を?(?:追加して|実装して|入れて)(?:ください|下さい|くれ)?$/,
-      suffix: "の追加",
-    },
-    // 「〜をまとめてください」→ 「〜の整理」
-    {
-      pattern: /を?(?:まとめて|整理して)(?:ください|下さい|くれ)?$/,
-      suffix: "の整理",
-    },
-    // 「〜を見せてください」→ 「〜の確認」
-    {
-      pattern:
-        /を?(?:見せて|みせて|見て|確認して|チェックして)(?:ください|下さい|くれ)?$/,
-      suffix: "の確認",
-    },
-    // 「〜を削除してください」→ 「〜の削除」
-    {
-      pattern: /を?(?:削除して|消して|除去して)(?:ください|下さい|くれ)?$/,
-      suffix: "の削除",
-    },
-    // 「〜を送ってください」→ 「〜の送信」
-    {
-      pattern: /を?(?:送って|送信して)(?:ください|下さい|くれ)?$/,
-      suffix: "の送信",
-    },
-    // 「〜をリマインドして」→ 「〜のリマインド」
-    {
-      pattern: /を?(?:リマインドして|リマインダー.*)(?:ください|下さい|くれ)?$/,
-      suffix: "のリマインド",
-    },
-    // 「〜に追加して」→ 「〜への登録」
-    {
-      pattern: /に(?:追加して|登録して|入れて)(?:ください|下さい|くれ)?$/,
-      suffix: "への登録",
-    },
-    // 汎用: 「〜してください」「〜してほしい」「〜して」
-    {
-      pattern:
-        /(?:してほしいです|してほしい|してもらえますか?|してもらえる?|してください|して下さい|してくれ|しておいて|お願いします|お願い|して)$/,
-      suffix: "",
-    },
-  ];
-
-  for (const { pattern, suffix } of actionPatterns) {
-    if (pattern.test(s)) {
-      s = s.replace(pattern, "");
-      action = suffix;
-      break;
-    }
-  }
-
-  // 「〜について」「〜に関して」を除去
-  const beforeAbout = s;
-  s = s.replace(/(について|に関して)$/g, "");
-  // 「〜について」除去後に残った末尾の助詞を除去（「こんにちは」の「は」誤除去を防ぐ）
-  if (s !== beforeAbout) {
-    s = s.replace(/(を|は|が|に|で|の)$/g, "");
-  }
-  // 「〜する」形の連体修飾を短縮（「注目する技術」→「注目技術」）
-  s = s.replace(/する([^\s])/g, "$1");
-  // 「〜って何」「〜とは」→ 確認
-  if (/って何|とは$/.test(s)) {
-    s = s.replace(/(って何|とは)$/g, "");
-    action = action || "の確認";
-  }
-
-  // アクション種別を付与
-  if (action && !s.endsWith(action)) {
-    s = s + action;
-  }
-
-  // 長すぎる場合は意味のある区切りで切り詰め（30文字以内）
-  let wasTruncated = false;
-  if (s.length > 30) {
-    s = truncateAtBoundary(s, 30);
-    wasTruncated = true;
-  }
-  // 末尾の助詞を除去して体言止めにする（アクション検出時または切り詰め時のみ）
-  // 無条件で除去すると「こんにちは」→「こんにち」のように意味が壊れる
-  if (action || wasTruncated) {
-    s = s.replace(/(を|は|が|に|で|の|と|も|へ|から|まで|より)$/g, "");
-  }
-  return s || truncateAtBoundary(text, 30);
-}
-
-/**
- * 意味のある区切り位置で切り詰める。
- * 助詞（を, は, が, に, で, の, と）の直前で切って体言止めにする。
- */
-function truncateAtBoundary(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const sliced = text.slice(0, max);
-  // 末尾付近の助詞を探して、その前で切る（自然な区切り）
-  const particles = /[をはがにでのとも][^をはがにでのとも]*$/;
-  const match = sliced.match(particles);
-  if (match && match.index !== undefined && match.index >= max * 0.5) {
-    return sliced.slice(0, match.index);
-  }
-  return sliced;
 }
 
 // --- スコアリングベースのキーワード分類 ---
@@ -443,7 +285,7 @@ export function keywordClassification(
     return {
       intent: "other",
       autonomyLevel: 2,
-      summary: summarizeText(text),
+      summary: summarizeJa(text),
       executionPrompt: text,
       reasoning: "キーワード分類: マッチなし（自動実行）",
     };
@@ -457,7 +299,7 @@ export function keywordClassification(
   return {
     intent: topIntent,
     autonomyLevel: 2,
-    summary: summarizeText(text),
+    summary: summarizeJa(text),
     executionPrompt: text,
     reasoning: `キーワード分類: ${topIntent}（${topScore}点）`,
     ...(clarifyQuestion ? { clarifyQuestion } : {}),

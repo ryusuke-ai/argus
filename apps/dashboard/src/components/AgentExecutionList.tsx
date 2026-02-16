@@ -1,6 +1,7 @@
 "use client";
 
 import type { AgentExecution } from "@argus/db/schema";
+import { formatDate } from "@/lib/format";
 
 interface Props {
   executions: AgentExecution[];
@@ -31,7 +32,7 @@ export default function AgentExecutionList({ executions }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <div aria-label="エージェント実行一覧" className="space-y-3">
       {executions.map((execution) => {
         const cost = extractCost(execution.output);
         return (
@@ -63,12 +64,9 @@ export default function AgentExecutionList({ executions }: Props) {
               </div>
             </div>
             <div className="text-sm text-slate-500 space-y-1">
-              <p>Started: {new Date(execution.startedAt).toLocaleString()}</p>
+              <p>Started: {formatDate(execution.startedAt)}</p>
               {execution.completedAt && (
-                <p>
-                  Completed:{" "}
-                  {new Date(execution.completedAt).toLocaleString()}
-                </p>
+                <p>Completed: {formatDate(execution.completedAt)}</p>
               )}
               {execution.durationMs && (
                 <p>Duration: {execution.durationMs}ms</p>

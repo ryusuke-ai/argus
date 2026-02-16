@@ -3,14 +3,15 @@ import type { KnownBlock } from "@slack/types";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { addReaction, swapReaction } from "../../../utils/reactions.js";
-import type {
-  YouTubeMetadataContent,
-  TikTokScript,
-  ArticleContent,
-  ThreadsContent,
-  GitHubContent,
-  InstagramContent,
-} from "../types.js";
+import {
+  parseYouTubeContent,
+  parseArticleContent,
+  parseThreadsContent,
+  parseTikTokContent,
+  parseGitHubContent,
+  parseInstagramContent,
+  parseXPostContent,
+} from "../content-schemas.js";
 import { publishToX, publishThread } from "./x-publisher.js";
 import { uploadToYouTube } from "./youtube-publisher.js";
 import { publishToQiita } from "./qiita-publisher.js";
@@ -34,7 +35,6 @@ import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
 import { normalizeMediaPath } from "../generation/artifact-extractors.js";
 
 export async function handleSnsPublish(
-  postId: number,
   ack: () => Promise<void>,
   client: WebClient,
   body: {
@@ -71,10 +71,11 @@ export async function handleSnsPublish(
 
   try {
     if (post.platform === "youtube") {
-      const content = post.content as unknown as YouTubeMetadataContent & {
-        videoPath?: string;
-        thumbnailPath?: string;
-      };
+      const content = parseYouTubeContent(post.content);
+      if (!content) {
+        console.error("[sns] Invalid YouTube content for post:", post.id);
+        return;
+      }
 
       // プレパブリッシュバリデーション
       const ytValidation = validateYouTubeMeta(
@@ -160,7 +161,11 @@ export async function handleSnsPublish(
       post.platform === "zenn" ||
       post.platform === "note"
     ) {
-      const content = post.content as unknown as ArticleContent;
+      const content = parseArticleContent(post.content);
+      if (!content) {
+        console.error("[sns] Invalid article content for post:", post.id);
+        return;
+      }
       const channelId = body.channel?.id;
       const messageTs = body.message?.ts;
 
@@ -196,7 +201,9 @@ export async function handleSnsPublish(
           title: content.title,
           emoji: "🔧",
           type: "tech",
-          topics: content.tags.slice(0, 5),
+          topics: content.tags
+            .map((t) => (typeof t === "string" ? t : t.name))
+            .slice(0, 5),
           body: content.body,
           published: true,
         });
@@ -209,7 +216,7 @@ export async function handleSnsPublish(
         const noteResult = await publishToNote({
           title: content.title,
           body: content.body,
-          tags: content.tags,
+          tags: content.tags.map((t) => (typeof t === "string" ? t : t.name)),
           isPaid: false,
         });
         result = {
@@ -275,7 +282,11 @@ export async function handleSnsPublish(
         await swapReaction(client, channelId, messageTs, "eyes", "rocket");
       }
     } else if (post.platform === "threads") {
-      const content = post.content as unknown as ThreadsContent;
+      const content = parseThreadsContent(post.content);
+      if (!content) {
+        console.error("[sns] Invalid Threads content for post:", post.id);
+        return;
+      }
 
       // プレパブリッシュバリデーション
       const threadsValidation = validateThreadsPost(content.text || "");
@@ -344,11 +355,11 @@ export async function handleSnsPublish(
         );
       }
     } else if (post.platform === "tiktok") {
-      const content = post.content as unknown as TikTokScript & {
-        videoUrl?: string;
-        videoPath?: string;
-        text?: string;
-      };
+      const content = parseTikTokContent(post.content);
+      if (!content) {
+        console.error("[sns] Invalid TikTok content for post:", post.id);
+        return;
+      }
 
       // プレパブリッシュバリデーション
       const tiktokValidation = validateTikTokMeta(
@@ -432,7 +443,11 @@ export async function handleSnsPublish(
         );
       }
     } else if (post.platform === "github") {
-      const content = post.content as unknown as GitHubContent;
+      const content = parseGitHubContent(post.content);
+      if (!content) {
+        console.error("[sns] Invalid GitHub content for post:", post.id);
+        return;
+      }
 
       // プレパブリッシュバリデーション
       const ghValidation = validateGitHubRepo(
@@ -511,10 +526,11 @@ export async function handleSnsPublish(
         );
       }
     } else if (post.platform === "instagram") {
-      const content = post.content as unknown as InstagramContent & {
-        imageUrl?: string;
-        videoUrl?: string;
-      };
+      const content = parseInstagramContent(post.content);
+      if (!content) {
+        console.error("[sns] Invalid Instagram content for post:", post.id);
+        return;
+      }
 
       // プレパブリッシュバリデーション
       const igValidation = validateInstagramPost(
@@ -593,11 +609,12 @@ export async function handleSnsPublish(
         );
       }
     } else {
-      const content = post.content as unknown as {
-        text: string;
-        category?: string;
-      };
-      const text = content.text;
+      const content = parseXPostContent(post.content);
+      if (!content) {
+        console.error("[sns] Invalid X post content for post:", post.id);
+        return;
+      }
+      const text = content.text || "";
       const parts = text.split("\n---\n").map((p: string) => p.trim());
       const isThread = parts.length > 1;
 
