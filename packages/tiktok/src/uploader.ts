@@ -49,6 +49,14 @@ interface VideoInitByUrlApiResponse {
   error: { code: string; message: string };
 }
 
+interface VideoInitByFileApiResponse {
+  data?: {
+    publish_id: string;
+    upload_url: string;
+  };
+  error: { code: string; message: string };
+}
+
 /**
  * Query creator info to get available privacy level options
  */
@@ -144,10 +152,14 @@ async function pollPublishStatus(params: {
       }
 
       const status = data.data?.status;
+      console.error(`[TikTok] Poll attempt ${attempt + 1}: status=${status}`);
 
-      if (status === "PUBLISH_COMPLETE") {
+      if (status === "PUBLISH_COMPLETE" || status === "SENDING_TO_USER_INBOX") {
         return {
-          status: "publish_complete",
+          status:
+            status === "PUBLISH_COMPLETE"
+              ? "publish_complete"
+              : "sending_to_user_inbox",
           publishId: params.publishId,
           failReason: data.data?.fail_reason || undefined,
           publicPostId: data.data?.publicaly_available_post_id || undefined,
@@ -167,7 +179,7 @@ async function pollPublishStatus(params: {
         };
       }
 
-      // PROCESSING_UPLOAD, PROCESSING_DOWNLOAD, SENDING_TO_USER_INBOX
+      // PROCESSING_UPLOAD, PROCESSING_DOWNLOAD
       // Continue polling...
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -364,27 +376,40 @@ export async function directPostVideo(
 
   const { accessToken } = authResult.tokens;
 
-  // 3. POST to Direct Post endpoint
+  // 3. Download video from URL
   try {
+    console.error("[TikTok] Downloading video from:", input.videoUrl);
+    const videoResponse = await fetch(input.videoUrl);
+    if (!videoResponse.ok) {
+      return {
+        success: false,
+        error: `Failed to download video: HTTP ${videoResponse.status}`,
+      };
+    }
+    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+    const videoSize = videoBuffer.length;
+    console.error("[TikTok] Video size:", videoSize, "bytes");
+
+    // 4. Init upload with FILE_UPLOAD source
+    const CHUNK_SIZE = 64 * 1024 * 1024; // 64MB max chunk
+    const totalChunkCount = Math.ceil(videoSize / CHUNK_SIZE);
+
     const body = {
       post_info: {
         title: input.title || "",
         privacy_level: input.privacyLevel,
-        disable_comment: input.disableComment ?? false,
-        disable_duet: input.disableDuet ?? false,
-        disable_stitch: input.disableStitch ?? false,
-        brand_content_toggle: input.brandContentToggle ?? false,
-        brand_organic_toggle: input.brandOrganicToggle ?? false,
-        is_aigc: input.isAigc ?? false,
       },
       source_info: {
-        source: "PULL_FROM_URL",
-        video_url: input.videoUrl,
+        source: "FILE_UPLOAD",
+        video_size: videoSize,
+        chunk_size: Math.min(videoSize, CHUNK_SIZE),
+        total_chunk_count: totalChunkCount,
       },
     };
 
+    // Use inbox endpoint for unaudited (sandbox) apps
     const response = await fetch(
-      `${TIKTOK_API_BASE}/v2/post/publish/video/init/`,
+      `${TIKTOK_API_BASE}/v2/post/publish/inbox/video/init/`,
       {
         method: "POST",
         headers: {
@@ -395,32 +420,47 @@ export async function directPostVideo(
       },
     );
 
-    const data = (await response.json()) as VideoInitByUrlApiResponse;
+    const data = (await response.json()) as VideoInitByFileApiResponse;
 
     if (data.error.code !== "ok" || !data.data) {
       return {
         success: false,
-        error: data.error.message || `Direct post error: ${data.error.code}`,
+        error:
+          data.error.message || `Direct post init error: ${data.error.code}`,
       };
     }
 
     const publishId = data.data.publish_id;
+    const uploadUrl = data.data.upload_url;
+    console.error("[TikTok] Upload URL obtained, publishId:", publishId);
 
-    // 4. Poll publish status
-    const statusResult = await pollPublishStatus({
-      accessToken,
-      publishId,
+    // 5. Upload video binary to TikTok
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "video/mp4",
+        "Content-Length": String(videoSize),
+        "Content-Range": `bytes 0-${videoSize - 1}/${videoSize}`,
+      },
+      body: videoBuffer,
     });
 
-    if (statusResult.status === "failed") {
+    if (!uploadResponse.ok) {
+      const uploadError = await uploadResponse.text();
+      console.error(
+        "[TikTok] Upload failed:",
+        uploadResponse.status,
+        uploadError,
+      );
       return {
         success: false,
-        publishId,
-        privacyLevel: input.privacyLevel,
-        error: statusResult.error || "Publishing failed",
+        error: `Video upload failed: HTTP ${uploadResponse.status}`,
       };
     }
+    console.error("[TikTok] Video uploaded successfully");
 
+    // For inbox endpoint, upload success = done.
+    // TikTok processes the video asynchronously and sends it to the creator's inbox.
     return {
       success: true,
       publishId,
