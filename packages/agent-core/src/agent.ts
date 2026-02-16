@@ -94,12 +94,26 @@ const CLAUDE_CLI_PATHS = [
 
 /**
  * Max Plan（Claude Code CLI 認証）が利用可能かチェック。
- * macOS で `claude` CLI がインストール済み = Max Plan 利用可能と判定。
- * Linux（サーバー環境）では常に false → API キーを使用。
+ * `claude` CLI がインストール済みで、以下のいずれかの認証情報が存在する場合に true:
+ * - CLAUDE_CODE_OAUTH_TOKEN 環境変数が設定されている
+ * - ~/.claude/.credentials.json ファイルが存在する
+ * - macOS（Keychain 認証を想定）
  */
 export function isMaxPlanAvailable(): boolean {
-  if (process.platform !== "darwin") return false;
-  return CLAUDE_CLI_PATHS.some((p) => existsSync(p));
+  const cliExists = CLAUDE_CLI_PATHS.some((p) => existsSync(p));
+  if (!cliExists) return false;
+
+  // OAuth トークンが環境変数で提供されている（Docker/Railway 等）
+  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) return true;
+
+  // credentials ファイルが存在する（docker-entrypoint.sh 等で書き込み済み）
+  const credentialsPath = join(homedir(), ".claude", ".credentials.json");
+  if (existsSync(credentialsPath)) return true;
+
+  // macOS なら Keychain 認証を想定
+  if (process.platform === "darwin") return true;
+
+  return false;
 }
 
 /**
