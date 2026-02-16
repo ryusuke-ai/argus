@@ -69,6 +69,11 @@ export const taskStatusEnum = pgEnum("task_status", [
 
 export const todoStatusEnum = pgEnum("todo_status", ["pending", "completed"]);
 
+export const knowledgeStatusEnum = pgEnum("knowledge_status", [
+  "active",
+  "archived",
+]);
+
 // sessions テーブル
 export const sessions = pgTable(
   "sessions",
@@ -138,6 +143,7 @@ export const knowledges = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
     content: text("content").notNull(),
+    status: knowledgeStatusEnum().notNull().default("active"),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -207,7 +213,7 @@ export const lessons = pgTable(
 // gmail_tokens テーブル
 export const gmailTokens = pgTable("gmail_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
-  email: varchar("email", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
   accessToken: text("access_token").notNull(),
   refreshToken: text("refresh_token").notNull(),
   tokenExpiry: timestamp("token_expiry", { withTimezone: true }).notNull(),
