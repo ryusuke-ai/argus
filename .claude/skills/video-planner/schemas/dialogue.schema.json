@@ -35,7 +35,14 @@
           },
           "emotion": {
             "type": "string",
-            "enum": ["default", "angry", "doubt", "love", "thinking", "surprised"],
+            "enum": [
+              "default",
+              "angry",
+              "doubt",
+              "love",
+              "thinking",
+              "surprised"
+            ],
             "description": "感情・表情（tsukuyomiのみ）"
           }
         }

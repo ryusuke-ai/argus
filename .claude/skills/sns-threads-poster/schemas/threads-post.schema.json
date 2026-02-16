@@ -23,7 +23,16 @@
       "type": "object",
       "required": ["category"],
       "properties": {
-        "category": { "enum": ["tips", "news", "experience", "discussion", "behind_the_scenes", "hot_take"] },
+        "category": {
+          "enum": [
+            "tips",
+            "news",
+            "experience",
+            "discussion",
+            "behind_the_scenes",
+            "hot_take"
+          ]
+        },
         "scheduledHour": { "type": "integer", "minimum": 0, "maximum": 23 }
       }
     }

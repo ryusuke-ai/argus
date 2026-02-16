@@ -35,10 +35,7 @@ const SCRIPT_JSON = JSON.stringify({
       id: "intro",
       title: "はじめに",
       purpose: "視聴者の興味を引き、動画の概要を伝える",
-      keyPoints: [
-        "MCPサーバーとは何か",
-        "この動画で作るものの完成形を見せる",
-      ],
+      keyPoints: ["MCPサーバーとは何か", "この動画で作るものの完成形を見せる"],
       visualIdeas: [
         "タイトルカードをアニメーション表示",
         "完成したMCPサーバーのデモ画面",

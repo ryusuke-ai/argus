@@ -14,7 +14,14 @@
     },
     "category": {
       "type": "string",
-      "enum": ["tips", "news", "experience", "discussion", "behind_the_scenes", "hot_take"]
+      "enum": [
+        "tips",
+        "news",
+        "experience",
+        "discussion",
+        "behind_the_scenes",
+        "hot_take"
+      ]
     },
     "angle": {
       "type": "string",

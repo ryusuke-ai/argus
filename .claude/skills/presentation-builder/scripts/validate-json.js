@@ -17,7 +17,11 @@
 import { parseArgs } from "node:util";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { validateJson, printValidationErrors, schemaMap } from "../schemas/zod-schemas.js";
+import {
+  validateJson,
+  printValidationErrors,
+  schemaMap,
+} from "../schemas/zod-schemas.js";
 
 const { values } = parseArgs({
   options: {
@@ -29,7 +33,9 @@ const { values } = parseArgs({
 });
 
 if (!values.schema || !values.file) {
-  console.error("使用方法: node validate-json.js --schema <schema-name> --file <json-file>");
+  console.error(
+    "使用方法: node validate-json.js --schema <schema-name> --file <json-file>",
+  );
   console.error("");
   console.error("スキーマ名:");
   console.error("  - structure      : Phase 1 プレゼン構成");
@@ -74,7 +80,9 @@ if (result.success) {
   }
   // ビジュアル比率の警告を表示（成功していても警告は出す）
   if (result.warnings && result.warnings.length > 0) {
-    console.warn(`\n📊 ビジュアル比率チェック (${result.warnings.length}件の警告)`);
+    console.warn(
+      `\n📊 ビジュアル比率チェック (${result.warnings.length}件の警告)`,
+    );
     console.warn("─".repeat(50));
     for (const warning of result.warnings) {
       console.warn(`  ${warning}`);

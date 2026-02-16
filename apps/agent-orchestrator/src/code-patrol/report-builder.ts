@@ -228,7 +228,7 @@ export function buildReportBlocks(
             : f.category === "structure"
               ? "構造"
               : "ベストプラクティス";
-        return `• _${catLabel}_ ${f.title}\n　　${f.suggestion}`;
+        return `• _${catLabel}_ ${f.title}\n\u3000\u3000${f.suggestion}`;
       });
       blocks.push({
         type: "section",

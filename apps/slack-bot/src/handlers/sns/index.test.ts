@@ -134,7 +134,7 @@ describe("setupSnsHandler", () => {
 });
 
 describe("message handler", () => {
-  let messageHandler: Function;
+  let messageHandler: (...args: unknown[]) => unknown;
 
   beforeEach(async () => {
     vi.clearAllMocks();

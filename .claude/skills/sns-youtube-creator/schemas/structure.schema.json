@@ -18,7 +18,10 @@
         "required": ["title", "hookType", "rationale"],
         "properties": {
           "title": { "type": "string" },
-          "hookType": { "type": "string", "enum": ["number", "result", "question", "breaking"] },
+          "hookType": {
+            "type": "string",
+            "enum": ["number", "result", "question", "breaking"]
+          },
           "rationale": { "type": "string" }
         }
       }

@@ -2,7 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Podcast Episode",
   "type": "object",
-  "required": ["type", "title", "description", "showNotes", "script", "metadata"],
+  "required": [
+    "type",
+    "title",
+    "description",
+    "showNotes",
+    "script",
+    "metadata"
+  ],
   "properties": {
     "type": { "const": "podcast_episode" },
     "title": { "type": "string", "maxLength": 100 },
@@ -35,7 +42,13 @@
           "maxItems": 5,
           "items": {
             "type": "object",
-            "required": ["title", "startTime", "duration", "content", "keyPoints"],
+            "required": [
+              "title",
+              "startTime",
+              "duration",
+              "content",
+              "keyPoints"
+            ],
             "properties": {
               "title": { "type": "string" },
               "startTime": { "type": "string" },
@@ -71,14 +84,37 @@
       "type": "object",
       "required": ["category", "estimatedDuration"],
       "properties": {
-        "category": { "enum": ["deep_dive", "tutorial", "weekly_roundup", "experience", "tool_review", "behind_the_scenes"] },
-        "estimatedDuration": { "type": "integer", "minimum": 15, "maximum": 30 },
+        "category": {
+          "enum": [
+            "deep_dive",
+            "tutorial",
+            "weekly_roundup",
+            "experience",
+            "tool_review",
+            "behind_the_scenes"
+          ]
+        },
+        "estimatedDuration": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 30
+        },
         "tags": {
           "type": "array",
           "items": { "type": "string" },
           "maxItems": 10
         },
-        "scheduledDay": { "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
+        "scheduledDay": {
+          "enum": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday"
+          ]
+        },
         "scheduledHour": { "type": "integer", "minimum": 0, "maximum": 23 }
       }
     }

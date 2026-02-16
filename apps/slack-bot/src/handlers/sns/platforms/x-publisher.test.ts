@@ -5,7 +5,9 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 describe("XPublisher", () => {
-  let publish: (text: string) => Promise<{ success: boolean; tweetId?: string; error?: string }>;
+  let publish: (
+    text: string,
+  ) => Promise<{ success: boolean; tweetId?: string; error?: string }>;
 
   beforeEach(async () => {
     vi.clearAllMocks();

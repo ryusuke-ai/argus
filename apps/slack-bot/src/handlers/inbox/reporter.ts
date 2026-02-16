@@ -75,9 +75,12 @@ export function buildResultBlocks(
 /**
  * 成果物アップロード時の簡潔なサマリー（テキストなし、メタ情報のみ）
  */
-export function buildArtifactSummaryBlocks(
-  meta: { toolCount: number; costUsd: number; durationSec: string; artifactCount: number },
-): Block[] {
+export function buildArtifactSummaryBlocks(meta: {
+  toolCount: number;
+  costUsd: number;
+  durationSec: string;
+  artifactCount: number;
+}): Block[] {
   return [
     {
       type: "context",
@@ -90,4 +93,3 @@ export function buildArtifactSummaryBlocks(
     },
   ];
 }
-

@@ -27,9 +27,7 @@ node .claude/skills/tts/scripts/batch-tts.js --input dialogue.json --concat
 
 ```json
 {
-  "segments": [
-    { "speaker": "tsukuyomi", "text": "こんにちは", "speed": 1.0 }
-  ],
+  "segments": [{ "speaker": "tsukuyomi", "text": "こんにちは", "speed": 1.0 }],
   "outputDir": "./output"
 }
 ```

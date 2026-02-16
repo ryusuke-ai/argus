@@ -22,7 +22,9 @@ describe("formatLessonsForPrompt", () => {
     expect(result).toContain("# Past Lessons");
     expect(result).toContain("1. [HIGH] Bash");
     expect(result).toContain("Error: Command failed with exit code 1");
-    expect(result).toContain("Reflection: npm test failed due to missing dependency");
+    expect(result).toContain(
+      "Reflection: npm test failed due to missing dependency",
+    );
     expect(result).toContain("Resolution: Run npm install before npm test");
   });
 

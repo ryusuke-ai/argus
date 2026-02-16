@@ -6,22 +6,22 @@
  * 2. .claude/skills/video-explainer/assets/ (同梱デフォルト)
  */
 
-import { existsSync, readFileSync } from 'fs';
-import { resolve, join } from 'path';
-import { homedir } from 'os';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { existsSync, readFileSync } from "fs";
+import { resolve, join } from "path";
+import { homedir } from "os";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // パス定義
-const GLOBAL_CONFIG_DIR = join(homedir(), '.argus', 'video-explainer');
-const GLOBAL_CONFIG_PATH = join(GLOBAL_CONFIG_DIR, 'config.json');
-const GLOBAL_ASSETS_DIR = join(GLOBAL_CONFIG_DIR, 'assets');
+const GLOBAL_CONFIG_DIR = join(homedir(), ".argus", "video-explainer");
+const GLOBAL_CONFIG_PATH = join(GLOBAL_CONFIG_DIR, "config.json");
+const GLOBAL_ASSETS_DIR = join(GLOBAL_CONFIG_DIR, "assets");
 
-const DEFAULT_ASSETS_DIR = resolve(__dirname, '../assets');
-const DEFAULT_CONFIG_DIR = resolve(__dirname, '../config');
+const DEFAULT_ASSETS_DIR = resolve(__dirname, "../assets");
+const DEFAULT_CONFIG_DIR = resolve(__dirname, "../config");
 
 /**
  * Global config を読み込む
@@ -30,7 +30,7 @@ const DEFAULT_CONFIG_DIR = resolve(__dirname, '../config');
 export function loadGlobalConfig() {
   if (existsSync(GLOBAL_CONFIG_PATH)) {
     try {
-      return JSON.parse(readFileSync(GLOBAL_CONFIG_PATH, 'utf-8'));
+      return JSON.parse(readFileSync(GLOBAL_CONFIG_PATH, "utf-8"));
     } catch (err) {
       console.warn(`Warning: Failed to parse global config: ${err.message}`);
     }
@@ -97,11 +97,11 @@ export function resolveAssetWithExtensions(category, baseName, extensions) {
  */
 export function loadCharactersConfig() {
   // デフォルト設定を読み込み
-  const defaultConfigPath = join(DEFAULT_CONFIG_DIR, 'characters.json');
+  const defaultConfigPath = join(DEFAULT_CONFIG_DIR, "characters.json");
   let config = {};
 
   if (existsSync(defaultConfigPath)) {
-    config = JSON.parse(readFileSync(defaultConfigPath, 'utf-8'));
+    config = JSON.parse(readFileSync(defaultConfigPath, "utf-8"));
   }
 
   // Global設定があればマージ
@@ -129,9 +129,9 @@ export function loadCharactersConfig() {
  * @param {string} expression - 表情 (default, angry, etc.)
  * @returns {string|null} 画像パス
  */
-export function resolveCharacterImage(charName, expression = 'default') {
+export function resolveCharacterImage(charName, expression = "default") {
   const filename = `${charName}-${expression}.png`;
-  return resolveAsset('chara', join(charName, filename));
+  return resolveAsset("chara", join(charName, filename));
 }
 
 /**
@@ -141,11 +141,16 @@ export function resolveCharacterImage(charName, expression = 'default') {
  */
 export function resolveBackground(name) {
   // 拡張子付きならそのまま
-  if (name.includes('.')) {
-    return resolveAsset('backgrounds', name);
+  if (name.includes(".")) {
+    return resolveAsset("backgrounds", name);
   }
   // mp4 → webp の順で探す
-  return resolveAssetWithExtensions('backgrounds', name, ['.mp4', '.webp', '.jpg', '.png']);
+  return resolveAssetWithExtensions("backgrounds", name, [
+    ".mp4",
+    ".webp",
+    ".jpg",
+    ".png",
+  ]);
 }
 
 /**
@@ -154,10 +159,10 @@ export function resolveBackground(name) {
  * @returns {string|null} BGMファイルパス
  */
 export function resolveBgm(name) {
-  if (name.includes('.')) {
-    return resolveAsset('bgm', name);
+  if (name.includes(".")) {
+    return resolveAsset("bgm", name);
   }
-  return resolveAssetWithExtensions('bgm', name, ['.mp3', '.wav']);
+  return resolveAssetWithExtensions("bgm", name, [".mp3", ".wav"]);
 }
 
 /**
@@ -167,10 +172,10 @@ export function resolveBgm(name) {
  */
 export function resolveAccent(name) {
   // transition-* はtransitionディレクトリから
-  if (name.startsWith('transition-')) {
-    return resolveAssetWithExtensions('transition', name, ['.mp3', '.wav']);
+  if (name.startsWith("transition-")) {
+    return resolveAssetWithExtensions("transition", name, [".mp3", ".wav"]);
   }
-  return resolveAssetWithExtensions('accent', name, ['.mp3', '.wav']);
+  return resolveAssetWithExtensions("accent", name, [".mp3", ".wav"]);
 }
 
 /**
@@ -178,8 +183,8 @@ export function resolveAccent(name) {
  * @param {string} name - フォント名（省略時はデフォルト）
  * @returns {string|null} フォントファイルパス
  */
-export function resolveFont(name = 'keifont.ttf') {
-  return resolveAsset('font', name);
+export function resolveFont(name = "keifont.ttf") {
+  return resolveAsset("font", name);
 }
 
 /**
@@ -188,10 +193,14 @@ export function resolveFont(name = 'keifont.ttf') {
  * @returns {string|null} ウォーターマークファイルパス
  */
 export function resolveWatermark(name) {
-  if (name.includes('.')) {
-    return resolveAsset('watermark', name);
+  if (name.includes(".")) {
+    return resolveAsset("watermark", name);
   }
-  return resolveAssetWithExtensions('watermark', name, ['.png', '.webp', '.jpg']);
+  return resolveAssetWithExtensions("watermark", name, [
+    ".png",
+    ".webp",
+    ".jpg",
+  ]);
 }
 
 // エクスポート: パス定数（デバッグ用）

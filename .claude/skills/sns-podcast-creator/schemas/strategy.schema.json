@@ -15,7 +15,14 @@
     },
     "category": {
       "type": "string",
-      "enum": ["deep_dive", "tutorial", "weekly_roundup", "experience", "tool_review", "behind_the_scenes"]
+      "enum": [
+        "deep_dive",
+        "tutorial",
+        "weekly_roundup",
+        "experience",
+        "tool_review",
+        "behind_the_scenes"
+      ]
     },
     "keyTopics": {
       "type": "array",

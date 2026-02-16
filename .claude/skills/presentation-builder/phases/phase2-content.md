@@ -48,6 +48,7 @@ Task(
 ```
 
 委譲時の5要素:
+
 1. **cwd**: 作業ディレクトリの絶対パス
 2. **input**: `work/structure.json`
 3. **output**: `work/slides-content.json`
@@ -67,8 +68,8 @@ node .claude/skills/presentation-builder/scripts/validate-json.js \
 
 ## 成果物
 
-| ファイル | 説明 |
-|---------|------|
+| ファイル                   | 説明                   |
+| -------------------------- | ---------------------- |
 | `work/slides-content.json` | 各スライドのコンテンツ |
 
 ---

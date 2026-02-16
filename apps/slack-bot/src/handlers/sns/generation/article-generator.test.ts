@@ -165,9 +165,7 @@ describe("generateArticle", () => {
       .mockResolvedValueOnce(buildMockResult(RESEARCH_OUTPUT_JSON))
       .mockResolvedValueOnce(buildMockResult(STRUCTURE_OUTPUT_JSON))
       .mockResolvedValueOnce(buildMockResult(CONTENT_OUTPUT_JSON))
-      .mockResolvedValueOnce(
-        buildMockResult("This is not valid JSON at all"),
-      );
+      .mockResolvedValueOnce(buildMockResult("This is not valid JSON at all"));
 
     const result = await generateArticle("記事を書いて", "qiita");
 

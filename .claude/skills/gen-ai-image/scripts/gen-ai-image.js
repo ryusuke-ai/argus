@@ -66,7 +66,9 @@ async function generateImage(prompt, size, quality) {
   console.log("Generating image with fal.ai GPT Image 1.5...");
   console.log(`Size: ${size}`);
   console.log(`Quality: ${quality}`);
-  console.log(`Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? "..." : ""}`);
+  console.log(
+    `Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? "..." : ""}`,
+  );
 
   const result = await fal.subscribe("fal-ai/gpt-image-1.5", {
     input: {
@@ -152,7 +154,11 @@ async function main() {
   }
 
   try {
-    const imageUrl = await generateImage(values.prompt, values.size, values.quality);
+    const imageUrl = await generateImage(
+      values.prompt,
+      values.size,
+      values.quality,
+    );
     const outputPath = resolve(values.output);
     await downloadAndSave(imageUrl, outputPath);
     console.log("\nImage generation completed successfully!");

@@ -64,9 +64,7 @@ describe("GitHubPublisher", () => {
     expect(repoUrl).toBe("https://api.github.com/user/repos");
     expect(repoOpts.method).toBe("POST");
     expect(repoOpts.headers["Authorization"]).toBe("Bearer test-github-pat");
-    expect(repoOpts.headers["Accept"]).toBe(
-      "application/vnd.github+json",
-    );
+    expect(repoOpts.headers["Accept"]).toBe("application/vnd.github+json");
     expect(repoOpts.headers["X-GitHub-Api-Version"]).toBe("2022-11-28");
     const repoBody = JSON.parse(repoOpts.body);
     expect(repoBody).toEqual({

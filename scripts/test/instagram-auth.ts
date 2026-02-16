@@ -32,7 +32,9 @@ function waitForCallback(): Promise<string> {
         const code = reqUrl.searchParams.get("code");
         if (code) {
           res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-          res.end("<h1>Instagram 認証成功!</h1><p>このタブを閉じてください。</p>");
+          res.end(
+            "<h1>Instagram 認証成功!</h1><p>このタブを閉じてください。</p>",
+          );
           console.log("認証コードを受信しました。");
           server.close();
           resolve(code.replace(/#_$/, ""));
@@ -59,7 +61,9 @@ function waitForCallback(): Promise<string> {
   });
 }
 
-async function exchangeForShortLivedToken(code: string): Promise<{ access_token: string; user_id: string }> {
+async function exchangeForShortLivedToken(
+  code: string,
+): Promise<{ access_token: string; user_id: string }> {
   const res = await fetch("https://api.instagram.com/oauth/access_token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -80,14 +84,18 @@ async function exchangeForShortLivedToken(code: string): Promise<{ access_token:
   return res.json() as Promise<{ access_token: string; user_id: string }>;
 }
 
-async function exchangeForLongLivedToken(shortLivedToken: string): Promise<{ access_token: string; expires_in: number }> {
+async function exchangeForLongLivedToken(
+  shortLivedToken: string,
+): Promise<{ access_token: string; expires_in: number }> {
   const params = new URLSearchParams({
     grant_type: "ig_exchange_token",
     client_secret: CLIENT_SECRET,
     access_token: shortLivedToken,
   });
 
-  const res = await fetch(`https://graph.instagram.com/access_token?${params.toString()}`);
+  const res = await fetch(
+    `https://graph.instagram.com/access_token?${params.toString()}`,
+  );
 
   if (!res.ok) {
     const err = await res.text();
@@ -101,7 +109,9 @@ async function main() {
   console.log("=== Instagram OAuth2 認証セットアップ ===\n");
 
   const authUrl = buildAuthUrl();
-  console.log("以下のURLをブラウザで開いて、Instagramアカウントで認証してください:\n");
+  console.log(
+    "以下のURLをブラウザで開いて、Instagramアカウントで認証してください:\n",
+  );
   console.log(authUrl);
   console.log("\nコールバックを待機中...\n");
 

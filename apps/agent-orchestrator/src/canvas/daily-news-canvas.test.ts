@@ -105,7 +105,10 @@ describe("daily-news-canvas", () => {
     it("should render topics as numbered list", () => {
       const data: DailyNewsData = {
         date: new Date(2026, 1, 12),
-        topics: ["Claude Code v1.5 リリース", "OpenClaw エージェントフレームワーク"],
+        topics: [
+          "Claude Code v1.5 リリース",
+          "OpenClaw エージェントフレームワーク",
+        ],
         videoUrl: null,
         podcastUrl: null,
         status: "draft",
@@ -157,7 +160,10 @@ describe("daily-news-canvas", () => {
     it("should render all data when fully populated", () => {
       const data: DailyNewsData = {
         date: new Date(2026, 1, 12),
-        topics: ["Claude Code v1.5 リリース", "OpenClaw エージェントフレームワーク"],
+        topics: [
+          "Claude Code v1.5 リリース",
+          "OpenClaw エージェントフレームワーク",
+        ],
         videoUrl: "http://localhost:3150/api/files/output.mp4",
         podcastUrl: "http://localhost:3150/api/files/podcast.mp3",
         status: "published",
@@ -326,7 +332,9 @@ describe("daily-news-canvas", () => {
       expect(mockUpsertCanvas).toHaveBeenCalledWith(
         "#notifications",
         expect.any(String),
-        expect.stringContaining("http://localhost:3150/api/files/20260212-news/output.mp4"),
+        expect.stringContaining(
+          "http://localhost:3150/api/files/20260212-news/output.mp4",
+        ),
         null,
       );
     });
@@ -362,7 +370,9 @@ describe("daily-news-canvas", () => {
       expect(mockUpsertCanvas).toHaveBeenCalledWith(
         "#notifications",
         expect.any(String),
-        expect.stringContaining("http://localhost:3150/api/files/20260212-news/podcast.mp3"),
+        expect.stringContaining(
+          "http://localhost:3150/api/files/20260212-news/podcast.mp3",
+        ),
         null,
       );
     });

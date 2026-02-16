@@ -117,26 +117,19 @@ export async function uploadArtifactsToSlack(
         formData.set("thread_ts", ctx.threadTs);
       }
       formData.set("filename", filename);
-      formData.set(
-        "file",
-        new Blob([fileContent]),
-        filename,
-      );
+      formData.set("file", new Blob([fileContent]), filename);
       formData.set(
         "initial_comment",
         `\u{1F4CE} \u6210\u679C\u7269: ${filename} (${sizeStr})`,
       );
 
-      const response = await fetch(
-        "https://slack.com/api/files.uploadV2",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${ctx.slackToken}`,
-          },
-          body: formData,
+      const response = await fetch("https://slack.com/api/files.uploadV2", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ctx.slackToken}`,
         },
-      );
+        body: formData,
+      });
 
       const data = (await response.json()) as { ok: boolean; error?: string };
       if (!data.ok) {

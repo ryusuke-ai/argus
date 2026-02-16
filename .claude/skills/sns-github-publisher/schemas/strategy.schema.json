@@ -3,7 +3,14 @@
   "title": "GitHubStrategy",
   "description": "Phase 1 出力: GitHub リポジトリのリサーチ & 戦略",
   "type": "object",
-  "required": ["version", "projectName", "category", "competitors", "topics", "differentiators"],
+  "required": [
+    "version",
+    "projectName",
+    "category",
+    "competitors",
+    "topics",
+    "differentiators"
+  ],
   "properties": {
     "version": {
       "type": "string",

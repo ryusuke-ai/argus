@@ -62,10 +62,10 @@ Taskツール呼び出し:
 
 モードに応じたプロンプトを参照:
 
-| モード | プロンプト |
-|-------|-----------|
-| dialogue（掛け合い） | `.claude/skills/video-planner/prompts/dialogue-prompt.md` |
-| narration（ソロ） | `.claude/skills/video-planner/prompts/narration-prompt.md` |
+| モード               | プロンプト                                                 |
+| -------------------- | ---------------------------------------------------------- |
+| dialogue（掛け合い） | `.claude/skills/video-planner/prompts/dialogue-prompt.md`  |
+| narration（ソロ）    | `.claude/skills/video-planner/prompts/narration-prompt.md` |
 
 ### Step 3: ダイアログ生成
 
@@ -78,7 +78,11 @@ Taskツール呼び出し:
   "mode": "dialogue",
   "segments": [
     { "speaker": "tsukuyomi", "text": "こんにちは！", "sectionId": "opening" },
-    { "speaker": "ginga", "text": "よろしくお願いします。", "sectionId": "opening" }
+    {
+      "speaker": "ginga",
+      "text": "よろしくお願いします。",
+      "sectionId": "opening"
+    }
   ]
 }
 ```
@@ -146,9 +150,9 @@ ginga: つまり...
 
 ## 成果物
 
-| ファイル             | 説明                   |
-| -------------------- | ---------------------- |
-| `work/dialogue.json` | セリフ・ダイアログ     |
+| ファイル             | 説明               |
+| -------------------- | ------------------ |
+| `work/dialogue.json` | セリフ・ダイアログ |
 
 ---
 

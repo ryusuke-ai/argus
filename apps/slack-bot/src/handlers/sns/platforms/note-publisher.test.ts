@@ -96,12 +96,7 @@ vi.mock("playwright", () => ({
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
-import {
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-} from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -166,9 +161,7 @@ describe("NotePublisher", () => {
     const result = await saveNoteDraft(baseInput);
 
     expect(result.success).toBe(true);
-    expect(result.draftPath).toMatch(
-      /^\/tmp\/test-note-drafts\/\d{8}-.+\.md$/,
-    );
+    expect(result.draftPath).toMatch(/^\/tmp\/test-note-drafts\/\d{8}-.+\.md$/);
     expect(mkdirSync).toHaveBeenCalledWith("/tmp/test-note-drafts", {
       recursive: true,
     });
@@ -185,9 +178,7 @@ describe("NotePublisher", () => {
     expect(writtenContent).toContain(
       'title: "Claude Code で AI エージェントを作る"',
     );
-    expect(writtenContent).toContain(
-      'tags: ["Claude Code", "AIエージェント"]',
-    );
+    expect(writtenContent).toContain('tags: ["Claude Code", "AIエージェント"]');
     expect(writtenContent).toContain("isPaid: false");
     expect(writtenContent).toContain("# はじめに");
   });

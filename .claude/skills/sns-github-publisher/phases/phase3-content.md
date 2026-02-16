@@ -27,12 +27,12 @@ structure.json を入力に、README.md とリポジトリメタデータを生�
 
 5-10個の Topics を選定:
 
-| ジャンル | 推奨 Topics |
-|---------|------------|
-| AI ツール | `ai`, `llm`, `claude`, `anthropic`, `agent`, `automation` |
-| MCP 関連 | `mcp`, `model-context-protocol`, `mcp-server`, `claude-code` |
-| CLI ツール | `cli`, `command-line`, `typescript`, `nodejs` |
-| テンプレート | `template`, `boilerplate`, `starter` |
+| ジャンル     | 推奨 Topics                                                  |
+| ------------ | ------------------------------------------------------------ |
+| AI ツール    | `ai`, `llm`, `claude`, `anthropic`, `agent`, `automation`    |
+| MCP 関連     | `mcp`, `model-context-protocol`, `mcp-server`, `claude-code` |
+| CLI ツール   | `cli`, `command-line`, `typescript`, `nodejs`                |
+| テンプレート | `template`, `boilerplate`, `starter`                         |
 
 ### Step 4: ライセンス決定
 

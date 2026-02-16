@@ -15,7 +15,15 @@
     },
     "category": {
       "type": "string",
-      "enum": ["news", "experience", "tips", "code", "summary", "discussion", "youtube_clip"],
+      "enum": [
+        "news",
+        "experience",
+        "tips",
+        "code",
+        "summary",
+        "discussion",
+        "youtube_clip"
+      ],
       "description": "投稿カテゴリ"
     },
     "postType": {

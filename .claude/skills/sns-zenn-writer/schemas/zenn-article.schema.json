@@ -3,7 +3,15 @@
   "title": "ZennArticle",
   "description": "Zenn 技術記事の出力スキーマ",
   "type": "object",
-  "required": ["type", "title", "emoji", "articleType", "topics", "body", "metadata"],
+  "required": [
+    "type",
+    "title",
+    "emoji",
+    "articleType",
+    "topics",
+    "body",
+    "metadata"
+  ],
   "properties": {
     "type": {
       "type": "string",

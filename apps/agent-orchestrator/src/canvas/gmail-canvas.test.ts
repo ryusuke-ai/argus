@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Hoisted mocks
-const { mockFindCanvasId, mockSaveCanvasId, mockUpsertCanvas } = vi.hoisted(() => ({
-  mockFindCanvasId: vi.fn(),
-  mockSaveCanvasId: vi.fn(),
-  mockUpsertCanvas: vi.fn(),
-}));
+const { mockFindCanvasId, mockSaveCanvasId, mockUpsertCanvas } = vi.hoisted(
+  () => ({
+    mockFindCanvasId: vi.fn(),
+    mockSaveCanvasId: vi.fn(),
+    mockUpsertCanvas: vi.fn(),
+  }),
+);
 
 // Mock @argus/slack-canvas
 vi.mock("@argus/slack-canvas", () => ({
@@ -33,7 +35,9 @@ import { buildGmailCanvasMarkdown, updateGmailCanvas } from "./gmail-canvas.js";
 import type { GmailMessageRecord } from "@argus/db";
 import { db } from "@argus/db";
 
-function makeEmail(overrides: Partial<GmailMessageRecord> = {}): GmailMessageRecord {
+function makeEmail(
+  overrides: Partial<GmailMessageRecord> = {},
+): GmailMessageRecord {
   return {
     id: "uuid-1",
     gmailId: "gmail-1",
@@ -76,7 +80,9 @@ describe("gmail-canvas", () => {
       const markdown = buildGmailCanvasMarkdown([]);
 
       expect(markdown).toContain("\u30E1\u30FC\u30EB\u53D7\u4FE1\u7BB1");
-      expect(markdown).toContain("\u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093");
+      expect(markdown).toContain(
+        "\u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093",
+      );
       expect(markdown).not.toContain("\u8981\u8FD4\u4FE1");
       expect(markdown).not.toContain("\u8981\u78BA\u8A8D");
     });
@@ -156,13 +162,16 @@ describe("gmail-canvas", () => {
           subject: "Question",
           fromAddress: "person@example.com",
           classification: "needs_reply",
-          draftReply: "\u3054\u9023\u7D61\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u78BA\u8A8D\u3044\u305F\u3057\u307E\u3059\u3002",
+          draftReply:
+            "\u3054\u9023\u7D61\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u78BA\u8A8D\u3044\u305F\u3057\u307E\u3059\u3002",
         }),
       ];
 
       const markdown = buildGmailCanvasMarkdown(emails);
 
-      expect(markdown).toContain("> \u8FD4\u4FE1\u6848: \u3054\u9023\u7D61\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u78BA\u8A8D\u3044\u305F\u3057\u307E\u3059\u3002");
+      expect(markdown).toContain(
+        "> \u8FD4\u4FE1\u6848: \u3054\u9023\u7D61\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u78BA\u8A8D\u3044\u305F\u3057\u307E\u3059\u3002",
+      );
     });
 
     it("should truncate long sender addresses to 30 characters", () => {
@@ -207,7 +216,9 @@ describe("gmail-canvas", () => {
 
       const markdown = buildGmailCanvasMarkdown(emails);
 
-      expect(markdown).toContain("> \u8FD4\u4FE1\u6848: " + "C".repeat(50) + "...");
+      expect(markdown).toContain(
+        "> \u8FD4\u4FE1\u6848: " + "C".repeat(50) + "...",
+      );
       expect(markdown).not.toContain(longReply);
     });
 
@@ -223,21 +234,23 @@ describe("gmail-canvas", () => {
 
       const markdown = buildGmailCanvasMarkdown(emails);
 
-      expect(markdown).toContain("\u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093");
+      expect(markdown).toContain(
+        "\u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093",
+      );
       expect(markdown).not.toContain("Newsletter");
     });
 
     it("should contain header with timestamp", () => {
       const markdown = buildGmailCanvasMarkdown([]);
 
-      expect(markdown).toContain("# \u2709\uFE0F \u30E1\u30FC\u30EB\u53D7\u4FE1\u7BB1");
+      expect(markdown).toContain(
+        "# \u2709\uFE0F \u30E1\u30FC\u30EB\u53D7\u4FE1\u7BB1",
+      );
       expect(markdown).toContain("\u6700\u7D42\u30C1\u30A7\u30C3\u30AF:");
     });
 
     it("should use checklist syntax for Canvas checkboxes", () => {
-      const emails = [
-        makeEmail({ classification: "needs_reply" }),
-      ];
+      const emails = [makeEmail({ classification: "needs_reply" })];
 
       const markdown = buildGmailCanvasMarkdown(emails);
 
@@ -275,7 +288,10 @@ describe("gmail-canvas", () => {
       });
 
       mockFindCanvasId.mockResolvedValue(null);
-      mockUpsertCanvas.mockResolvedValue({ success: true, canvasId: "canvas-123" });
+      mockUpsertCanvas.mockResolvedValue({
+        success: true,
+        canvasId: "canvas-123",
+      });
       mockSaveCanvasId.mockResolvedValue(undefined);
 
       await updateGmailCanvas();
@@ -288,7 +304,11 @@ describe("gmail-canvas", () => {
         expect.stringContaining("\u8981\u8FD4\u4FE1"),
         null,
       );
-      expect(mockSaveCanvasId).toHaveBeenCalledWith("gmail", "canvas-123", "#gmail-inbox");
+      expect(mockSaveCanvasId).toHaveBeenCalledWith(
+        "gmail",
+        "canvas-123",
+        "#gmail-inbox",
+      );
       expect(consoleSpy).toHaveBeenCalledWith(
         "[Gmail Canvas] Canvas updated (id: canvas-123)",
       );
@@ -302,7 +322,10 @@ describe("gmail-canvas", () => {
       });
 
       mockFindCanvasId.mockResolvedValue("existing-canvas-456");
-      mockUpsertCanvas.mockResolvedValue({ success: true, canvasId: "existing-canvas-456" });
+      mockUpsertCanvas.mockResolvedValue({
+        success: true,
+        canvasId: "existing-canvas-456",
+      });
       mockSaveCanvasId.mockResolvedValue(undefined);
 
       await updateGmailCanvas();
@@ -310,7 +333,9 @@ describe("gmail-canvas", () => {
       expect(mockUpsertCanvas).toHaveBeenCalledWith(
         "#gmail-inbox",
         expect.any(String),
-        expect.stringContaining("\u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093"),
+        expect.stringContaining(
+          "\u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093",
+        ),
         "existing-canvas-456",
       );
     });
@@ -323,7 +348,11 @@ describe("gmail-canvas", () => {
       });
 
       mockFindCanvasId.mockResolvedValue(null);
-      mockUpsertCanvas.mockResolvedValue({ success: false, canvasId: null, error: "api_error" });
+      mockUpsertCanvas.mockResolvedValue({
+        success: false,
+        canvasId: null,
+        error: "api_error",
+      });
 
       await updateGmailCanvas();
 
@@ -378,7 +407,10 @@ describe("gmail-canvas", () => {
       });
 
       mockFindCanvasId.mockResolvedValue(null);
-      mockUpsertCanvas.mockResolvedValue({ success: true, canvasId: "canvas-789" });
+      mockUpsertCanvas.mockResolvedValue({
+        success: true,
+        canvasId: "canvas-789",
+      });
       mockSaveCanvasId.mockResolvedValue(undefined);
 
       await updateGmailCanvas();

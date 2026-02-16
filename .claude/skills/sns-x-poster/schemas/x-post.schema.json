@@ -14,7 +14,11 @@
         "required": ["text"],
         "properties": {
           "text": { "type": "string", "maxLength": 280 },
-          "hashtags": { "type": "array", "items": { "type": "string" }, "maxItems": 2 },
+          "hashtags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 2
+          },
           "mediaDescription": { "type": "string" }
         }
       }
@@ -23,7 +27,17 @@
       "type": "object",
       "required": ["category"],
       "properties": {
-        "category": { "enum": ["tips", "news", "experience", "code", "summary", "discussion", "youtube_clip"] },
+        "category": {
+          "enum": [
+            "tips",
+            "news",
+            "experience",
+            "code",
+            "summary",
+            "discussion",
+            "youtube_clip"
+          ]
+        },
         "scheduledHour": { "type": "integer", "minimum": 0, "maximum": 23 }
       }
     }

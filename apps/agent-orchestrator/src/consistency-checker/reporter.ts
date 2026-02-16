@@ -143,7 +143,7 @@ export function buildReportBlocks(
 
     const lines = catFindings.map(
       (f) =>
-        `• ${SEVERITY_PREFIX[f.severity]} ${f.title}\n　　_${truncate(f.details, 120)}_`,
+        `• ${SEVERITY_PREFIX[f.severity]} ${f.title}\n\u3000\u3000_${truncate(f.details, 120)}_`,
     );
     blocks.push({
       type: "section",

@@ -95,7 +95,12 @@
           },
           "mermaidType": {
             "type": "string",
-            "enum": ["flowchart", "sequenceDiagram", "classDiagram", "erDiagram"],
+            "enum": [
+              "flowchart",
+              "sequenceDiagram",
+              "classDiagram",
+              "erDiagram"
+            ],
             "description": "Mermaid図のタイプ（mermaid-to-webp使用時）"
           }
         }

@@ -51,6 +51,7 @@ function parseArgs() {
       case "--help":
         showHelp();
         process.exit(0);
+        break;
       default:
         if (!args[i].startsWith("--")) {
           options.words.push(args[i]);

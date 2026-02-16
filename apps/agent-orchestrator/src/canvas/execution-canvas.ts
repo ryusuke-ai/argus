@@ -66,7 +66,9 @@ export function buildExecutionCanvasMarkdown(
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const lines: string[] = [];
-  lines.push("# \ud83e\udd16 \u30a8\u30fc\u30b8\u30a7\u30f3\u30c8\u5b9f\u884c\u30ed\u30b0");
+  lines.push(
+    "# \ud83e\udd16 \u30a8\u30fc\u30b8\u30a7\u30f3\u30c8\u5b9f\u884c\u30ed\u30b0",
+  );
   lines.push(`\u66f4\u65b0: ${dateStr} ${timeStr}`);
   lines.push("");
   lines.push("---");
@@ -76,7 +78,9 @@ export function buildExecutionCanvasMarkdown(
   if (executions.length === 0) {
     lines.push("\u5b9f\u884c\u30ed\u30b0\u306a\u3057");
   } else {
-    lines.push("| \u30b9\u30c6\u30fc\u30bf\u30b9 | \u30a8\u30fc\u30b8\u30a7\u30f3\u30c8 | \u958b\u59cb | \u6240\u8981\u6642\u9593 |");
+    lines.push(
+      "| \u30b9\u30c6\u30fc\u30bf\u30b9 | \u30a8\u30fc\u30b8\u30a7\u30f3\u30c8 | \u958b\u59cb | \u6240\u8981\u6642\u9593 |",
+    );
     lines.push("|---|---|---|---|");
     for (const exec of executions) {
       const icon = statusIcon(exec.status);

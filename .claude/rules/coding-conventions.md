@@ -9,12 +9,12 @@
 
 ## 命名規則
 
-| 対象 | スタイル | 例 |
-|---|---|---|
-| ファイル | kebab-case | `cli-runner.ts` |
-| コンポーネント | PascalCase | `SessionList.tsx` |
-| DBカラム | snake_case | `created_at` |
-| 未使用変数 | `_` プレフィックス | `_req` |
+| 対象           | スタイル           | 例                |
+| -------------- | ------------------ | ----------------- |
+| ファイル       | kebab-case         | `cli-runner.ts`   |
+| コンポーネント | PascalCase         | `SessionList.tsx` |
+| DBカラム       | snake_case         | `created_at`      |
+| 未使用変数     | `_` プレフィックス | `_req`            |
 
 ## エラーハンドリング
 

@@ -29,7 +29,9 @@ export default function Home() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h2 className="text-xl font-semibold text-slate-800 mb-4">Quick Query</h2>
+        <h2 className="text-xl font-semibold text-slate-800 mb-4">
+          Quick Query
+        </h2>
         <QueryForm />
       </div>
     </main>

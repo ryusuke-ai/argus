@@ -6,11 +6,11 @@
 
 以下のスクリプトは出力時に自動でバリデーションを実行:
 
-| スクリプト | バリデーション対象 |
-|-----------|-------------------|
-| `openrouter-json.js` | 出力JSON |
-| `generate-json.js` | 出力JSON |
-| `merge-script.js` | 入力（dialogue, direction）+ 出力（video-script） |
+| スクリプト           | バリデーション対象                                |
+| -------------------- | ------------------------------------------------- |
+| `openrouter-json.js` | 出力JSON                                          |
+| `generate-json.js`   | 出力JSON                                          |
+| `merge-script.js`    | 入力（dialogue, direction）+ 出力（video-script） |
 
 ## 手動バリデーション
 
@@ -22,19 +22,19 @@ node .claude/skills/video-planner/scripts/validate-json.js \
 
 ### スキーマ名
 
-| スキーマ名 | 対象 |
-|-----------|------|
-| `scenario` | Phase 1 シナリオ構成 |
-| `dialogue` | Phase 2 ダイアログ |
-| `direction` | Phase 3-1 演出計画 |
-| `video-script` | Phase 3-4 最終出力 |
+| スキーマ名     | 対象                 |
+| -------------- | -------------------- |
+| `scenario`     | Phase 1 シナリオ構成 |
+| `dialogue`     | Phase 2 ダイアログ   |
+| `direction`    | Phase 3-1 演出計画   |
+| `video-script` | Phase 3-4 最終出力   |
 
 ### オプション
 
-| オプション | 説明 |
-|-----------|------|
-| `--fix` | 自動修正可能なエラーを修正して保存 |
-| `--quiet` | 成功時のメッセージを抑制 |
+| オプション | 説明                               |
+| ---------- | ---------------------------------- |
+| `--fix`    | 自動修正可能なエラーを修正して保存 |
+| `--quiet`  | 成功時のメッセージを抑制           |
 
 ## エラー出力例
 

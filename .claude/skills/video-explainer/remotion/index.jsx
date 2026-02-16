@@ -1,12 +1,12 @@
-import React from 'react';
-import { registerRoot, Composition } from 'remotion';
-import { ExplainerVideo } from './ExplainerVideo.jsx';
-import { ExplainerVideoShort } from './ExplainerVideoShort.jsx';
+import React from "react";
+import { registerRoot, Composition } from "remotion";
+import { ExplainerVideo } from "./ExplainerVideo.jsx";
+import { ExplainerVideoShort } from "./ExplainerVideoShort.jsx";
 
 // デフォルトのシーン（プレビュー用）
 const defaultScenes = [
   {
-    text: 'これはサンプルのシーンです',
+    text: "これはサンプルのシーンです",
     durationInFrames: 90,
     backgroundSrc: null,
     audioSrc: null,
@@ -15,11 +15,11 @@ const defaultScenes = [
 
 // 環境変数からシーンデータを取得（レンダリング時）
 const getScenes = () => {
-  if (typeof process !== 'undefined' && process.env.SCENES_JSON) {
+  if (typeof process !== "undefined" && process.env.SCENES_JSON) {
     try {
       return JSON.parse(process.env.SCENES_JSON);
     } catch (e) {
-      console.error('Failed to parse SCENES_JSON:', e);
+      console.error("Failed to parse SCENES_JSON:", e);
     }
   }
   return defaultScenes;

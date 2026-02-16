@@ -5,7 +5,13 @@ vi.mock("@argus/db", () => ({
   db: {
     select: vi.fn(),
   },
-  agentExecutions: { status: "status", agentId: "agent_id", startedAt: "started_at", durationMs: "duration_ms", errorMessage: "error_message" },
+  agentExecutions: {
+    status: "status",
+    agentId: "agent_id",
+    startedAt: "started_at",
+    durationMs: "duration_ms",
+    errorMessage: "error_message",
+  },
   agents: { id: "id", name: "name" },
 }));
 
@@ -19,7 +25,9 @@ vi.mock("drizzle-orm", () => ({
 
 // Mock @argus/slack-canvas
 vi.mock("@argus/slack-canvas", () => ({
-  upsertCanvas: vi.fn().mockResolvedValue({ success: true, canvasId: "canvas-123" }),
+  upsertCanvas: vi
+    .fn()
+    .mockResolvedValue({ success: true, canvasId: "canvas-123" }),
   findCanvasId: vi.fn().mockResolvedValue(null),
   saveCanvasId: vi.fn().mockResolvedValue(undefined),
 }));
@@ -185,7 +193,9 @@ describe("updateExecutionCanvas", () => {
       }),
     });
 
-    (findCanvasId as ReturnType<typeof vi.fn>).mockResolvedValue("existing-canvas");
+    (findCanvasId as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "existing-canvas",
+    );
 
     await updateExecutionCanvas();
 
@@ -197,7 +207,11 @@ describe("updateExecutionCanvas", () => {
       expect.stringContaining("daily-planner"),
       "existing-canvas",
     );
-    expect(saveCanvasId).toHaveBeenCalledWith("execution-log", "canvas-123", "C12345");
+    expect(saveCanvasId).toHaveBeenCalledWith(
+      "execution-log",
+      "canvas-123",
+      "C12345",
+    );
   });
 
   it("should skip when SLACK_NOTIFICATION_CHANNEL is not set", async () => {

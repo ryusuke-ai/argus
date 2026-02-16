@@ -10,7 +10,18 @@ import { z } from "zod";
 // Phase 1: Structure Schema
 // ============================================
 
-const layoutEnum = ["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote", "key-number", "timeline", "icon-grid"];
+const layoutEnum = [
+  "title",
+  "section",
+  "text-only",
+  "text-and-image",
+  "image-full",
+  "comparison",
+  "quote",
+  "key-number",
+  "timeline",
+  "icon-grid",
+];
 
 const slideHintSchema = z.object({
   id: z.string().describe("スライドID"),
@@ -46,7 +57,9 @@ export const structureSchema = z.object({
 const visualSchema = z.object({
   type: z.enum(["diagram", "chart", "image", "rich"]).describe("図解タイプ"),
   description: z.string().min(1).describe("図解の説明"),
-  tool: z.enum(["mermaid", "svg-diagram", "gen-ai-image", "gen-rich-image"]).describe("使用スキル"),
+  tool: z
+    .enum(["mermaid", "svg-diagram", "gen-ai-image", "gen-rich-image"])
+    .describe("使用スキル"),
 });
 
 const columnSchema = z.object({
@@ -57,7 +70,20 @@ const columnSchema = z.object({
 const slideSchema = z.object({
   id: z.string().describe("スライドID"),
   sectionId: z.string().describe("所属セクションID"),
-  layout: z.enum(["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote", "key-number", "timeline", "icon-grid"]).describe("レイアウト"),
+  layout: z
+    .enum([
+      "title",
+      "section",
+      "text-only",
+      "text-and-image",
+      "image-full",
+      "comparison",
+      "quote",
+      "key-number",
+      "timeline",
+      "icon-grid",
+    ])
+    .describe("レイアウト"),
   heading: z.string().min(1).describe("見出し"),
   subtitle: z.string().optional().describe("サブタイトル"),
   bullets: z.array(z.string()).optional().describe("箇条書き"),
@@ -143,14 +169,38 @@ export function checkVisualRatio(data) {
 // ============================================
 
 const paletteSchema = z.object({
-  primary: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("プライマリカラー"),
-  secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("セカンダリカラー"),
-  accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("アクセントカラー"),
-  highlight: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("ハイライトカラー"),
-  text: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("テキストカラー"),
-  textLight: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("テキスト薄色"),
-  background: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("背景色"),
-  backgroundAlt: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("背景色（代替）"),
+  primary: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("プライマリカラー"),
+  secondary: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("セカンダリカラー"),
+  accent: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("アクセントカラー"),
+  highlight: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("ハイライトカラー"),
+  text: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("テキストカラー"),
+  textLight: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("テキスト薄色"),
+  background: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("背景色"),
+  backgroundAlt: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .describe("背景色（代替）"),
 });
 
 const typographySchema = z.object({
@@ -161,49 +211,103 @@ const typographySchema = z.object({
   lineHeight: z.number().optional().describe("行間"),
 });
 
-const imageLayoutSchema = z.object({
-  position: z.enum(["left", "right", "top", "bottom", "center"]).describe("画像位置"),
-  size: z.string().describe("サイズ比率"),
-  fit: z.enum(["contain", "cover", "auto"]).default("contain").describe("フィット方法"),
-}).nullable().optional();
+const imageLayoutSchema = z
+  .object({
+    position: z
+      .enum(["left", "right", "top", "bottom", "center"])
+      .describe("画像位置"),
+    size: z.string().describe("サイズ比率"),
+    fit: z
+      .enum(["contain", "cover", "auto"])
+      .default("contain")
+      .describe("フィット方法"),
+  })
+  .nullable()
+  .optional();
 
 const svgElementSchema = z.object({
-  type: z.enum(["icon-grid", "flowchart", "comparison", "timeline", "bar-chart", "line-chart", "pie-chart", "network", "hierarchy", "custom"]).describe("要素タイプ"),
+  type: z
+    .enum([
+      "icon-grid",
+      "flowchart",
+      "comparison",
+      "timeline",
+      "bar-chart",
+      "line-chart",
+      "pie-chart",
+      "network",
+      "hierarchy",
+      "custom",
+    ])
+    .describe("要素タイプ"),
   layout: z.string().optional().describe("レイアウト"),
-  items: z.array(z.object({
-    label: z.string().optional(),
-    value: z.unknown().optional(),
-    icon: z.string().optional(),
-    color: z.string().optional(),
-  })).optional().describe("要素データ"),
+  items: z
+    .array(
+      z.object({
+        label: z.string().optional(),
+        value: z.unknown().optional(),
+        icon: z.string().optional(),
+        color: z.string().optional(),
+      }),
+    )
+    .optional()
+    .describe("要素データ"),
   description: z.string().optional().describe("自由記述の補足"),
 });
 
-const svgSpecSchema = z.object({
-  width: z.number().default(800).describe("SVG幅"),
-  height: z.number().default(500).describe("SVG高さ"),
-  backgroundColor: z.string().optional().describe("背景色"),
-  colorPalette: z.array(z.string()).optional().describe("使用カラー一覧"),
-  elements: z.array(svgElementSchema).optional().describe("描画要素"),
-  style: z.enum(["modern-tech", "minimal", "corporate", "playful"]).optional().describe("スタイル"),
-  margin: z.object({
-    top: z.number().optional(),
-    right: z.number().optional(),
-    bottom: z.number().optional(),
-    left: z.number().optional(),
-  }).optional().describe("マージン"),
-}).nullable().optional();
+const svgSpecSchema = z
+  .object({
+    width: z.number().default(800).describe("SVG幅"),
+    height: z.number().default(500).describe("SVG高さ"),
+    backgroundColor: z.string().optional().describe("背景色"),
+    colorPalette: z.array(z.string()).optional().describe("使用カラー一覧"),
+    elements: z.array(svgElementSchema).optional().describe("描画要素"),
+    style: z
+      .enum(["modern-tech", "minimal", "corporate", "playful"])
+      .optional()
+      .describe("スタイル"),
+    margin: z
+      .object({
+        top: z.number().optional(),
+        right: z.number().optional(),
+        bottom: z.number().optional(),
+        left: z.number().optional(),
+      })
+      .optional()
+      .describe("マージン"),
+  })
+  .nullable()
+  .optional();
 
-const keyNumberSchema = z.object({
-  value: z.string().describe("表示する数値"),
-  unit: z.string().describe("単位"),
-  caption: z.string().optional().describe("補足説明"),
-}).nullable().optional();
+const keyNumberSchema = z
+  .object({
+    value: z.string().describe("表示する数値"),
+    unit: z.string().describe("単位"),
+    caption: z.string().optional().describe("補足説明"),
+  })
+  .nullable()
+  .optional();
 
 const designSlideSchema = z.object({
   slideId: z.string().describe("スライドID"),
-  layout: z.enum(["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote", "key-number", "timeline", "icon-grid"]).describe("レイアウト"),
-  background: z.enum(["default", "gradient", "dark", "accent"]).default("default").describe("背景タイプ"),
+  layout: z
+    .enum([
+      "title",
+      "section",
+      "text-only",
+      "text-and-image",
+      "image-full",
+      "comparison",
+      "quote",
+      "key-number",
+      "timeline",
+      "icon-grid",
+    ])
+    .describe("レイアウト"),
+  background: z
+    .enum(["default", "gradient", "dark", "accent"])
+    .default("default")
+    .describe("背景タイプ"),
   imageLayout: imageLayoutSchema.describe("画像配置"),
   svgSpec: svgSpecSchema.describe("SVG仕様"),
   keyNumber: keyNumberSchema.describe("キーナンバー"),
@@ -279,7 +383,8 @@ export function printValidationErrors(schemaName, errors) {
     console.error(`\n📍 ${location}`);
     console.error(`   エラー: ${error.message}`);
     if (error.expected) console.error(`   期待値: ${error.expected}`);
-    if (error.received !== undefined) console.error(`   受信値: ${error.received}`);
+    if (error.received !== undefined)
+      console.error(`   受信値: ${error.received}`);
   }
 
   console.error("\n" + "=".repeat(60));

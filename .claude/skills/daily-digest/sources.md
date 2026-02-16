@@ -2,40 +2,40 @@
 
 ## トピック範囲
 
-| カテゴリ | キーワード例 | 優先度 |
-|---------|-------------|--------|
-| Claude Code | skills, MCP server, hooks, claude.md, 開発ワークフロー | 最高 |
-| OpenClaw | openclaw, Clawdbot, Moltbot, オープンソースAIエージェント | 高 |
-| AI Agents | autonomous agent, multi-agent, agentic workflow | 高 |
-| 業務効率化 | AI automation, productivity, AIツール活用, 仕事術 | 中 |
+| カテゴリ    | キーワード例                                              | 優先度 |
+| ----------- | --------------------------------------------------------- | ------ |
+| Claude Code | skills, MCP server, hooks, claude.md, 開発ワークフロー    | 最高   |
+| OpenClaw    | openclaw, Clawdbot, Moltbot, オープンソースAIエージェント | 高     |
+| AI Agents   | autonomous agent, multi-agent, agentic workflow           | 高     |
+| 業務効率化  | AI automation, productivity, AIツール活用, 仕事術         | 中     |
 
 ## ソース一覧
 
 ### 日本語コミュニティ
 
-| ソース | 検索クエリ例 |
-|-------|-------------|
-| note.com | `"Claude Code" site:note.com`, `"MCP" site:note.com` |
-| Qiita | `"Claude Code" site:qiita.com`, `"AIエージェント" site:qiita.com` |
-| Zenn | `"MCP server" site:zenn.dev`, `"Claude Code" site:zenn.dev` |
+| ソース   | 検索クエリ例                                                      |
+| -------- | ----------------------------------------------------------------- |
+| note.com | `"Claude Code" site:note.com`, `"MCP" site:note.com`              |
+| Qiita    | `"Claude Code" site:qiita.com`, `"AIエージェント" site:qiita.com` |
+| Zenn     | `"MCP server" site:zenn.dev`, `"Claude Code" site:zenn.dev`       |
 
 ### 公式ソース
 
-| ソース | 検索クエリ例 |
-|-------|-------------|
-| Anthropic Blog | `anthropic blog claude code` |
-| Anthropic Changelog | `anthropic changelog latest` |
-| OpenClaw Blog | `openclaw blog announcement` |
-| Claude Code GitHub | `github anthropics claude-code releases` |
-| OpenClaw GitHub | `github openclaw releases` |
+| ソース              | 検索クエリ例                             |
+| ------------------- | ---------------------------------------- |
+| Anthropic Blog      | `anthropic blog claude code`             |
+| Anthropic Changelog | `anthropic changelog latest`             |
+| OpenClaw Blog       | `openclaw blog announcement`             |
+| Claude Code GitHub  | `github anthropics claude-code releases` |
+| OpenClaw GitHub     | `github openclaw releases`               |
 
 ### キュレーションソース
 
-| ソース | 検索クエリ例 |
-|-------|-------------|
-| Simon Willison's Weblog | `simonwillison.net claude OR "AI agent"` |
-| Hacker News | `hacker news claude code OR openclaw OR "AI agent"` |
-| GitHub Trending | `github trending AI agent` |
+| ソース                  | 検索クエリ例                                        |
+| ----------------------- | --------------------------------------------------- |
+| Simon Willison's Weblog | `simonwillison.net claude OR "AI agent"`            |
+| Hacker News             | `hacker news claude code OR openclaw OR "AI agent"` |
+| GitHub Trending         | `github trending AI agent`                          |
 
 ## 検索戦略
 
@@ -87,11 +87,13 @@
 # 本日のAIニュースリサーチ（YYYY-MM-DD）
 
 ## トピック1: [タイトル]
+
 - ソース: [URL]
 - カテゴリ: Claude Code / OpenClaw / AI Agents / 業務効率化
 - 要約: [3-5文で要約]
 - ポイント: [視聴者にとって何が面白いか]
 
 ## トピック2: [タイトル]
+
 ...
 ```

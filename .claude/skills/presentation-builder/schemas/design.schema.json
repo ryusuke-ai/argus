@@ -8,7 +8,16 @@
     "palette": {
       "type": "object",
       "description": "プレゼン全体のカラーパレット",
-      "required": ["primary", "secondary", "accent", "highlight", "text", "textLight", "background", "backgroundAlt"],
+      "required": [
+        "primary",
+        "secondary",
+        "accent",
+        "highlight",
+        "text",
+        "textLight",
+        "background",
+        "backgroundAlt"
+      ],
       "properties": {
         "primary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
         "secondary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
@@ -43,7 +52,18 @@
           "slideId": { "type": "string" },
           "layout": {
             "type": "string",
-            "enum": ["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote", "key-number", "timeline", "icon-grid"]
+            "enum": [
+              "title",
+              "section",
+              "text-only",
+              "text-and-image",
+              "image-full",
+              "comparison",
+              "quote",
+              "key-number",
+              "timeline",
+              "icon-grid"
+            ]
           },
           "background": {
             "type": "string",
@@ -53,9 +73,19 @@
           "imageLayout": {
             "type": ["object", "null"],
             "properties": {
-              "position": { "type": "string", "enum": ["left", "right", "top", "bottom", "center"] },
-              "size": { "type": "string", "description": "Marp bg サイズ比率（例: 40%）" },
-              "fit": { "type": "string", "enum": ["contain", "cover", "auto"], "default": "contain" }
+              "position": {
+                "type": "string",
+                "enum": ["left", "right", "top", "bottom", "center"]
+              },
+              "size": {
+                "type": "string",
+                "description": "Marp bg サイズ比率（例: 40%）"
+              },
+              "fit": {
+                "type": "string",
+                "enum": ["contain", "cover", "auto"],
+                "default": "contain"
+              }
             }
           },
           "svgSpec": {
@@ -77,7 +107,18 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "enum": ["icon-grid", "flowchart", "comparison", "timeline", "bar-chart", "line-chart", "pie-chart", "network", "hierarchy", "custom"]
+                      "enum": [
+                        "icon-grid",
+                        "flowchart",
+                        "comparison",
+                        "timeline",
+                        "bar-chart",
+                        "line-chart",
+                        "pie-chart",
+                        "network",
+                        "hierarchy",
+                        "custom"
+                      ]
                     },
                     "layout": { "type": "string" },
                     "items": {
@@ -96,7 +137,10 @@
                   }
                 }
               },
-              "style": { "type": "string", "enum": ["modern-tech", "minimal", "corporate", "playful"] },
+              "style": {
+                "type": "string",
+                "enum": ["modern-tech", "minimal", "corporate", "playful"]
+              },
               "margin": {
                 "type": "object",
                 "properties": {
@@ -112,8 +156,14 @@
             "type": ["object", "null"],
             "description": "key-number レイアウト用の数値データ",
             "properties": {
-              "value": { "type": "string", "description": "表示する数値（例: 36, 176.5）" },
-              "unit": { "type": "string", "description": "単位（例: PB, EB, 秒）" },
+              "value": {
+                "type": "string",
+                "description": "表示する数値（例: 36, 176.5）"
+              },
+              "unit": {
+                "type": "string",
+                "description": "単位（例: PB, EB, 秒）"
+              },
               "caption": { "type": "string", "description": "補足説明文" }
             }
           }

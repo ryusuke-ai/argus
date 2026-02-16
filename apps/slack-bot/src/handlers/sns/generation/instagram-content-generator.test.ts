@@ -64,7 +64,10 @@ describe("generateInstagramContent", () => {
   it("should generate image content with caption and imagePrompt", async () => {
     mockTwoPhases(IMAGE_CONTENT_JSON);
 
-    const result = await generateInstagramContent("tips カテゴリの投稿", "tips");
+    const result = await generateInstagramContent(
+      "tips カテゴリの投稿",
+      "tips",
+    );
 
     expect(result.success).toBe(true);
     expect(result.content?.type).toBe("image");
@@ -76,7 +79,11 @@ describe("generateInstagramContent", () => {
   it("should generate reels content", async () => {
     mockTwoPhases(REELS_CONTENT_JSON);
 
-    const result = await generateInstagramContent("リール用の投稿", "tips", "reels");
+    const result = await generateInstagramContent(
+      "リール用の投稿",
+      "tips",
+      "reels",
+    );
 
     expect(result.success).toBe(true);
     expect(result.content?.type).toBe("reels");
@@ -120,9 +127,7 @@ describe("generateInstagramContent", () => {
   it("should handle invalid JSON in response", async () => {
     (query as Mock)
       .mockResolvedValueOnce(buildMockResult(RESEARCH_OUTPUT_JSON))
-      .mockResolvedValueOnce(
-        buildMockResult("これはJSONではありません"),
-      );
+      .mockResolvedValueOnce(buildMockResult("これはJSONではありません"));
 
     const result = await generateInstagramContent("test", "tips");
 

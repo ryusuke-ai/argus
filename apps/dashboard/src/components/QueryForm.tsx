@@ -41,7 +41,10 @@ export default function QueryForm() {
     <div className="max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="message" className="block text-sm font-medium text-slate-600 mb-2">
+          <label
+            htmlFor="message"
+            className="block text-sm font-medium text-slate-600 mb-2"
+          >
             Message
           </label>
           <textarea

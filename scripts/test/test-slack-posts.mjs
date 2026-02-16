@@ -6,10 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // --- Load .env manually ---
-const envPath = resolve(
-  new URL(".", import.meta.url).pathname,
-  "../.env",
-);
+const envPath = resolve(new URL(".", import.meta.url).pathname, "../.env");
 const envContent = readFileSync(envPath, "utf-8");
 for (const line of envContent.split("\n")) {
   const trimmed = line.trim();
@@ -19,7 +16,10 @@ for (const line of envContent.split("\n")) {
   const key = trimmed.slice(0, eqIdx).trim();
   let val = trimmed.slice(eqIdx + 1).trim();
   // Strip surrounding quotes
-  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+  if (
+    (val.startsWith('"') && val.endsWith('"')) ||
+    (val.startsWith("'") && val.endsWith("'"))
+  ) {
     val = val.slice(1, -1);
   }
   if (!process.env[key]) {
@@ -68,7 +68,13 @@ function buildCleanPatrolReport() {
     summary: "問題は検出されませんでした。",
     findings: {
       audit: {
-        vulnerabilities: { total: 0, critical: 0, high: 0, moderate: 0, low: 0 },
+        vulnerabilities: {
+          total: 0,
+          critical: 0,
+          high: 0,
+          moderate: 0,
+          low: 0,
+        },
         advisories: [],
       },
       secrets: [],
@@ -99,26 +105,74 @@ function buildAutoFixPatrolReport() {
     summary: "型エラー3件、脆弱性2件が検出されました。自動修正を実行しました。",
     findings: {
       audit: {
-        vulnerabilities: { total: 2, critical: 0, high: 0, moderate: 2, low: 0 },
+        vulnerabilities: {
+          total: 2,
+          critical: 0,
+          high: 0,
+          moderate: 2,
+          low: 0,
+        },
         advisories: [
-          { name: "lodash", severity: "moderate", title: "Prototype Pollution", url: "https://npmjs.com/advisories/1234" },
-          { name: "express", severity: "moderate", title: "Open Redirect", url: "https://npmjs.com/advisories/5678" },
+          {
+            name: "lodash",
+            severity: "moderate",
+            title: "Prototype Pollution",
+            url: "https://npmjs.com/advisories/1234",
+          },
+          {
+            name: "express",
+            severity: "moderate",
+            title: "Open Redirect",
+            url: "https://npmjs.com/advisories/5678",
+          },
         ],
       },
       secrets: [],
       typeErrors: [
-        { file: "packages/agent-core/src/agent.ts", line: 42, code: "TS2345", message: "Argument of type 'string' is not assignable to parameter of type 'number'" },
-        { file: "apps/dashboard/src/components/SessionList.tsx", line: 88, code: "TS2322", message: "Type 'undefined' is not assignable to type 'string'" },
-        { file: "apps/slack-bot/src/handlers/message.ts", line: 15, code: "TS7006", message: "Parameter 'ctx' implicitly has an 'any' type" },
+        {
+          file: "packages/agent-core/src/agent.ts",
+          line: 42,
+          code: "TS2345",
+          message:
+            "Argument of type 'string' is not assignable to parameter of type 'number'",
+        },
+        {
+          file: "apps/dashboard/src/components/SessionList.tsx",
+          line: 88,
+          code: "TS2322",
+          message: "Type 'undefined' is not assignable to type 'string'",
+        },
+        {
+          file: "apps/slack-bot/src/handlers/message.ts",
+          line: 15,
+          code: "TS7006",
+          message: "Parameter 'ctx' implicitly has an 'any' type",
+        },
       ],
       scannedAt: new Date().toISOString(),
     },
     afterFindings: {
       audit: {
-        vulnerabilities: { total: 2, critical: 0, high: 0, moderate: 2, low: 0 },
+        vulnerabilities: {
+          total: 2,
+          critical: 0,
+          high: 0,
+          moderate: 2,
+          low: 0,
+        },
         advisories: [
-          { name: "lodash", severity: "moderate", title: "Prototype Pollution", url: "https://npmjs.com/advisories/1234" },
-          { name: "express", severity: "moderate", title: "Open Redirect", url: "https://npmjs.com/advisories/5678" },
+          {
+            name: "lodash",
+            severity: "moderate",
+            title: "Prototype Pollution",
+            url: "https://npmjs.com/advisories/1234",
+          },
+          {
+            name: "express",
+            severity: "moderate",
+            title: "Open Redirect",
+            url: "https://npmjs.com/advisories/5678",
+          },
         ],
       },
       secrets: [],
@@ -129,12 +183,14 @@ function buildAutoFixPatrolReport() {
       {
         category: "type-error",
         filesChanged: ["packages/agent-core/src/agent.ts"],
-        description: "agent.ts の型エラーを修正（string -> number キャスト追加）",
+        description:
+          "agent.ts の型エラーを修正（string -> number キャスト追加）",
       },
       {
         category: "type-error",
         filesChanged: ["apps/dashboard/src/components/SessionList.tsx"],
-        description: "SessionList.tsx のオプショナルプロパティにデフォルト値を追加",
+        description:
+          "SessionList.tsx のオプショナルプロパティにデフォルト値を追加",
       },
       {
         category: "type-error",
@@ -144,8 +200,16 @@ function buildAutoFixPatrolReport() {
     ],
     diffSummary: [
       { file: "packages/agent-core/src/agent.ts", additions: 2, deletions: 1 },
-      { file: "apps/dashboard/src/components/SessionList.tsx", additions: 3, deletions: 1 },
-      { file: "apps/slack-bot/src/handlers/message.ts", additions: 1, deletions: 1 },
+      {
+        file: "apps/dashboard/src/components/SessionList.tsx",
+        additions: 3,
+        deletions: 1,
+      },
+      {
+        file: "apps/slack-bot/src/handlers/message.ts",
+        additions: 1,
+        deletions: 1,
+      },
     ],
     verification: { buildPassed: true, testsPassed: true },
     costUsd: 0.15,
@@ -170,7 +234,11 @@ function buildReportBlocks(report) {
   };
 
   function totalFindings(scan) {
-    return scan.audit.vulnerabilities.total + scan.secrets.length + scan.typeErrors.length;
+    return (
+      scan.audit.vulnerabilities.total +
+      scan.secrets.length +
+      scan.typeErrors.length
+    );
   }
 
   const riskLabel = RISK_LABEL[report.riskLevel];
@@ -182,14 +250,20 @@ function buildReportBlocks(report) {
   const titleDate = `${Number(month)}月${Number(day)}日`;
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: `Code Patrol - ${titleDate}`, emoji: true },
+    text: {
+      type: "plain_text",
+      text: `Code Patrol - ${titleDate}`,
+      emoji: true,
+    },
   });
 
   const fixed = report.remediations.length;
   const unfixed = report.recommendations.length;
   const contextParts = [];
   if (isAutoFix) {
-    contextParts.push(`検出 ${detected}件 \u00B7 修正済 ${fixed}件 \u00B7 未修正 ${unfixed}件`);
+    contextParts.push(
+      `検出 ${detected}件 \u00B7 修正済 ${fixed}件 \u00B7 未修正 ${unfixed}件`,
+    );
   } else {
     contextParts.push(`検出 ${detected}件`);
   }
@@ -203,48 +277,89 @@ function buildReportBlocks(report) {
 
   if (!isAutoFix || report.rolledBack) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: report.summary } });
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: report.summary },
+    });
   }
 
   if (report.remediations.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":wrench:  自動修正内容", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: { type: "plain_text", text: ":wrench:  自動修正内容", emoji: true },
+    });
     const fixLines = report.remediations.map((r) => {
       const categoryLabel =
-        r.category === "type-error" ? "型エラー"
-        : r.category === "secret-leak" ? "シークレット"
-        : r.category === "dependency" ? "依存パッケージ"
-        : "その他";
+        r.category === "type-error"
+          ? "型エラー"
+          : r.category === "secret-leak"
+            ? "シークレット"
+            : r.category === "dependency"
+              ? "依存パッケージ"
+              : "その他";
       return `\u2022 ${r.description}  _${categoryLabel}_`;
     });
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: fixLines.join("\n") } });
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: fixLines.join("\n") },
+    });
   }
 
   if (report.afterFindings) {
     const before = report.findings;
     const after = report.afterFindings;
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":arrows_counterclockwise:  修正前 \u2192 修正後", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: ":arrows_counterclockwise:  修正前 \u2192 修正後",
+        emoji: true,
+      },
+    });
     const compareLines = [
       `\u2022 型エラー: ${before.typeErrors.length}件 \u2192 ${after.typeErrors.length}件`,
       `\u2022 シークレット: ${before.secrets.length}件 \u2192 ${after.secrets.length}件`,
       `\u2022 脆弱性: ${before.audit.vulnerabilities.total}件 \u2192 ${after.audit.vulnerabilities.total}件`,
     ];
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: compareLines.join("\n") } });
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: compareLines.join("\n") },
+    });
   }
 
   if (report.verification) {
     const v = report.verification;
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":white_check_mark:  検証結果", emoji: true } });
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: `\u2022 pnpm build: ${v.buildPassed ? "PASS" : "FAIL"}\n\u2022 pnpm test: ${v.testsPassed ? "PASS" : "FAIL"}` } });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: ":white_check_mark:  検証結果",
+        emoji: true,
+      },
+    });
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `\u2022 pnpm build: ${v.buildPassed ? "PASS" : "FAIL"}\n\u2022 pnpm test: ${v.testsPassed ? "PASS" : "FAIL"}`,
+      },
+    });
   }
 
   if (report.recommendations.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":mega:  手動対応が必要", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: { type: "plain_text", text: ":mega:  手動対応が必要", emoji: true },
+    });
     const recLines = report.recommendations.map((r) => `\u2022 ${r}`);
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: recLines.join("\n") } });
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: recLines.join("\n") },
+    });
   }
 
   return { blocks, text: `Code Patrol - ${report.date}` };
@@ -258,14 +373,20 @@ function buildNeedsReplyBlocks() {
 
   blocks.push({
     type: "rich_text",
-    elements: [{
-      type: "rich_text_section",
-      elements: [
-        { type: "emoji", name: "envelope_with_arrow" },
-        { type: "text", text: " 要返信", style: { bold: true } },
-        { type: "text", text: "  プロジェクト進捗の確認について", style: { bold: true } },
-      ],
-    }],
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [
+          { type: "emoji", name: "envelope_with_arrow" },
+          { type: "text", text: " 要返信", style: { bold: true } },
+          {
+            type: "text",
+            text: "  プロジェクト進捗の確認について",
+            style: { bold: true },
+          },
+        ],
+      },
+    ],
   });
 
   blocks.push({
@@ -278,22 +399,32 @@ function buildNeedsReplyBlocks() {
 
   blocks.push({
     type: "rich_text",
-    elements: [{
-      type: "rich_text_quote",
-      elements: [
-        { type: "text", text: "田中太郎さんからプロジェクトの進捗確認。来週月曜のミーティングまでに現状の報告をお願いしたいとのこと。特にフロントエンドの進捗について詳細が欲しいようです。" },
-      ],
-    }],
+    elements: [
+      {
+        type: "rich_text_quote",
+        elements: [
+          {
+            type: "text",
+            text: "田中太郎さんからプロジェクトの進捗確認。来週月曜のミーティングまでに現状の報告をお願いしたいとのこと。特にフロントエンドの進捗について詳細が欲しいようです。",
+          },
+        ],
+      },
+    ],
   });
 
   blocks.push({
     type: "rich_text",
-    elements: [{
-      type: "rich_text_preformatted",
-      elements: [
-        { type: "text", text: "田中様\n\nお疲れ様です。進捗のご確認ありがとうございます。\n\nフロントエンドについては現在80%ほど完了しており、来週月曜までにはデモ可能な状態になる予定です。\n詳細な進捗レポートを本日中にお送りいたします。\n\nよろしくお願いいたします。" },
-      ],
-    }],
+    elements: [
+      {
+        type: "rich_text_preformatted",
+        elements: [
+          {
+            type: "text",
+            text: "田中様\n\nお疲れ様です。進捗のご確認ありがとうございます。\n\nフロントエンドについては現在80%ほど完了しており、来週月曜までにはデモ可能な状態になる予定です。\n詳細な進捗レポートを本日中にお送りいたします。\n\nよろしくお願いいたします。",
+          },
+        ],
+      },
+    ],
   });
 
   blocks.push({
@@ -332,14 +463,20 @@ function buildNeedsAttentionBlocks() {
 
   blocks.push({
     type: "rich_text",
-    elements: [{
-      type: "rich_text_section",
-      elements: [
-        { type: "emoji", name: "eyes" },
-        { type: "text", text: " 要確認", style: { bold: true } },
-        { type: "text", text: "  【重要】サーバー証明書の更新期限が近づいています", style: { bold: true } },
-      ],
-    }],
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [
+          { type: "emoji", name: "eyes" },
+          { type: "text", text: " 要確認", style: { bold: true } },
+          {
+            type: "text",
+            text: "  【重要】サーバー証明書の更新期限が近づいています",
+            style: { bold: true },
+          },
+        ],
+      },
+    ],
   });
 
   blocks.push({
@@ -352,15 +489,23 @@ function buildNeedsAttentionBlocks() {
 
   blocks.push({
     type: "rich_text",
-    elements: [{
-      type: "rich_text_quote",
-      elements: [
-        { type: "text", text: "AWS Certificate Manager から、SSL/TLS証明書の有効期限が14日後に迫っているという通知。対象ドメイン: api.example.com。自動更新が設定されていない場合は手動で更新が必要。" },
-      ],
-    }],
+    elements: [
+      {
+        type: "rich_text_quote",
+        elements: [
+          {
+            type: "text",
+            text: "AWS Certificate Manager から、SSL/TLS証明書の有効期限が14日後に迫っているという通知。対象ドメイン: api.example.com。自動更新が設定されていない場合は手動で更新が必要。",
+          },
+        ],
+      },
+    ],
   });
 
-  return { blocks, text: "\u{1F440} 要確認: 【重要】サーバー証明書の更新期限が近づいています" };
+  return {
+    blocks,
+    text: "\u{1F440} 要確認: 【重要】サーバー証明書の更新期限が近づいています",
+  };
 }
 
 // ============================================================
@@ -377,19 +522,69 @@ function buildDailyPlanBlocks() {
   const data = {
     date: today,
     events: [
-      { title: "朝会スタンドアップ", start: `${today}T09:30:00+09:00`, end: `${today}T09:45:00+09:00`, location: undefined },
-      { title: "デザインレビュー", start: `${today}T11:00:00+09:00`, end: `${today}T12:00:00+09:00`, location: "会議室A" },
-      { title: "ランチミーティング", start: `${today}T12:30:00+09:00`, end: `${today}T13:30:00+09:00`, location: "カフェテリア" },
-      { title: "スプリント振り返り", start: `${today}T15:00:00+09:00`, end: `${today}T16:00:00+09:00`, location: undefined },
+      {
+        title: "朝会スタンドアップ",
+        start: `${today}T09:30:00+09:00`,
+        end: `${today}T09:45:00+09:00`,
+        location: undefined,
+      },
+      {
+        title: "デザインレビュー",
+        start: `${today}T11:00:00+09:00`,
+        end: `${today}T12:00:00+09:00`,
+        location: "会議室A",
+      },
+      {
+        title: "ランチミーティング",
+        start: `${today}T12:30:00+09:00`,
+        end: `${today}T13:30:00+09:00`,
+        location: "カフェテリア",
+      },
+      {
+        title: "スプリント振り返り",
+        start: `${today}T15:00:00+09:00`,
+        end: `${today}T16:00:00+09:00`,
+        location: undefined,
+      },
     ],
     pendingEmails: [
-      { id: "e1", from: "tanaka@example.com", subject: "プロジェクト進捗の確認", classification: "needs_reply", receivedAt: new Date(Date.now() - 3600000) },
-      { id: "e2", from: "noreply@aws.amazon.com", subject: "証明書更新通知", classification: "needs_attention", receivedAt: new Date(Date.now() - 7200000) },
+      {
+        id: "e1",
+        from: "tanaka@example.com",
+        subject: "プロジェクト進捗の確認",
+        classification: "needs_reply",
+        receivedAt: new Date(Date.now() - 3600000),
+      },
+      {
+        id: "e2",
+        from: "noreply@aws.amazon.com",
+        subject: "証明書更新通知",
+        classification: "needs_attention",
+        receivedAt: new Date(Date.now() - 7200000),
+      },
     ],
     pendingTasks: [
-      { id: "t1", summary: "Slack Bot のエラーハンドリング改善", intent: "development", status: "running", createdAt: new Date(Date.now() - 86400000) },
-      { id: "t2", summary: "ナレッジベースの検索精度向上", intent: "improvement", status: "queued", createdAt: new Date(Date.now() - 43200000) },
-      { id: "t3", summary: "デプロイスクリプトの修正", intent: "bugfix", status: "pending", createdAt: new Date(Date.now() - 21600000) },
+      {
+        id: "t1",
+        summary: "Slack Bot のエラーハンドリング改善",
+        intent: "development",
+        status: "running",
+        createdAt: new Date(Date.now() - 86400000),
+      },
+      {
+        id: "t2",
+        summary: "ナレッジベースの検索精度向上",
+        intent: "improvement",
+        status: "queued",
+        createdAt: new Date(Date.now() - 43200000),
+      },
+      {
+        id: "t3",
+        summary: "デプロイスクリプトの修正",
+        intent: "bugfix",
+        status: "pending",
+        createdAt: new Date(Date.now() - 21600000),
+      },
     ],
   };
 
@@ -414,19 +609,31 @@ function buildDailyPlanBlocks() {
   // Header
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: `${dateJa}（${dayOfWeek}）`, emoji: true },
+    text: {
+      type: "plain_text",
+      text: `${dateJa}（${dayOfWeek}）`,
+      emoji: true,
+    },
   });
 
   // Summary context
   blocks.push({
     type: "context",
-    elements: [{ type: "mrkdwn", text: `予定 ${data.events.length}件 \u00B7 メール ${data.pendingEmails.length}件 \u00B7 タスク ${data.pendingTasks.length}件` }],
+    elements: [
+      {
+        type: "mrkdwn",
+        text: `予定 ${data.events.length}件 \u00B7 メール ${data.pendingEmails.length}件 \u00B7 タスク ${data.pendingTasks.length}件`,
+      },
+    ],
   });
 
   // Calendar events (vertical list with bullets)
   if (data.events.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":calendar:  今日の予定", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: { type: "plain_text", text: ":calendar:  今日の予定", emoji: true },
+    });
 
     const displayEvents = data.events.slice(0, MAX_EVENTS);
     const eventLines = displayEvents.map((e) => {
@@ -435,17 +642,29 @@ function buildDailyPlanBlocks() {
       const loc = e.location ? `  _${e.location}_` : "";
       return `\u2022 *${start}${end}*  ${e.title}${loc}`;
     });
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: eventLines.join("\n") } });
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: eventLines.join("\n") },
+    });
   }
 
   // Pending emails (grouped vertical list with bullets)
   if (data.pendingEmails.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":envelope:  未対応メール", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: ":envelope:  未対応メール",
+        emoji: true,
+      },
+    });
 
     const EMAIL_PRIORITY_ORDER = { needs_reply: 0, needs_attention: 1 };
     const sortedEmails = [...data.pendingEmails].sort(
-      (a, b) => (EMAIL_PRIORITY_ORDER[a.classification] ?? 9) - (EMAIL_PRIORITY_ORDER[b.classification] ?? 9),
+      (a, b) =>
+        (EMAIL_PRIORITY_ORDER[a.classification] ?? 9) -
+        (EMAIL_PRIORITY_ORDER[b.classification] ?? 9),
     );
     const displayEmails = sortedEmails.slice(0, MAX_EMAILS);
 
@@ -462,24 +681,41 @@ function buildDailyPlanBlocks() {
       firstGroup = false;
       emailLines.push(`*${label}*`);
       for (const e of items) {
-        emailLines.push(`  \u2022 ${truncateText(e.subject)} \u2014 _${e.from}_`);
+        emailLines.push(
+          `  \u2022 ${truncateText(e.subject)} \u2014 _${e.from}_`,
+        );
       }
     }
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: emailLines.join("\n") } });
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: emailLines.join("\n") },
+    });
   }
 
   // Pending tasks (grouped vertical list with bullets)
   if (data.pendingTasks.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":clipboard:  未完了タスク", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: ":clipboard:  未完了タスク",
+        emoji: true,
+      },
+    });
 
     const TASK_STATUS_ORDER = { running: 0, queued: 1, pending: 2 };
     const sortedTasks = [...data.pendingTasks].sort(
-      (a, b) => (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9),
+      (a, b) =>
+        (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9),
     );
     const displayTasks = sortedTasks.slice(0, MAX_TASKS);
 
-    const statusLabels = { running: "実行中", queued: "待機中", pending: "未着手" };
+    const statusLabels = {
+      running: "実行中",
+      queued: "待機中",
+      pending: "未着手",
+    };
     const taskGroups = {};
     for (const t of displayTasks) {
       const key = statusLabels[t.status] ?? t.status;
@@ -496,7 +732,10 @@ function buildDailyPlanBlocks() {
         taskLines.push(`  \u2022 ${truncateText(t.summary)}`);
       }
     }
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: taskLines.join("\n") } });
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: taskLines.join("\n") },
+    });
   }
 
   return { blocks, text: `${dateJa}（${dayOfWeek}）` };
@@ -525,11 +764,18 @@ function buildDailyNewsBlocks() {
   blocks.push({ type: "divider" });
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: ":clipboard:  今日のトピック", emoji: true },
+    text: {
+      type: "plain_text",
+      text: ":clipboard:  今日のトピック",
+      emoji: true,
+    },
   });
   blocks.push({
     type: "section",
-    text: { type: "mrkdwn", text: "\u2022 Claude Code の新しい Hooks API が正式リリース\n\u2022 OpenClaw v2.0 がマルチエージェント対応に\n\u2022 Google Gemini 3.0 のベンチマーク結果\n\u2022 GitHub Copilot がコードレビュー機能を追加\n\u2022 AI エージェント開発のベストプラクティス 2026" },
+    text: {
+      type: "mrkdwn",
+      text: "\u2022 Claude Code の新しい Hooks API が正式リリース\n\u2022 OpenClaw v2.0 がマルチエージェント対応に\n\u2022 Google Gemini 3.0 のベンチマーク結果\n\u2022 GitHub Copilot がコードレビュー機能を追加\n\u2022 AI エージェント開発のベストプラクティス 2026",
+    },
   });
 
   blocks.push({ type: "divider" });
@@ -539,17 +785,27 @@ function buildDailyNewsBlocks() {
   });
   blocks.push({
     type: "section",
-    text: { type: "mrkdwn", text: `<${BASE_URL}/api/files/${outputDir}/output.mp4|:arrow_forward: クリックして再生>` },
+    text: {
+      type: "mrkdwn",
+      text: `<${BASE_URL}/api/files/${outputDir}/output.mp4|:arrow_forward: クリックして再生>`,
+    },
   });
 
   blocks.push({ type: "divider" });
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: ":headphones:  ポッドキャスト", emoji: true },
+    text: {
+      type: "plain_text",
+      text: ":headphones:  ポッドキャスト",
+      emoji: true,
+    },
   });
   blocks.push({
     type: "section",
-    text: { type: "mrkdwn", text: `<${BASE_URL}/api/files/${outputDir}/podcast/podcast.mp3|:arrow_forward: クリックして再生>` },
+    text: {
+      type: "mrkdwn",
+      text: `<${BASE_URL}/api/files/${outputDir}/podcast/podcast.mp3|:arrow_forward: クリックして再生>`,
+    },
   });
 
   blocks.push({ type: "divider" });
@@ -562,7 +818,9 @@ function buildDailyNewsBlocks() {
 // ============================================================
 async function main() {
   const TOTAL = 6;
-  console.log(`Starting test posts to 4 Slack channels (${TOTAL} messages total)...\n`);
+  console.log(
+    `Starting test posts to 4 Slack channels (${TOTAL} messages total)...\n`,
+  );
   const results = [];
 
   // 1. Code Patrol - Clean
@@ -587,7 +845,11 @@ async function main() {
     results.push({ name: "Code Patrol (auto-fix)", ok: true });
   } catch (e) {
     console.error(`[2/${TOTAL}] Code Patrol (auto-fix)  -> FAIL: ${e.message}`);
-    results.push({ name: "Code Patrol (auto-fix)", ok: false, error: e.message });
+    results.push({
+      name: "Code Patrol (auto-fix)",
+      ok: false,
+      error: e.message,
+    });
   }
 
   await new Promise((r) => setTimeout(r, 1000));
@@ -613,7 +875,11 @@ async function main() {
     results.push({ name: "Gmail (needs_attention)", ok: true });
   } catch (e) {
     console.error(`[4/${TOTAL}] Gmail (needs_attention) -> FAIL: ${e.message}`);
-    results.push({ name: "Gmail (needs_attention)", ok: false, error: e.message });
+    results.push({
+      name: "Gmail (needs_attention)",
+      ok: false,
+      error: e.message,
+    });
   }
 
   await new Promise((r) => setTimeout(r, 1000));
@@ -646,7 +912,9 @@ async function main() {
   console.log("\n--- Summary ---");
   const successCount = results.filter((r) => r.ok).length;
   for (const r of results) {
-    console.log(`  ${r.ok ? "OK" : "FAIL"} ${r.name}${r.error ? ` (${r.error})` : ""}`);
+    console.log(
+      `  ${r.ok ? "OK" : "FAIL"} ${r.name}${r.error ? ` (${r.error})` : ""}`,
+    );
   }
   console.log(`\nResult: ${successCount}/${TOTAL} succeeded`);
 

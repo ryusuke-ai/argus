@@ -71,7 +71,7 @@ if (values.context) {
   for (const contextPath of values.context) {
     const content = readFileContent(
       contextPath,
-      `コンテキストファイル (${contextPath})`
+      `コンテキストファイル (${contextPath})`,
     );
     contextContents.push({ path: contextPath, content });
   }
@@ -199,14 +199,16 @@ ${JSON.stringify(schema, null, 2)}
   });
 
   console.error(
-    `[Fallback] Z.ai 成功 (${Date.now() - start}ms). Model: ${completion.model}`
+    `[Fallback] Z.ai 成功 (${Date.now() - start}ms). Model: ${completion.model}`,
   );
   return completion.choices[0]?.message?.content?.trim();
 }
 
 async function main() {
   try {
-    const outputPath = values.output ? resolve(values.output) : resolve("output.json");
+    const outputPath = values.output
+      ? resolve(values.output)
+      : resolve("output.json");
     let content = null;
 
     // Primary: Codex
@@ -237,14 +239,20 @@ async function main() {
     }
 
     // スキーマ名をファイル名から推測（dialogue.schema.json → dialogue）
-    const schemaFileName = basename(values.schema, ".schema.json").replace(".json", "");
-    const schemaName = schemaFileName === "video-script" ? "video-script" : schemaFileName;
+    const schemaFileName = basename(values.schema, ".schema.json").replace(
+      ".json",
+      "",
+    );
+    const schemaName =
+      schemaFileName === "video-script" ? "video-script" : schemaFileName;
 
     // Zodバリデーション実行
     const validation = validateJson(schemaName, result);
     if (!validation.success) {
       printValidationErrors(schemaName, validation.errors);
-      console.error(`\n⚠️ バリデーションエラーがありますが、ファイルは保存します`);
+      console.error(
+        `\n⚠️ バリデーションエラーがありますが、ファイルは保存します`,
+      );
       console.error(`→ 該当箇所を手動で修正してください: ${outputPath}`);
     } else {
       console.error(`✅ ${schemaName} バリデーション成功`);
@@ -256,7 +264,7 @@ async function main() {
   } catch (error) {
     console.error(
       "API 呼び出しでエラーが発生しました:",
-      error?.message ?? error
+      error?.message ?? error,
     );
     process.exit(1);
   }

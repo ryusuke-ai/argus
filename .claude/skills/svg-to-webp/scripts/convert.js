@@ -188,7 +188,9 @@ async function convertSvgToWebp(inputPath, outputPath, options) {
 
   // 品質値の検証
   if (options.quality < 1 || options.quality > 100) {
-    throw new Error(`品質値は1-100の範囲で指定してください: ${options.quality}`);
+    throw new Error(
+      `品質値は1-100の範囲で指定してください: ${options.quality}`,
+    );
   }
 
   // 背景色のパース
@@ -268,7 +270,7 @@ function validateOptions(options) {
 
   if (!isSingleFile && !isDirectory) {
     console.error(
-      "Error: --input と --output、または --input-dir と --output-dir を指定してください。"
+      "Error: --input と --output、または --input-dir と --output-dir を指定してください。",
     );
     printHelp();
     process.exit(1);
@@ -276,7 +278,7 @@ function validateOptions(options) {
 
   if (isSingleFile && isDirectory) {
     console.error(
-      "Error: 単一ファイル変換とディレクトリ変換を同時に指定することはできません。"
+      "Error: 単一ファイル変換とディレクトリ変換を同時に指定することはできません。",
     );
     process.exit(1);
   }
@@ -310,7 +312,7 @@ async function main() {
     if (mode === "single") {
       console.log(`変換中: ${options.input} -> ${options.output}`);
       console.log(
-        `  サイズ: ${options.width}x${options.height}, 品質: ${options.quality}, 背景: ${options.background}`
+        `  サイズ: ${options.width}x${options.height}, 品質: ${options.quality}, 背景: ${options.background}`,
       );
 
       await convertSvgToWebp(options.input, options.output, options);
@@ -319,13 +321,13 @@ async function main() {
       console.log(`入力ディレクトリ: ${options.inputDir}`);
       console.log(`出力ディレクトリ: ${options.outputDir}`);
       console.log(
-        `  サイズ: ${options.width}x${options.height}, 品質: ${options.quality}, 背景: ${options.background}`
+        `  サイズ: ${options.width}x${options.height}, 品質: ${options.quality}, 背景: ${options.background}`,
       );
 
       const results = await convertDirectory(
         options.inputDir,
         options.outputDir,
-        options
+        options,
       );
 
       const successCount = results.filter((r) => r.success).length;

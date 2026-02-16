@@ -15,18 +15,34 @@ describe("publishToInstagram", () => {
   it("should return error when credentials not configured", async () => {
     vi.stubEnv("INSTAGRAM_USER_ID", "");
     vi.stubEnv("INSTAGRAM_ACCESS_TOKEN", "");
-    const result = await publishToInstagram({ imageUrl: "https://example.com/img.png", caption: "test" });
+    const result = await publishToInstagram({
+      imageUrl: "https://example.com/img.png",
+      caption: "test",
+    });
     expect(result.success).toBe(false);
     expect(result.error).toContain("credentials");
   });
 
   it("should publish image post successfully", async () => {
     mockFetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: "container-123" }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: "media-456" }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ permalink: "https://www.instagram.com/p/ABC123/" }) });
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: "container-123" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: "media-456" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ permalink: "https://www.instagram.com/p/ABC123/" }),
+      });
 
-    const result = await publishToInstagram({ imageUrl: "https://example.com/img.png", caption: "Hello #test" });
+    const result = await publishToInstagram({
+      imageUrl: "https://example.com/img.png",
+      caption: "Hello #test",
+    });
     expect(result.success).toBe(true);
     expect(result.mediaId).toBe("media-456");
     expect(result.url).toBe("https://www.instagram.com/p/ABC123/");
@@ -35,12 +51,31 @@ describe("publishToInstagram", () => {
 
   it("should publish reel with polling", async () => {
     mockFetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: "reel-container-789" }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status_code: "IN_PROGRESS" }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status_code: "FINISHED" }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status_code: "FINISHED" }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: "reel-media-101" }) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ permalink: "https://www.instagram.com/reel/XYZ/" }) });
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: "reel-container-789" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status_code: "IN_PROGRESS" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status_code: "FINISHED" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status_code: "FINISHED" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: "reel-media-101" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ permalink: "https://www.instagram.com/reel/XYZ/" }),
+      });
 
     const result = await publishToInstagram({
       videoUrl: "https://example.com/video.mp4",
@@ -62,16 +97,25 @@ describe("publishToInstagram", () => {
       json: () => Promise.resolve({ error: { message: "Invalid image" } }),
     });
 
-    const result = await publishToInstagram({ imageUrl: "https://example.com/bad.png", caption: "test" });
+    const result = await publishToInstagram({
+      imageUrl: "https://example.com/bad.png",
+      caption: "test",
+    });
     expect(result.success).toBe(false);
     expect(result.error).toContain("400");
   });
 
   it("should timeout on reel polling", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: "reel-slow" }) });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: "reel-slow" }),
+    });
 
     for (let i = 0; i < 15; i++) {
-      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status_code: "IN_PROGRESS" }) });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status_code: "IN_PROGRESS" }),
+      });
     }
 
     const result = await publishToInstagram({

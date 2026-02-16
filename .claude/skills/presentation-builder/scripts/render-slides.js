@@ -35,7 +35,9 @@ if (!values.input) {
   console.error("");
   console.error("オプション:");
   console.error("  --input      slides.md パス（必須）");
-  console.error("  --output-dir 出力ディレクトリ（デフォルト: slides.md と同じディレクトリ）");
+  console.error(
+    "  --output-dir 出力ディレクトリ（デフォルト: slides.md と同じディレクトリ）",
+  );
   console.error("  --pdf        PDF 生成（デフォルト: true）");
   console.error("  --html       HTML 生成（デフォルト: true）");
   console.error("  --theme      テーマ CSS パス（任意）");
@@ -48,7 +50,9 @@ if (!existsSync(inputPath)) {
   process.exit(1);
 }
 
-const outputDir = values["output-dir"] ? resolve(values["output-dir"]) : dirname(inputPath);
+const outputDir = values["output-dir"]
+  ? resolve(values["output-dir"])
+  : dirname(inputPath);
 const baseName = basename(inputPath, ".md");
 const shouldPdf = values.pdf !== false;
 const shouldHtml = values.html !== false;
@@ -60,7 +64,14 @@ function formatFileSize(bytes) {
 }
 
 function runMarp(format, outputPath) {
-  const args = ["@marp-team/marp-cli", inputPath, `--${format}`, "-o", outputPath, "--allow-local-files"];
+  const args = [
+    "@marp-team/marp-cli",
+    inputPath,
+    `--${format}`,
+    "-o",
+    outputPath,
+    "--allow-local-files",
+  ];
   if (values.theme) {
     args.push("--theme", resolve(values.theme));
   }
@@ -73,10 +84,14 @@ function runMarp(format, outputPath) {
 
     if (existsSync(outputPath)) {
       const size = formatFileSize(statSync(outputPath).size);
-      console.log(`✅ ${format.toUpperCase()} 生成完了: ${outputPath} (${size})`);
+      console.log(
+        `✅ ${format.toUpperCase()} 生成完了: ${outputPath} (${size})`,
+      );
       return true;
     } else {
-      console.error(`❌ ${format.toUpperCase()} 生成失敗: 出力ファイルが見つかりません`);
+      console.error(
+        `❌ ${format.toUpperCase()} 生成失敗: 出力ファイルが見つかりません`,
+      );
       return false;
     }
   } catch (e) {

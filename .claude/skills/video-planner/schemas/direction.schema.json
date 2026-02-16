@@ -32,8 +32,15 @@
                 "type": "object",
                 "required": ["text", "sound"],
                 "properties": {
-                  "text": { "type": "string", "description": "要点を伝える完成度のある文（主語述語目的語を含む、10-20文字程度）" },
-                  "sound": { "type": "string", "enum": ["shakin", "pa", "jean"], "description": "効果音（必須）" }
+                  "text": {
+                    "type": "string",
+                    "description": "要点を伝える完成度のある文（主語述語目的語を含む、10-20文字程度）"
+                  },
+                  "sound": {
+                    "type": "string",
+                    "enum": ["shakin", "pa", "jean"],
+                    "description": "効果音（必須）"
+                  }
                 }
               }
             ],

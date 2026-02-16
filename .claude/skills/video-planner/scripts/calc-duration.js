@@ -172,7 +172,9 @@ async function callCodex() {
  */
 function extractJson(output) {
   // JSON部分を抽出
-  const jsonMatch = output.match(/\{[\s\S]*?"duration"[\s\S]*?"segmentCount"[\s\S]*?\}/);
+  const jsonMatch = output.match(
+    /\{[\s\S]*?"duration"[\s\S]*?"segmentCount"[\s\S]*?\}/,
+  );
   if (!jsonMatch) {
     throw new Error("JSONを抽出できませんでした");
   }

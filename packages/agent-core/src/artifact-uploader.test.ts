@@ -51,9 +51,9 @@ describe("scanOutputDir", () => {
         ] as unknown as ReturnType<typeof fs.readdirSync>;
       }
       if (dirStr === "/output/subdir") {
-        return [
-          mockDirent("file2.pdf", false),
-        ] as unknown as ReturnType<typeof fs.readdirSync>;
+        return [mockDirent("file2.pdf", false)] as unknown as ReturnType<
+          typeof fs.readdirSync
+        >;
       }
       return [] as unknown as ReturnType<typeof fs.readdirSync>;
     });
@@ -193,7 +193,9 @@ describe("uploadArtifactsToSlack", () => {
 
   it("should call fetch for each artifact", async () => {
     vi.mocked(global.fetch).mockImplementation(() =>
-      Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
+      Promise.resolve(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      ),
     );
 
     await uploadArtifactsToSlack({

@@ -12,8 +12,8 @@ import {
   spring,
   continueRender,
   delayRender,
-} from 'remotion';
-import { useEffect, useState } from 'react';
+} from "remotion";
+import { useEffect, useState } from "react";
 
 // トランジションのデフォルト長さ（フレーム数）
 const DEFAULT_TRANSITION_FRAMES = 6; // 0.2秒 @30fps
@@ -22,7 +22,7 @@ const DEFAULT_TRANSITION_FRAMES = 6; // 0.2秒 @30fps
 const SOUND_LEAD_FRAMES = -6; // 0.2秒後から再生
 
 // フォント設定
-const FONT_FAMILY = 'KeiFont, sans-serif';
+const FONT_FAMILY = "KeiFont, sans-serif";
 
 // レイアウト定数（1920x1080基準）
 const LAYOUT = {
@@ -40,7 +40,7 @@ const LAYOUT = {
   TEXT_FONT_SIZE_DEFAULT: 48, // デフォルトフォントサイズ（4px減）
   TEXT_FONT_SIZE_MIN: 28, // 最小フォントサイズ
   TEXT_MAX_CHARS_DEFAULT: 38, // デフォルトサイズで表示できる最大文字数（フォント小さくなったので増）
-  TEXT_PADDING: '6px 28px', // 上下左右の余白
+  TEXT_PADDING: "6px 28px", // 上下左右の余白
 
   // メインキャンバス領域（16:9画像用に横幅最大化）
   CANVAS_TOP: 20, // 画像を上寄せ（ハイライトとの被り軽減）
@@ -51,18 +51,18 @@ const LAYOUT = {
   // ハイライトテキスト（画像ありの場合、チャットバブルのちょっと上に配置）
   HIGHLIGHT_BOTTOM: 120, // チャットバブル(90px) + 余白(30px)
   HIGHLIGHT_FONT_SIZE: 72,
-  HIGHLIGHT_PADDING: '16px 32px',
+  HIGHLIGHT_PADDING: "16px 32px",
 
   // セクションタイトル（左上）
   SECTION_TOP: 16,
   SECTION_LEFT: 16,
   SECTION_FONT_SIZE: 38,
-  SECTION_PADDING: '14px 28px',
+  SECTION_PADDING: "14px 28px",
 
   // ウォーターマーク（右上）
   WATERMARK_TOP: 16,
   WATERMARK_RIGHT: 16,
-  WATERMARK_HEIGHT: 100, 
+  WATERMARK_HEIGHT: 100,
   WATERMARK_OPACITY: 0.4,
 };
 
@@ -82,32 +82,32 @@ const SectionTitle = ({ title, isNewSection, transitionFrames }) => {
       frame,
       [transitionFrames, transitionFrames + 20],
       [0, 0.85],
-      { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
     );
   }
 
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         top: LAYOUT.SECTION_TOP,
         left: LAYOUT.SECTION_LEFT,
         zIndex: 10,
-        backgroundColor: '#ffffff',
+        backgroundColor: "#ffffff",
         borderRadius: 8,
         padding: LAYOUT.SECTION_PADDING,
         opacity,
-        border: '3px solid #000000',
+        border: "3px solid #000000",
       }}
     >
       <p
         style={{
-          color: '#1a1a1a',
+          color: "#1a1a1a",
           fontSize: LAYOUT.SECTION_FONT_SIZE,
           fontFamily: FONT_FAMILY,
           fontWeight: 600,
           margin: 0,
-          letterSpacing: '0.03em',
+          letterSpacing: "0.03em",
         }}
       >
         {title}
@@ -126,7 +126,7 @@ const Watermark = ({ src }) => {
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         top: LAYOUT.WATERMARK_TOP,
         right: LAYOUT.WATERMARK_RIGHT,
         zIndex: 10,
@@ -137,7 +137,7 @@ const Watermark = ({ src }) => {
         src={staticFile(src)}
         style={{
           height: LAYOUT.WATERMARK_HEIGHT,
-          objectFit: 'contain',
+          objectFit: "contain",
         }}
       />
     </div>
@@ -152,41 +152,41 @@ const Watermark = ({ src }) => {
 const Highlight = ({ highlight, hasImage = true }) => {
   if (!highlight) return null;
 
-  const text = highlight.text || '';
+  const text = highlight.text || "";
 
   // 画像がない場合は中央に大きく表示
   if (!hasImage) {
     return (
       <div
         style={{
-          position: 'absolute',
+          position: "absolute",
           top: LAYOUT.CANVAS_TOP,
           left: LAYOUT.CANVAS_LEFT,
           right: LAYOUT.CANVAS_RIGHT,
           bottom: LAYOUT.CANVAS_BOTTOM,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           zIndex: 5,
         }}
       >
         <div
           style={{
-            padding: '40px 80px',
-            backgroundColor: 'rgba(255, 255, 0, 0.95)',
+            padding: "40px 80px",
+            backgroundColor: "rgba(255, 255, 0, 0.95)",
             borderRadius: 16,
-            maxWidth: '80%',
+            maxWidth: "80%",
           }}
         >
           <p
             style={{
-              color: '#1a1a1a',
+              color: "#1a1a1a",
               fontSize: 120,
               fontFamily: FONT_FAMILY,
               fontWeight: 900,
               margin: 0,
               lineHeight: 1.4,
-              textAlign: 'center',
+              textAlign: "center",
             }}
           >
             {text}
@@ -200,31 +200,31 @@ const Highlight = ({ highlight, hasImage = true }) => {
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         bottom: LAYOUT.HIGHLIGHT_BOTTOM,
         left: 0,
         right: 0,
-        display: 'flex',
-        justifyContent: 'center',
+        display: "flex",
+        justifyContent: "center",
         zIndex: 5,
       }}
     >
       <div
         style={{
           padding: LAYOUT.HIGHLIGHT_PADDING,
-          backgroundColor: 'rgba(255, 255, 0, 0.95)',
+          backgroundColor: "rgba(255, 255, 0, 0.95)",
           borderRadius: 10,
         }}
       >
         <p
           style={{
-            color: '#1a1a1a',
+            color: "#1a1a1a",
             fontSize: LAYOUT.HIGHLIGHT_FONT_SIZE,
             fontFamily: FONT_FAMILY,
             fontWeight: 900,
             margin: 0,
             lineHeight: 1.2,
-            textAlign: 'center',
+            textAlign: "center",
           }}
         >
           {text}
@@ -252,7 +252,7 @@ const MainCanvas = ({ imageSrc, transitionFrames, animate = false }) => {
       frame,
       [transitionFrames, transitionFrames + 15],
       [0, 1],
-      { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
     );
     const scaleSpring = spring({
       frame: Math.max(0, frame - transitionFrames),
@@ -269,15 +269,15 @@ const MainCanvas = ({ imageSrc, transitionFrames, animate = false }) => {
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         top: LAYOUT.CANVAS_TOP,
         left: LAYOUT.CANVAS_LEFT,
         right: LAYOUT.CANVAS_RIGHT,
         bottom: LAYOUT.CANVAS_BOTTOM, // 固定値（ハイライトの有無に関わらず）
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         opacity: canvasOpacity,
         transform: `scale(${scale})`,
       }}
@@ -285,26 +285,26 @@ const MainCanvas = ({ imageSrc, transitionFrames, animate = false }) => {
       {/* 16:9の白背景キャンバス（黒枠線付き） */}
       <div
         style={{
-          position: 'relative',
-          width: '100%',
-          maxHeight: '100%',
-          aspectRatio: '16 / 9',
-          backgroundColor: '#ffffff',
-          border: '4px solid #000000',
+          position: "relative",
+          width: "100%",
+          maxHeight: "100%",
+          aspectRatio: "16 / 9",
+          backgroundColor: "#ffffff",
+          border: "4px solid #000000",
           borderRadius: 8,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
         }}
       >
         <Img
           src={staticFile(imageSrc)}
           style={{
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
+            maxWidth: "100%",
+            maxHeight: "100%",
+            objectFit: "contain",
           }}
         />
       </div>
@@ -332,7 +332,7 @@ const Character = ({ characterSrc, animate = false }) => {
 
   if (animate) {
     opacity = interpolate(frame, [0, 10], [0, 1], {
-      extrapolateRight: 'clamp',
+      extrapolateRight: "clamp",
     });
     const scaleSpring = spring({
       frame,
@@ -345,7 +345,7 @@ const Character = ({ characterSrc, animate = false }) => {
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         bottom: LAYOUT.CHARA_BOTTOM,
         right: LAYOUT.CHARA_RIGHT,
         opacity,
@@ -356,7 +356,7 @@ const Character = ({ characterSrc, animate = false }) => {
         src={staticFile(characterSrc)}
         style={{
           height: LAYOUT.CHARA_HEIGHT,
-          objectFit: 'contain',
+          objectFit: "contain",
         }}
       />
     </div>
@@ -385,18 +385,18 @@ const VideoClipScene = ({
 
   // トランジションイン（フェード）
   let inOpacity = 1;
-  if (transitionIn === 'fade' || transitionIn === 'crossfade') {
+  if (transitionIn === "fade" || transitionIn === "crossfade") {
     inOpacity = interpolate(frame, [0, transitionFrames], [0, 1], {
-      extrapolateRight: 'clamp',
+      extrapolateRight: "clamp",
     });
   }
 
   // トランジションアウト（フェード）
   let outOpacity = 1;
   const outStart = durationInFrames - transitionFrames;
-  if (transitionOut === 'fade' || transitionOut === 'crossfade') {
+  if (transitionOut === "fade" || transitionOut === "crossfade") {
     outOpacity = interpolate(frame, [outStart, durationInFrames], [1, 0], {
-      extrapolateLeft: 'clamp',
+      extrapolateLeft: "clamp",
     });
   }
 
@@ -406,16 +406,16 @@ const VideoClipScene = ({
   const startFrom = Math.round(videoStartTime * fps);
 
   return (
-    <AbsoluteFill style={{ opacity, backgroundColor: '#000000' }}>
+    <AbsoluteFill style={{ opacity, backgroundColor: "#000000" }}>
       {videoSrc && (
         <OffthreadVideo
           src={staticFile(videoSrc)}
           startFrom={startFrom}
           volume={videoVolume}
           style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
           }}
         />
       )}
@@ -431,13 +431,13 @@ const Scene = ({
   imageSrc,
   highlight,
   currentSection, // 現在のセクション（永続表示用）
-  isNewSection,   // このシーンで新しいセクションが始まるか
+  isNewSection, // このシーンで新しいセクションが始まるか
   watermarkSrc,
   durationInFrames,
   transitionIn,
   transitionOut,
   transitionFrames = DEFAULT_TRANSITION_FRAMES,
-  textBoxColor = 'rgba(0, 0, 0, 0.8)',
+  textBoxColor = "rgba(0, 0, 0, 0.8)",
   playbackRate = 1.0,
 }) => {
   const frame = useCurrentFrame();
@@ -447,23 +447,23 @@ const Scene = ({
   let inOpacity = 1;
   let inTranslateX = 0;
 
-  if (transitionIn === 'fade' || transitionIn === 'crossfade') {
+  if (transitionIn === "fade" || transitionIn === "crossfade") {
     inOpacity = interpolate(frame, [0, transitionFrames], [0, 1], {
-      extrapolateRight: 'clamp',
+      extrapolateRight: "clamp",
     });
-  } else if (transitionIn === 'slideLeft') {
+  } else if (transitionIn === "slideLeft") {
     inTranslateX = interpolate(frame, [0, transitionFrames], [100, 0], {
-      extrapolateRight: 'clamp',
+      extrapolateRight: "clamp",
     });
     inOpacity = interpolate(frame, [0, transitionFrames], [0, 1], {
-      extrapolateRight: 'clamp',
+      extrapolateRight: "clamp",
     });
-  } else if (transitionIn === 'slideRight') {
+  } else if (transitionIn === "slideRight") {
     inTranslateX = interpolate(frame, [0, transitionFrames], [-100, 0], {
-      extrapolateRight: 'clamp',
+      extrapolateRight: "clamp",
     });
     inOpacity = interpolate(frame, [0, transitionFrames], [0, 1], {
-      extrapolateRight: 'clamp',
+      extrapolateRight: "clamp",
     });
   }
 
@@ -472,28 +472,33 @@ const Scene = ({
   let outTranslateX = 0;
   const outStart = durationInFrames - transitionFrames;
 
-  if (transitionOut === 'fade' || transitionOut === 'crossfade') {
+  if (transitionOut === "fade" || transitionOut === "crossfade") {
     outOpacity = interpolate(frame, [outStart, durationInFrames], [1, 0], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
     });
-  } else if (transitionOut === 'slideLeft') {
-    outTranslateX = interpolate(frame, [outStart, durationInFrames], [0, -100], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
-    });
+  } else if (transitionOut === "slideLeft") {
+    outTranslateX = interpolate(
+      frame,
+      [outStart, durationInFrames],
+      [0, -100],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      },
+    );
     outOpacity = interpolate(frame, [outStart, durationInFrames], [1, 0], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
     });
-  } else if (transitionOut === 'slideRight') {
+  } else if (transitionOut === "slideRight") {
     outTranslateX = interpolate(frame, [outStart, durationInFrames], [0, 100], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
     });
     outOpacity = interpolate(frame, [outStart, durationInFrames], [1, 0], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
     });
   }
 
@@ -506,8 +511,8 @@ const Scene = ({
   // テキストのフェードイン（transition時のみ）
   const textOpacity = hasTransition
     ? interpolate(frame, [transitionFrames, transitionFrames + 15], [0, 1], {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp',
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
       })
     : 1;
 
@@ -520,7 +525,7 @@ const Scene = ({
           config: { damping: 100, stiffness: 200 },
         }),
         [0, 1],
-        [30, 0]
+        [30, 0],
       )
     : 0;
 
@@ -532,14 +537,14 @@ const Scene = ({
       }}
     >
       {/* 背景（画像または動画） */}
-      {backgroundSrc && (
-        backgroundSrc.endsWith('.mp4') || backgroundSrc.endsWith('.webm') ? (
+      {backgroundSrc &&
+        (backgroundSrc.endsWith(".mp4") || backgroundSrc.endsWith(".webm") ? (
           <OffthreadVideo
             src={staticFile(backgroundSrc)}
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
             }}
             muted
             loop
@@ -548,13 +553,12 @@ const Scene = ({
           <Img
             src={staticFile(backgroundSrc)}
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
             }}
           />
-        )
-      )}
+        ))}
 
       {/* セクションタイトル（左上、セクション内で永続表示） */}
       <SectionTitle
@@ -585,20 +589,27 @@ const Scene = ({
       {(() => {
         // 文字数に応じてフォントサイズを計算
         const textLength = text ? text.length : 0;
-        const fontSize = textLength <= LAYOUT.TEXT_MAX_CHARS_DEFAULT
-          ? LAYOUT.TEXT_FONT_SIZE_DEFAULT
-          : Math.max(
-              LAYOUT.TEXT_FONT_SIZE_MIN,
-              Math.floor(LAYOUT.TEXT_FONT_SIZE_DEFAULT * LAYOUT.TEXT_MAX_CHARS_DEFAULT / textLength)
-            );
+        const fontSize =
+          textLength <= LAYOUT.TEXT_MAX_CHARS_DEFAULT
+            ? LAYOUT.TEXT_FONT_SIZE_DEFAULT
+            : Math.max(
+                LAYOUT.TEXT_FONT_SIZE_MIN,
+                Math.floor(
+                  (LAYOUT.TEXT_FONT_SIZE_DEFAULT *
+                    LAYOUT.TEXT_MAX_CHARS_DEFAULT) /
+                    textLength,
+                ),
+              );
 
         // highlight の有無でチャットバブルの位置を変える
-        const textBottom = highlight ? LAYOUT.TEXT_BOTTOM : LAYOUT.TEXT_BOTTOM_NO_HIGHLIGHT;
+        const textBottom = highlight
+          ? LAYOUT.TEXT_BOTTOM
+          : LAYOUT.TEXT_BOTTOM_NO_HIGHLIGHT;
 
         return (
           <div
             style={{
-              position: 'absolute',
+              position: "absolute",
               bottom: textBottom,
               left: LAYOUT.TEXT_LEFT,
               right: LAYOUT.TEXT_RIGHT,
@@ -608,26 +619,27 @@ const Scene = ({
               padding: LAYOUT.TEXT_PADDING,
               opacity: textOpacity,
               transform: `translateY(${textTranslateY}px)`,
-              border: '3px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
+              border: "3px solid rgba(255, 255, 255, 0.3)",
+              boxShadow:
+                "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.1)",
+              display: "flex",
+              alignItems: "center",
             }}
           >
             <p
               style={{
-                color: 'white',
+                color: "white",
                 fontSize,
                 fontFamily: FONT_FAMILY,
                 fontWeight: 600,
                 margin: 0,
                 lineHeight: 1.3,
-                textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                overflow: 'hidden',
-                display: '-webkit-box',
+                textShadow: "2px 2px 4px rgba(0,0,0,0.5)",
+                overflow: "hidden",
+                display: "-webkit-box",
                 WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                width: '100%',
+                WebkitBoxOrient: "vertical",
+                width: "100%",
               }}
             >
               {text}
@@ -637,7 +649,9 @@ const Scene = ({
       })()}
 
       {/* 音声 */}
-      {audioSrc && <Audio src={staticFile(audioSrc)} playbackRate={playbackRate} />}
+      {audioSrc && (
+        <Audio src={staticFile(audioSrc)} playbackRate={playbackRate} />
+      )}
     </AbsoluteFill>
   );
 };
@@ -646,30 +660,47 @@ const Scene = ({
  * メインコンポジション
  * propsで渡されるscenesを順番に再生
  */
-export const ExplainerVideo = ({ scenes, bgmSrc, bgmVolume = 0.08, fontSrc, watermarkSrc }) => {
+export const ExplainerVideo = ({
+  scenes,
+  bgmSrc,
+  bgmVolume = 0.08,
+  fontSrc,
+  watermarkSrc,
+}) => {
   const [fontLoaded, setFontLoaded] = useState(!fontSrc);
-  const [handle] = useState(() => (fontSrc ? delayRender('Loading font') : null));
+  const [handle] = useState(() =>
+    fontSrc ? delayRender("Loading font") : null,
+  );
 
   // フォント読み込み
   useEffect(() => {
     if (!fontSrc) return;
 
-    const font = new FontFace('KeiFont', `url(${staticFile(fontSrc)})`);
-    font.load().then((loadedFont) => {
-      document.fonts.add(loadedFont);
-      setFontLoaded(true);
-      continueRender(handle);
-    }).catch((err) => {
-      console.error('Font load error:', err);
-      continueRender(handle);
-    });
+    const font = new FontFace("KeiFont", `url(${staticFile(fontSrc)})`);
+    font
+      .load()
+      .then((loadedFont) => {
+        document.fonts.add(loadedFont);
+        setFontLoaded(true);
+        continueRender(handle);
+      })
+      .catch((err) => {
+        console.error("Font load error:", err);
+        continueRender(handle);
+      });
   }, [fontSrc, handle]);
 
   // シーンがない場合のフォールバック
   if (!scenes || scenes.length === 0) {
     return (
-      <AbsoluteFill style={{ backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' }}>
-        <p style={{ color: 'white', fontSize: 48 }}>No scenes provided</p>
+      <AbsoluteFill
+        style={{
+          backgroundColor: "#1a1a2e",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <p style={{ color: "white", fontSize: 48 }}>No scenes provided</p>
       </AbsoluteFill>
     );
   }
@@ -685,7 +716,8 @@ export const ExplainerVideo = ({ scenes, bgmSrc, bgmVolume = 0.08, fontSrc, wate
   let firstSection = null; // 最初のセクションを記録（オープニング判定用）
   const scenesWithTiming = scenes.map((scene) => {
     const startFrame = currentFrame;
-    const transitionFrames = scene.transitionFrames || DEFAULT_TRANSITION_FRAMES;
+    const transitionFrames =
+      scene.transitionFrames || DEFAULT_TRANSITION_FRAMES;
     currentFrame += scene.durationInFrames;
 
     // セクションの永続化: 新しいsectionが指定されたら更新、なければ前のを維持
@@ -703,13 +735,13 @@ export const ExplainerVideo = ({ scenes, bgmSrc, bgmVolume = 0.08, fontSrc, wate
       startFrame,
       transitionFrames,
       currentSection, // 現在有効なセクション
-      isNewSection,   // 新しいセクションが始まるか
+      isNewSection, // 新しいセクションが始まるか
       highlight: scene.highlight, // openingセクションでもhighlightを許可
     };
   });
 
   return (
-    <AbsoluteFill style={{ backgroundColor: '#000000' }}>
+    <AbsoluteFill style={{ backgroundColor: "#000000" }}>
       {/* シーン */}
       {scenesWithTiming.map((scene, index) => (
         <Sequence
@@ -752,7 +784,10 @@ export const ExplainerVideo = ({ scenes, bgmSrc, bgmVolume = 0.08, fontSrc, wate
       {/* 効果音（シーン開始の少し前から再生） */}
       {scenesWithTiming.map((scene, index) => {
         if (!scene.accentSrc) return null;
-        const soundStartFrame = Math.max(0, scene.startFrame - SOUND_LEAD_FRAMES);
+        const soundStartFrame = Math.max(
+          0,
+          scene.startFrame - SOUND_LEAD_FRAMES,
+        );
         return (
           <Sequence
             key={`sound-${index}`}

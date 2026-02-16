@@ -23,18 +23,21 @@ tools: Read, Glob, Grep, Bash
 # Session Summary
 
 ## セッション情報
+
 - ID: [session-id]
 - チャネル: [slack-channel]
 - 開始: [timestamp]
 - コスト: $[total_cost_usd]
 
 ## ツール使用
+
 | ツール | 回数 | 成功率 |
-|--------|------|--------|
+| ------ | ---- | ------ |
 | Read   | N    | 100%   |
 | Write  | N    | 95%    |
 
 ## 会話フロー
+
 1. [ユーザーメッセージ要約]
 2. [アシスタント応答要約]
 ```

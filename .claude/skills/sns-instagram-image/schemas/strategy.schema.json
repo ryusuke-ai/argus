@@ -2,7 +2,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Instagram Strategy",
   "type": "object",
-  "required": ["topic_analysis", "trending_hashtags", "angle", "visual_direction"],
+  "required": [
+    "topic_analysis",
+    "trending_hashtags",
+    "angle",
+    "visual_direction"
+  ],
   "properties": {
     "topic_analysis": { "type": "string" },
     "trending_hashtags": { "type": "array", "items": { "type": "string" } },

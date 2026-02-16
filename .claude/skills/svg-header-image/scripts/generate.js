@@ -341,7 +341,7 @@ function splitTitle(title, maxChars = 16) {
     try {
       const segmenter = new Intl.Segmenter("ja-JP", { granularity: "word" });
       const rawSegments = Array.from(segmenter.segment(title)).map(
-        (s) => s.segment
+        (s) => s.segment,
       );
 
       // 数値+助数詞などの結合処理
@@ -463,7 +463,7 @@ function generateContent(options, theme) {
           (line, i) => `
         <text x="${WIDTH / 2}" y="${startY + i * titleLineHeight}" text-anchor="middle" class="title"
               fill="${theme.text}" font-size="100" filter="url(#dropShadow)">${escapeXml(line)}</text>
-      `
+      `,
         )
         .join("");
     },

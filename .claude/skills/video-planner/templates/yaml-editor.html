@@ -1,701 +1,1027 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video Script Editor</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #1e1e1e;
-      color: #d4d4d4;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .toolbar {
-      background: #252526;
-      padding: 8px 16px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      border-bottom: 1px solid #3c3c3c;
-      flex-wrap: wrap;
-    }
-    .toolbar button {
-      background: #0e639c;
-      color: #fff;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .toolbar button:hover { background: #1177bb; }
-    .toolbar button.secondary { background: #3c3c3c; }
-    .toolbar button.secondary:hover { background: #4c4c4c; }
-    .toolbar button.primary { background: #388a34; }
-    .toolbar button.primary:hover { background: #45a041; }
-    .toolbar .spacer { flex: 1; }
-    .toolbar .status {
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 4px;
-    }
-    .toolbar .status.valid { background: #2d5a27; color: #89d185; }
-    .toolbar .status.invalid { background: #5a2727; color: #f48771; }
-    .toolbar .status.modified { background: #806000; color: #ffcc00; }
-    .toolbar .status.neutral { background: #3c3c3c; color: #aaa; }
-    .main {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-    #editor-container { flex: 1; min-width: 0; }
-    .sidebar {
-      width: 400px;
-      background: #252526;
-      border-left: 1px solid #3c3c3c;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .sidebar-section { border-bottom: 1px solid #3c3c3c; }
-    .sidebar-header {
-      padding: 10px 12px;
-      background: #2d2d2d;
-      font-size: 12px;
-      font-weight: bold;
-      color: #ccc;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .preview-container { padding: 10px; background: #1a1a1a; }
-    .preview-image {
-      width: 100%;
-      max-height: 180px;
-      object-fit: contain;
-      border-radius: 4px;
-      background: #000;
-    }
-    .preview-placeholder {
-      color: #666;
-      text-align: center;
-      padding: 30px 20px;
-      font-size: 12px;
-    }
-    .preview-bg-indicator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 11px;
-    }
-    .preview-bg-indicator .bg-sample {
-      width: 24px;
-      height: 24px;
-      border-radius: 4px;
-      border: 1px solid #555;
-    }
-    .bg-dot { background: radial-gradient(circle, #666 1px, #1a1a2e 1px); background-size: 8px 8px; }
-    .bg-kirakira { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%); }
-    .bg-emphasis { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .bg-kokuban { background: #2d5016; }
-    .bg-mowamowa { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    .bg-room { background: linear-gradient(135deg, #4a1a6b 0%, #1a1a2e 100%); }
-    .bg-simple { background: #1a1a2e; }
-    .bg-skyblue { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-    .bg-worries { background: linear-gradient(135deg, #434343 0%, #1a1a2e 100%); }
-    .preview-info { margin-top: 8px; font-size: 11px; }
-    .preview-info .row { display: flex; margin-bottom: 3px; }
-    .preview-info .label { color: #569cd6; min-width: 80px; }
-    .preview-info .value { color: #ce9178; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .preview-info .value.highlight-text { color: #dcdcaa; font-weight: bold; }
-    .preview-info .dim { opacity: 0.5; }
-    .scene-nav {
-      padding: 8px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    .scene-item {
-      padding: 5px 8px;
-      margin-bottom: 3px;
-      background: #2d2d2d;
-      border-radius: 3px;
-      font-size: 10px;
-      cursor: pointer;
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-    .scene-item:hover { background: #3c3c3c; }
-    .scene-item.active { background: #094771; border-left: 2px solid #0e639c; }
-    .scene-item.modified { border-left: 2px solid #ffcc00; }
-    .scene-item.added { border-left: 2px solid #89d185; }
-    .scene-item .num { color: #569cd6; min-width: 20px; }
-    .scene-item .char { color: #4ec9b0; min-width: 50px; font-size: 9px; opacity: 0.6; }
-    .scene-item .text { color: #ddd; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .scene-item .badge { font-size: 8px; padding: 1px 4px; border-radius: 2px; }
-    .scene-item .badge.img { background: #264f78; color: #9cdcfe; }
-    .scene-item .badge.hl { background: #5c4d1a; color: #dcdcaa; }
-    .diff-output {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      background: #1a1a1a;
-    }
-    .diff-output pre {
-      font-family: 'SF Mono', Monaco, monospace;
-      font-size: 11px;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: #d4d4d4;
-      line-height: 1.5;
-    }
-    .diff-output .added { color: #89d185; }
-    .diff-output .removed { color: #f48771; }
-    .diff-output .modified { color: #dcdcaa; }
-    .copy-btn {
-      font-size: 10px;
-      padding: 3px 8px;
-      background: #3c3c3c;
-      border: none;
-      color: #ccc;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    .copy-btn:hover { background: #4c4c4c; }
-    .info-row { font-size: 11px; color: #888; margin-left: 10px; }
-    .no-diff { color: #89d185; padding: 20px; text-align: center; font-size: 12px; }
-    /* 差分ハイライト用 */
-    .diff-added-line { background: rgba(45, 90, 39, 0.3) !important; }
-    .diff-modified-line { background: rgba(128, 96, 0, 0.3) !important; }
-    .diff-added-glyph { background: #89d185; width: 4px !important; margin-left: 3px; }
-    .diff-modified-glyph { background: #ffcc00; width: 4px !important; margin-left: 3px; }
-  </style>
-</head>
-<body>
-  <div class="toolbar">
-    <button onclick="loadJSON()">開く</button>
-    <button onclick="saveJSON()">JSON保存</button>
-    <button class="secondary" onclick="insertScene()">+ シーン</button>
-    <button class="secondary" onclick="revertChanges()">元に戻す</button>
-    <span class="info-row" id="scene-count"></span>
-    <span class="spacer"></span>
-    <span class="status neutral" id="status">読み込み中...</span>
-    <button class="primary" onclick="copyDiffPrompt()">差分プロンプトをコピー</button>
-  </div>
-  <div class="main">
-    <div id="editor-container"></div>
-    <div class="sidebar">
-      <div class="sidebar-section">
-        <div class="sidebar-header">プレビュー</div>
-        <div class="preview-container">
-          <div id="preview-content">
-            <div class="preview-placeholder">シーンを選択</div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Script Editor</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .toolbar {
+        background: #252526;
+        padding: 8px 16px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        border-bottom: 1px solid #3c3c3c;
+        flex-wrap: wrap;
+      }
+      .toolbar button {
+        background: #0e639c;
+        color: #fff;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .toolbar button:hover {
+        background: #1177bb;
+      }
+      .toolbar button.secondary {
+        background: #3c3c3c;
+      }
+      .toolbar button.secondary:hover {
+        background: #4c4c4c;
+      }
+      .toolbar button.primary {
+        background: #388a34;
+      }
+      .toolbar button.primary:hover {
+        background: #45a041;
+      }
+      .toolbar .spacer {
+        flex: 1;
+      }
+      .toolbar .status {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 4px;
+      }
+      .toolbar .status.valid {
+        background: #2d5a27;
+        color: #89d185;
+      }
+      .toolbar .status.invalid {
+        background: #5a2727;
+        color: #f48771;
+      }
+      .toolbar .status.modified {
+        background: #806000;
+        color: #ffcc00;
+      }
+      .toolbar .status.neutral {
+        background: #3c3c3c;
+        color: #aaa;
+      }
+      .main {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+      }
+      #editor-container {
+        flex: 1;
+        min-width: 0;
+      }
+      .sidebar {
+        width: 400px;
+        background: #252526;
+        border-left: 1px solid #3c3c3c;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .sidebar-section {
+        border-bottom: 1px solid #3c3c3c;
+      }
+      .sidebar-header {
+        padding: 10px 12px;
+        background: #2d2d2d;
+        font-size: 12px;
+        font-weight: bold;
+        color: #ccc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .preview-container {
+        padding: 10px;
+        background: #1a1a1a;
+      }
+      .preview-image {
+        width: 100%;
+        max-height: 180px;
+        object-fit: contain;
+        border-radius: 4px;
+        background: #000;
+      }
+      .preview-placeholder {
+        color: #666;
+        text-align: center;
+        padding: 30px 20px;
+        font-size: 12px;
+      }
+      .preview-bg-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+      }
+      .preview-bg-indicator .bg-sample {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        border: 1px solid #555;
+      }
+      .bg-dot {
+        background: radial-gradient(circle, #666 1px, #1a1a2e 1px);
+        background-size: 8px 8px;
+      }
+      .bg-kirakira {
+        background: linear-gradient(
+          135deg,
+          #ff9a9e 0%,
+          #fecfef 50%,
+          #fecfef 100%
+        );
+      }
+      .bg-emphasis {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .bg-kokuban {
+        background: #2d5016;
+      }
+      .bg-mowamowa {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+      .bg-room {
+        background: linear-gradient(135deg, #4a1a6b 0%, #1a1a2e 100%);
+      }
+      .bg-simple {
+        background: #1a1a2e;
+      }
+      .bg-skyblue {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      }
+      .bg-worries {
+        background: linear-gradient(135deg, #434343 0%, #1a1a2e 100%);
+      }
+      .preview-info {
+        margin-top: 8px;
+        font-size: 11px;
+      }
+      .preview-info .row {
+        display: flex;
+        margin-bottom: 3px;
+      }
+      .preview-info .label {
+        color: #569cd6;
+        min-width: 80px;
+      }
+      .preview-info .value {
+        color: #ce9178;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .preview-info .value.highlight-text {
+        color: #dcdcaa;
+        font-weight: bold;
+      }
+      .preview-info .dim {
+        opacity: 0.5;
+      }
+      .scene-nav {
+        padding: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .scene-item {
+        padding: 5px 8px;
+        margin-bottom: 3px;
+        background: #2d2d2d;
+        border-radius: 3px;
+        font-size: 10px;
+        cursor: pointer;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .scene-item:hover {
+        background: #3c3c3c;
+      }
+      .scene-item.active {
+        background: #094771;
+        border-left: 2px solid #0e639c;
+      }
+      .scene-item.modified {
+        border-left: 2px solid #ffcc00;
+      }
+      .scene-item.added {
+        border-left: 2px solid #89d185;
+      }
+      .scene-item .num {
+        color: #569cd6;
+        min-width: 20px;
+      }
+      .scene-item .char {
+        color: #4ec9b0;
+        min-width: 50px;
+        font-size: 9px;
+        opacity: 0.6;
+      }
+      .scene-item .text {
+        color: #ddd;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .scene-item .badge {
+        font-size: 8px;
+        padding: 1px 4px;
+        border-radius: 2px;
+      }
+      .scene-item .badge.img {
+        background: #264f78;
+        color: #9cdcfe;
+      }
+      .scene-item .badge.hl {
+        background: #5c4d1a;
+        color: #dcdcaa;
+      }
+      .diff-output {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        background: #1a1a1a;
+      }
+      .diff-output pre {
+        font-family: "SF Mono", Monaco, monospace;
+        font-size: 11px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: #d4d4d4;
+        line-height: 1.5;
+      }
+      .diff-output .added {
+        color: #89d185;
+      }
+      .diff-output .removed {
+        color: #f48771;
+      }
+      .diff-output .modified {
+        color: #dcdcaa;
+      }
+      .copy-btn {
+        font-size: 10px;
+        padding: 3px 8px;
+        background: #3c3c3c;
+        border: none;
+        color: #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .copy-btn:hover {
+        background: #4c4c4c;
+      }
+      .info-row {
+        font-size: 11px;
+        color: #888;
+        margin-left: 10px;
+      }
+      .no-diff {
+        color: #89d185;
+        padding: 20px;
+        text-align: center;
+        font-size: 12px;
+      }
+      /* 差分ハイライト用 */
+      .diff-added-line {
+        background: rgba(45, 90, 39, 0.3) !important;
+      }
+      .diff-modified-line {
+        background: rgba(128, 96, 0, 0.3) !important;
+      }
+      .diff-added-glyph {
+        background: #89d185;
+        width: 4px !important;
+        margin-left: 3px;
+      }
+      .diff-modified-glyph {
+        background: #ffcc00;
+        width: 4px !important;
+        margin-left: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button onclick="loadJSON()">開く</button>
+      <button onclick="saveJSON()">JSON保存</button>
+      <button class="secondary" onclick="insertScene()">+ シーン</button>
+      <button class="secondary" onclick="revertChanges()">元に戻す</button>
+      <span class="info-row" id="scene-count"></span>
+      <span class="spacer"></span>
+      <span class="status neutral" id="status">読み込み中...</span>
+      <button class="primary" onclick="copyDiffPrompt()">
+        差分プロンプトをコピー
+      </button>
+    </div>
+    <div class="main">
+      <div id="editor-container"></div>
+      <div class="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-header">プレビュー</div>
+          <div class="preview-container">
+            <div id="preview-content">
+              <div class="preview-placeholder">シーンを選択</div>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-header">
+            シーン一覧 <span id="scene-total"></span>
+          </div>
+          <div class="scene-nav" id="scene-nav"></div>
+        </div>
+        <div
+          class="sidebar-section"
+          style="flex: 1; display: flex; flex-direction: column"
+        >
+          <div class="sidebar-header">
+            差分プロンプト
+            <button class="copy-btn" onclick="copyDiffPrompt()">コピー</button>
+          </div>
+          <div class="diff-output" id="diff-output">
+            <div class="no-diff">変更なし</div>
           </div>
         </div>
       </div>
-      <div class="sidebar-section">
-        <div class="sidebar-header">シーン一覧 <span id="scene-total"></span></div>
-        <div class="scene-nav" id="scene-nav"></div>
-      </div>
-      <div class="sidebar-section" style="flex:1; display:flex; flex-direction:column;">
-        <div class="sidebar-header">
-          差分プロンプト
-          <button class="copy-btn" onclick="copyDiffPrompt()">コピー</button>
-        </div>
-        <div class="diff-output" id="diff-output">
-          <div class="no-diff">変更なし</div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-  <script>
-    const yaml = window.jsyaml;
-    const VALID_CHARACTERS = [
-      "tsukuyomi", "tsukuyomi/thinking", "tsukuyomi/surprised",
-      "tsukuyomi/love", "tsukuyomi/doubt", "tsukuyomi/angry",
-      "ginga", "ginga/thinking", "ginga/surprised"
-    ];
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script>
+      const yaml = window.jsyaml;
+      const VALID_CHARACTERS = [
+        "tsukuyomi",
+        "tsukuyomi/thinking",
+        "tsukuyomi/surprised",
+        "tsukuyomi/love",
+        "tsukuyomi/doubt",
+        "tsukuyomi/angry",
+        "ginga",
+        "ginga/thinking",
+        "ginga/surprised",
+      ];
 
-    let editor;
-    let monacoLoaded = false;
-    let currentSceneIndex = 0;
-    let originalData = null;  // 元データ（diff比較用）
-    let originalYAML = null;
-    let decorationIds = [];   // 差分ハイライト用
+      let editor;
+      let monacoLoaded = false;
+      let currentSceneIndex = 0;
+      let originalData = null; // 元データ（diff比較用）
+      let originalYAML = null;
+      let decorationIds = []; // 差分ハイライト用
 
-    // 初期データ読み込み
-    fetch('./video-script.json')
-      .then(r => r.json())
-      .then(data => {
-        originalData = JSON.parse(JSON.stringify(data)); // deep copy
-        originalYAML = toYAML(data);
-      })
-      .catch(() => {
-        originalYAML = `title: "新しい動画"\nbgm: "bgm"\nbgmVolume: 0.15\n\nscenes:\n  - text: ""\n    character: tsukuyomi\n`;
-        originalData = yaml.load(originalYAML);
-      })
-      .finally(() => initMonaco());
+      // 初期データ読み込み
+      fetch("./video-script.json")
+        .then((r) => r.json())
+        .then((data) => {
+          originalData = JSON.parse(JSON.stringify(data)); // deep copy
+          originalYAML = toYAML(data);
+        })
+        .catch(() => {
+          originalYAML = `title: "新しい動画"\nbgm: "bgm"\nbgmVolume: 0.15\n\nscenes:\n  - text: ""\n    character: tsukuyomi\n`;
+          originalData = yaml.load(originalYAML);
+        })
+        .finally(() => initMonaco());
 
-    // YAML変換（textを1行に保つ）
-    function toYAML(data) {
-      // カスタム変換：textフィールドは常にクォートで囲む
-      const lines = [];
-      lines.push(`title: "${data.title || ''}"`);
-      if (data.bgm) lines.push(`bgm: "${data.bgm}"`);
-      if (data.bgmVolume !== undefined) lines.push(`bgmVolume: ${data.bgmVolume}`);
-      if (data.watermark) lines.push(`watermark: "${data.watermark}"`);
-      lines.push('');
-      lines.push('scenes:');
+      // YAML変換（textを1行に保つ）
+      function toYAML(data) {
+        // カスタム変換：textフィールドは常にクォートで囲む
+        const lines = [];
+        lines.push(`title: "${data.title || ""}"`);
+        if (data.bgm) lines.push(`bgm: "${data.bgm}"`);
+        if (data.bgmVolume !== undefined)
+          lines.push(`bgmVolume: ${data.bgmVolume}`);
+        if (data.watermark) lines.push(`watermark: "${data.watermark}"`);
+        lines.push("");
+        lines.push("scenes:");
 
-      for (const scene of (data.scenes || [])) {
-        lines.push(`  - text: "${(scene.text || '').replace(/"/g, '\\"')}"`);
-        if (scene.audio) lines.push(`    audio: ${scene.audio}`);
-        lines.push(`    character: ${scene.character || 'tsukuyomi'}`);
-        if (scene.image) lines.push(`    image: ${scene.image}`);
-        if (scene.section) lines.push(`    section: "${scene.section}"`);
-        if (scene.transition) lines.push(`    transition: ${scene.transition}`);
-        if (scene.background) lines.push(`    background: ${scene.background}`);
-        if (scene.highlight) {
-          lines.push(`    highlight:`);
-          lines.push(`      text: "${(scene.highlight.text || '').replace(/"/g, '\\"')}"`);
-          if (scene.highlight.sound) lines.push(`      sound: ${scene.highlight.sound}`);
+        for (const scene of data.scenes || []) {
+          lines.push(`  - text: "${(scene.text || "").replace(/"/g, '\\"')}"`);
+          if (scene.audio) lines.push(`    audio: ${scene.audio}`);
+          lines.push(`    character: ${scene.character || "tsukuyomi"}`);
+          if (scene.image) lines.push(`    image: ${scene.image}`);
+          if (scene.section) lines.push(`    section: "${scene.section}"`);
+          if (scene.transition)
+            lines.push(`    transition: ${scene.transition}`);
+          if (scene.background)
+            lines.push(`    background: ${scene.background}`);
+          if (scene.highlight) {
+            lines.push(`    highlight:`);
+            lines.push(
+              `      text: "${(scene.highlight.text || "").replace(/"/g, '\\"')}"`,
+            );
+            if (scene.highlight.sound)
+              lines.push(`      sound: ${scene.highlight.sound}`);
+          }
+          if (scene.comment) lines.push(`    comment: "${scene.comment}"`);
         }
-        if (scene.comment) lines.push(`    comment: "${scene.comment}"`);
+        return lines.join("\n");
       }
-      return lines.join('\n');
-    }
-  </script>
+    </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
-  <script>
-    function initMonaco() {
-      require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-      require(['vs/editor/editor.main'], function () {
-        monacoLoaded = true;
-
-        // カスタムYAMLトークナイザー（textとhighlightを強調）
-        monaco.languages.setMonarchTokensProvider('yaml', {
-          tokenizer: {
-            root: [
-              [/^\s*-\s+text:/, 'keyword.text'],
-              [/^\s+text:/, 'keyword.text'],
-              [/highlight:/, 'keyword.highlight'],
-              [/image:/, 'keyword.image'],
-              [/section:/, 'keyword.section'],
-              [/transition:/, 'keyword.section'],
-              [/(audio|character|background|comment):/, 'comment'],
-              [/"[^"]*"/, 'string'],
-              [/'[^']*'/, 'string'],
-              [/[a-zA-Z_][\w\-\/]*:/, 'type'],
-              [/#.*$/, 'comment'],
-            ]
-          }
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <script>
+      function initMonaco() {
+        require.config({
+          paths: {
+            vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs",
+          },
         });
+        require(["vs/editor/editor.main"], function () {
+          monacoLoaded = true;
 
-        monaco.editor.defineTheme('video-script-theme', {
-          base: 'vs-dark',
-          inherit: true,
-          rules: [
-            { token: 'keyword.text', foreground: 'dcdcaa', fontStyle: 'bold' },
-            { token: 'keyword.highlight', foreground: 'c586c0', fontStyle: 'bold' },
-            { token: 'keyword.image', foreground: '4ec9b0' },
-            { token: 'keyword.section', foreground: '9cdcfe' },
-            { token: 'comment', foreground: '6a9955' },
-          ],
-          colors: {
-            'editor.lineHighlightBackground': '#2a2d2e',
-          }
-        });
+          // カスタムYAMLトークナイザー（textとhighlightを強調）
+          monaco.languages.setMonarchTokensProvider("yaml", {
+            tokenizer: {
+              root: [
+                [/^\s*-\s+text:/, "keyword.text"],
+                [/^\s+text:/, "keyword.text"],
+                [/highlight:/, "keyword.highlight"],
+                [/image:/, "keyword.image"],
+                [/section:/, "keyword.section"],
+                [/transition:/, "keyword.section"],
+                [/(audio|character|background|comment):/, "comment"],
+                [/"[^"]*"/, "string"],
+                [/'[^']*'/, "string"],
+                [/[a-zA-Z_][\w\-\/]*:/, "type"],
+                [/#.*$/, "comment"],
+              ],
+            },
+          });
 
-        editor = monaco.editor.create(document.getElementById('editor-container'), {
-          value: originalYAML,
-          language: 'yaml',
-          theme: 'video-script-theme',
-          fontSize: 13,
-          lineNumbers: 'on',
-          minimap: { enabled: false },
-          wordWrap: 'on',
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          tabSize: 2,
-          insertSpaces: true,
-          folding: true,
-          lineDecorationsWidth: 5,
-          renderLineHighlight: 'line'
-        });
+          monaco.editor.defineTheme("video-script-theme", {
+            base: "vs-dark",
+            inherit: true,
+            rules: [
+              {
+                token: "keyword.text",
+                foreground: "dcdcaa",
+                fontStyle: "bold",
+              },
+              {
+                token: "keyword.highlight",
+                foreground: "c586c0",
+                fontStyle: "bold",
+              },
+              { token: "keyword.image", foreground: "4ec9b0" },
+              { token: "keyword.section", foreground: "9cdcfe" },
+              { token: "comment", foreground: "6a9955" },
+            ],
+            colors: {
+              "editor.lineHighlightBackground": "#2a2d2e",
+            },
+          });
 
-        editor.onDidChangeModelContent(() => {
+          editor = monaco.editor.create(
+            document.getElementById("editor-container"),
+            {
+              value: originalYAML,
+              language: "yaml",
+              theme: "video-script-theme",
+              fontSize: 13,
+              lineNumbers: "on",
+              minimap: { enabled: false },
+              wordWrap: "on",
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: 2,
+              insertSpaces: true,
+              folding: true,
+              lineDecorationsWidth: 5,
+              renderLineHighlight: "line",
+            },
+          );
+
+          editor.onDidChangeModelContent(() => {
+            updateSceneNav();
+            updatePreview();
+            updateDiff();
+            updateStatus();
+          });
+
+          editor.onDidChangeCursorPosition((e) => {
+            const idx = findSceneIndexByLine(e.position.lineNumber);
+            if (idx !== currentSceneIndex) {
+              currentSceneIndex = idx;
+              highlightSceneNav();
+              updatePreview();
+            }
+          });
+
           updateSceneNav();
           updatePreview();
           updateDiff();
           updateStatus();
+          document.getElementById("status").textContent = "準備完了";
         });
-
-        editor.onDidChangeCursorPosition((e) => {
-          const idx = findSceneIndexByLine(e.position.lineNumber);
-          if (idx !== currentSceneIndex) {
-            currentSceneIndex = idx;
-            highlightSceneNav();
-            updatePreview();
-          }
-        });
-
-        updateSceneNav();
-        updatePreview();
-        updateDiff();
-        updateStatus();
-        document.getElementById('status').textContent = '準備完了';
-      });
-    }
-
-    function updateStatus() {
-      const statusEl = document.getElementById('status');
-      try {
-        const current = yaml.load(editor.getValue());
-        const hasChanges = JSON.stringify(current) !== JSON.stringify(originalData);
-        if (hasChanges) {
-          statusEl.className = 'status modified';
-          statusEl.textContent = '変更あり';
-        } else {
-          statusEl.className = 'status valid';
-          statusEl.textContent = '変更なし';
-        }
-      } catch (e) {
-        statusEl.className = 'status invalid';
-        statusEl.textContent = 'YAMLエラー';
       }
-    }
 
-    function updateSceneNav() {
-      try {
-        const current = yaml.load(editor.getValue());
-        const scenes = current?.scenes || [];
-        const origScenes = originalData?.scenes || [];
+      function updateStatus() {
+        const statusEl = document.getElementById("status");
+        try {
+          const current = yaml.load(editor.getValue());
+          const hasChanges =
+            JSON.stringify(current) !== JSON.stringify(originalData);
+          if (hasChanges) {
+            statusEl.className = "status modified";
+            statusEl.textContent = "変更あり";
+          } else {
+            statusEl.className = "status valid";
+            statusEl.textContent = "変更なし";
+          }
+        } catch (e) {
+          statusEl.className = "status invalid";
+          statusEl.textContent = "YAMLエラー";
+        }
+      }
 
-        document.getElementById('scene-count').textContent = `${scenes.length} シーン`;
-        document.getElementById('scene-total').textContent = `(${scenes.length})`;
+      function updateSceneNav() {
+        try {
+          const current = yaml.load(editor.getValue());
+          const scenes = current?.scenes || [];
+          const origScenes = originalData?.scenes || [];
 
-        document.getElementById('scene-nav').innerHTML = scenes.map((s, i) => {
-          const text = (s.text || '').substring(0, 25);
-          const char = (s.character || '???').split('/')[0].substring(0, 6);
-          const isNew = i >= origScenes.length;
-          const isModified = !isNew && origScenes[i] && (
-            s.text !== origScenes[i].text ||
-            s.image !== origScenes[i].image ||
-            JSON.stringify(s.highlight) !== JSON.stringify(origScenes[i].highlight)
-          );
-          const badges = [];
-          if (s.image) badges.push('<span class="badge img">img</span>');
-          if (s.highlight) badges.push('<span class="badge hl">HL</span>');
+          document.getElementById("scene-count").textContent =
+            `${scenes.length} シーン`;
+          document.getElementById("scene-total").textContent =
+            `(${scenes.length})`;
 
-          let cls = 'scene-item';
-          if (i === currentSceneIndex) cls += ' active';
-          if (isNew) cls += ' added';
-          else if (isModified) cls += ' modified';
+          document.getElementById("scene-nav").innerHTML = scenes
+            .map((s, i) => {
+              const text = (s.text || "").substring(0, 25);
+              const char = (s.character || "???").split("/")[0].substring(0, 6);
+              const isNew = i >= origScenes.length;
+              const isModified =
+                !isNew &&
+                origScenes[i] &&
+                (s.text !== origScenes[i].text ||
+                  s.image !== origScenes[i].image ||
+                  JSON.stringify(s.highlight) !==
+                    JSON.stringify(origScenes[i].highlight));
+              const badges = [];
+              if (s.image) badges.push('<span class="badge img">img</span>');
+              if (s.highlight) badges.push('<span class="badge hl">HL</span>');
 
-          return `<div class="${cls}" onclick="goToScene(${i})">
-            <span class="num">${i+1}</span>
+              let cls = "scene-item";
+              if (i === currentSceneIndex) cls += " active";
+              if (isNew) cls += " added";
+              else if (isModified) cls += " modified";
+
+              return `<div class="${cls}" onclick="goToScene(${i})">
+            <span class="num">${i + 1}</span>
             <span class="char">${char}</span>
             <span class="text">${text}</span>
-            ${badges.join('')}
+            ${badges.join("")}
           </div>`;
-        }).join('');
-      } catch (e) {
-        document.getElementById('scene-nav').innerHTML = '<div class="no-diff">パースエラー</div>';
-      }
-    }
-
-    function highlightSceneNav() {
-      document.querySelectorAll('.scene-item').forEach((el, i) => {
-        el.classList.toggle('active', i === currentSceneIndex);
-      });
-    }
-
-    function loadPreviewImage(imagePath) {
-      const img = document.getElementById('preview-img');
-      const err = document.getElementById('preview-img-error');
-      if (!img || !err) return;
-
-      fetch(imagePath)
-        .then(r => {
-          if (!r.ok) throw new Error('Not found');
-          return r.blob();
-        })
-        .then(blob => {
-          img.src = URL.createObjectURL(blob);
-          img.style.display = 'block';
-          err.style.display = 'none';
-        })
-        .catch(() => {
-          img.style.display = 'none';
-          err.textContent = '画像が見つかりません: ' + imagePath;
-          err.style.display = 'block';
-        });
-    }
-
-    function updatePreview() {
-      try {
-        const data = yaml.load(editor.getValue());
-        const scene = data?.scenes?.[currentSceneIndex];
-        if (!scene) {
-          document.getElementById('preview-content').innerHTML = '<div class="preview-placeholder">シーンがありません</div>';
-          return;
+            })
+            .join("");
+        } catch (e) {
+          document.getElementById("scene-nav").innerHTML =
+            '<div class="no-diff">パースエラー</div>';
         }
+      }
 
-        let html = '';
-        const imagePath = scene.image;
-        if (imagePath) {
-          html += `<div id="preview-img-wrapper">
+      function highlightSceneNav() {
+        document.querySelectorAll(".scene-item").forEach((el, i) => {
+          el.classList.toggle("active", i === currentSceneIndex);
+        });
+      }
+
+      function loadPreviewImage(imagePath) {
+        const img = document.getElementById("preview-img");
+        const err = document.getElementById("preview-img-error");
+        if (!img || !err) return;
+
+        fetch(imagePath)
+          .then((r) => {
+            if (!r.ok) throw new Error("Not found");
+            return r.blob();
+          })
+          .then((blob) => {
+            img.src = URL.createObjectURL(blob);
+            img.style.display = "block";
+            err.style.display = "none";
+          })
+          .catch(() => {
+            img.style.display = "none";
+            err.textContent = "画像が見つかりません: " + imagePath;
+            err.style.display = "block";
+          });
+      }
+
+      function updatePreview() {
+        try {
+          const data = yaml.load(editor.getValue());
+          const scene = data?.scenes?.[currentSceneIndex];
+          if (!scene) {
+            document.getElementById("preview-content").innerHTML =
+              '<div class="preview-placeholder">シーンがありません</div>';
+            return;
+          }
+
+          let html = "";
+          const imagePath = scene.image;
+          if (imagePath) {
+            html += `<div id="preview-img-wrapper">
             <img class="preview-image" id="preview-img" style="display:none">
             <div id="preview-img-error" class="preview-placeholder">読み込み中...</div>
           </div>`;
-        } else {
-          html += '<div class="preview-placeholder">画像なし</div>';
-        }
+          } else {
+            html += '<div class="preview-placeholder">画像なし</div>';
+          }
 
-        html += `<div class="preview-info">`;
-        // 重要項目
-        html += `<div class="row"><span class="label">text:</span><span class="value">${(scene.text || '').substring(0, 40)}${scene.text?.length > 40 ? '...' : ''}</span></div>`;
-        if (scene.highlight?.text) {
-          html += `<div class="row"><span class="label">highlight:</span><span class="value highlight-text">${scene.highlight.text}</span></div>`;
-        }
-        if (scene.image) {
-          html += `<div class="row"><span class="label">image:</span><span class="value">${scene.image.split('/').pop()}</span></div>`;
-        }
-        // やや重要
-        if (scene.section) {
-          html += `<div class="row"><span class="label">section:</span><span class="value">${scene.section}</span></div>`;
-        }
-        if (scene.transition) {
-          html += `<div class="row"><span class="label">transition:</span><span class="value">${scene.transition}</span></div>`;
-        }
-        // 背景（視覚的に表示）
-        if (scene.background) {
-          html += `<div class="preview-bg-indicator">
+          html += `<div class="preview-info">`;
+          // 重要項目
+          html += `<div class="row"><span class="label">text:</span><span class="value">${(scene.text || "").substring(0, 40)}${scene.text?.length > 40 ? "..." : ""}</span></div>`;
+          if (scene.highlight?.text) {
+            html += `<div class="row"><span class="label">highlight:</span><span class="value highlight-text">${scene.highlight.text}</span></div>`;
+          }
+          if (scene.image) {
+            html += `<div class="row"><span class="label">image:</span><span class="value">${scene.image.split("/").pop()}</span></div>`;
+          }
+          // やや重要
+          if (scene.section) {
+            html += `<div class="row"><span class="label">section:</span><span class="value">${scene.section}</span></div>`;
+          }
+          if (scene.transition) {
+            html += `<div class="row"><span class="label">transition:</span><span class="value">${scene.transition}</span></div>`;
+          }
+          // 背景（視覚的に表示）
+          if (scene.background) {
+            html += `<div class="preview-bg-indicator">
             <div class="bg-sample bg-${scene.background}"></div>
             <span style="color:#9cdcfe">background:</span>
             <span style="color:#ce9178">${scene.background}</span>
           </div>`;
-        }
-        html += `<div class="row dim"><span class="label">character:</span><span class="value">${scene.character || '-'}</span></div>`;
-        html += `</div>`;
+          }
+          html += `<div class="row dim"><span class="label">character:</span><span class="value">${scene.character || "-"}</span></div>`;
+          html += `</div>`;
 
-        document.getElementById('preview-content').innerHTML = html;
+          document.getElementById("preview-content").innerHTML = html;
 
-        // 画像読み込み（innerHTML設定後に実行）
-        if (imagePath) {
-          loadPreviewImage(imagePath);
-        }
-      } catch (e) {
-        document.getElementById('preview-content').innerHTML = '<div class="preview-placeholder">エラー</div>';
-      }
-    }
-
-    function updateDiffHighlight(changes) {
-      if (!editor) return;
-
-      const content = editor.getValue();
-      const newDecorations = [];
-
-      for (const change of changes) {
-        if (change.type === 'add' || change.type === 'modify') {
-          const idx = change.index - 1; // 0-based index
-          const startLine = findSceneLine(content, idx);
-          const endLine = findSceneEndLine(content, idx);
-
-          newDecorations.push({
-            range: new monaco.Range(startLine, 1, endLine, 1),
-            options: {
-              isWholeLine: true,
-              className: change.type === 'add' ? 'diff-added-line' : 'diff-modified-line',
-              glyphMarginClassName: change.type === 'add' ? 'diff-added-glyph' : 'diff-modified-glyph',
-            }
-          });
+          // 画像読み込み（innerHTML設定後に実行）
+          if (imagePath) {
+            loadPreviewImage(imagePath);
+          }
+        } catch (e) {
+          document.getElementById("preview-content").innerHTML =
+            '<div class="preview-placeholder">エラー</div>';
         }
       }
 
-      decorationIds = editor.deltaDecorations(decorationIds, newDecorations);
-    }
+      function updateDiffHighlight(changes) {
+        if (!editor) return;
 
-    function findSceneEndLine(content, index) {
-      const lines = content.split('\n');
-      let count = -1;
-      let startLine = -1;
+        const content = editor.getValue();
+        const newDecorations = [];
 
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].match(/^\s+-\s+text:/)) {
-          count++;
-          if (count === index) {
-            startLine = i;
-          } else if (count === index + 1) {
-            return i; // 次のシーンの手前
+        for (const change of changes) {
+          if (change.type === "add" || change.type === "modify") {
+            const idx = change.index - 1; // 0-based index
+            const startLine = findSceneLine(content, idx);
+            const endLine = findSceneEndLine(content, idx);
+
+            newDecorations.push({
+              range: new monaco.Range(startLine, 1, endLine, 1),
+              options: {
+                isWholeLine: true,
+                className:
+                  change.type === "add"
+                    ? "diff-added-line"
+                    : "diff-modified-line",
+                glyphMarginClassName:
+                  change.type === "add"
+                    ? "diff-added-glyph"
+                    : "diff-modified-glyph",
+              },
+            });
           }
         }
+
+        decorationIds = editor.deltaDecorations(decorationIds, newDecorations);
       }
 
-      // 最後のシーンの場合、ファイル末尾まで
-      if (startLine !== -1) {
-        return lines.length;
-      }
-      return 1;
-    }
+      function findSceneEndLine(content, index) {
+        const lines = content.split("\n");
+        let count = -1;
+        let startLine = -1;
 
-    function updateDiff() {
-      const diffEl = document.getElementById('diff-output');
-      try {
-        const current = yaml.load(editor.getValue());
-        const changes = [];
-        const origScenes = originalData?.scenes || [];
-        const currScenes = current?.scenes || [];
-
-        // メタデータの変更
-        if (current.title !== originalData.title) {
-          changes.push({ type: 'meta', field: 'title', from: originalData.title, to: current.title });
-        }
-
-        // シーンの変更を検出
-        for (let i = 0; i < Math.max(origScenes.length, currScenes.length); i++) {
-          const orig = origScenes[i];
-          const curr = currScenes[i];
-
-          if (!orig && curr) {
-            // 新規追加
-            changes.push({ type: 'add', index: i + 1, scene: curr });
-          } else if (orig && !curr) {
-            // 削除
-            changes.push({ type: 'delete', index: i + 1, scene: orig });
-          } else if (orig && curr) {
-            // 変更チェック（text, image, highlight のみ重要視）
-            const diffs = [];
-            if (orig.text !== curr.text) diffs.push({ field: 'text', from: orig.text, to: curr.text });
-            if (orig.image !== curr.image) diffs.push({ field: 'image', from: orig.image, to: curr.image });
-            if (JSON.stringify(orig.highlight) !== JSON.stringify(curr.highlight)) {
-              diffs.push({ field: 'highlight', from: orig.highlight, to: curr.highlight });
-            }
-            if (orig.section !== curr.section) diffs.push({ field: 'section', from: orig.section, to: curr.section });
-            if (orig.transition !== curr.transition) diffs.push({ field: 'transition', from: orig.transition, to: curr.transition });
-
-            if (diffs.length > 0) {
-              changes.push({ type: 'modify', index: i + 1, diffs });
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].match(/^\s+-\s+text:/)) {
+            count++;
+            if (count === index) {
+              startLine = i;
+            } else if (count === index + 1) {
+              return i; // 次のシーンの手前
             }
           }
         }
 
-        if (changes.length === 0) {
-          diffEl.innerHTML = '<div class="no-diff">変更なし</div>';
+        // 最後のシーンの場合、ファイル末尾まで
+        if (startLine !== -1) {
+          return lines.length;
+        }
+        return 1;
+      }
+
+      function updateDiff() {
+        const diffEl = document.getElementById("diff-output");
+        try {
+          const current = yaml.load(editor.getValue());
+          const changes = [];
+          const origScenes = originalData?.scenes || [];
+          const currScenes = current?.scenes || [];
+
+          // メタデータの変更
+          if (current.title !== originalData.title) {
+            changes.push({
+              type: "meta",
+              field: "title",
+              from: originalData.title,
+              to: current.title,
+            });
+          }
+
+          // シーンの変更を検出
+          for (
+            let i = 0;
+            i < Math.max(origScenes.length, currScenes.length);
+            i++
+          ) {
+            const orig = origScenes[i];
+            const curr = currScenes[i];
+
+            if (!orig && curr) {
+              // 新規追加
+              changes.push({ type: "add", index: i + 1, scene: curr });
+            } else if (orig && !curr) {
+              // 削除
+              changes.push({ type: "delete", index: i + 1, scene: orig });
+            } else if (orig && curr) {
+              // 変更チェック（text, image, highlight のみ重要視）
+              const diffs = [];
+              if (orig.text !== curr.text)
+                diffs.push({ field: "text", from: orig.text, to: curr.text });
+              if (orig.image !== curr.image)
+                diffs.push({
+                  field: "image",
+                  from: orig.image,
+                  to: curr.image,
+                });
+              if (
+                JSON.stringify(orig.highlight) !==
+                JSON.stringify(curr.highlight)
+              ) {
+                diffs.push({
+                  field: "highlight",
+                  from: orig.highlight,
+                  to: curr.highlight,
+                });
+              }
+              if (orig.section !== curr.section)
+                diffs.push({
+                  field: "section",
+                  from: orig.section,
+                  to: curr.section,
+                });
+              if (orig.transition !== curr.transition)
+                diffs.push({
+                  field: "transition",
+                  from: orig.transition,
+                  to: curr.transition,
+                });
+
+              if (diffs.length > 0) {
+                changes.push({ type: "modify", index: i + 1, diffs });
+              }
+            }
+          }
+
+          if (changes.length === 0) {
+            diffEl.innerHTML = '<div class="no-diff">変更なし</div>';
+            updateDiffHighlight([]);
+            return;
+          }
+
+          // プロンプト生成
+          const prompt = generateDiffPrompt(changes, current);
+          diffEl.innerHTML = `<pre>${escapeHtml(prompt)}</pre>`;
+
+          // エディタ内の差分ハイライト
+          updateDiffHighlight(changes);
+        } catch (e) {
+          diffEl.innerHTML = `<div class="no-diff">パースエラー: ${e.message}</div>`;
           updateDiffHighlight([]);
-          return;
         }
-
-        // プロンプト生成
-        const prompt = generateDiffPrompt(changes, current);
-        diffEl.innerHTML = `<pre>${escapeHtml(prompt)}</pre>`;
-
-        // エディタ内の差分ハイライト
-        updateDiffHighlight(changes);
-      } catch (e) {
-        diffEl.innerHTML = `<div class="no-diff">パースエラー: ${e.message}</div>`;
-        updateDiffHighlight([]);
       }
-    }
 
-    function generateDiffPrompt(changes, current) {
-      let prompt = `video-script.jsonを以下のように修正してください。\n\n`;
-      prompt += `対象: ${current.title}\n`;
-      prompt += `---\n\n`;
+      function generateDiffPrompt(changes, current) {
+        let prompt = `video-script.jsonを以下のように修正してください。\n\n`;
+        prompt += `対象: ${current.title}\n`;
+        prompt += `---\n\n`;
 
-      for (const change of changes) {
-        if (change.type === 'add') {
-          prompt += `【シーン${change.index}を追加】\n`;
-          prompt += `text: "${change.scene.text}"\n`;
-          prompt += `character: ${change.scene.character}\n`;
-          if (change.scene.image) prompt += `image: ${change.scene.image}\n`;
-          if (change.scene.highlight) prompt += `highlight: "${change.scene.highlight.text}"\n`;
-          prompt += `※audio（TTS）の生成が必要です\n\n`;
-        } else if (change.type === 'delete') {
-          prompt += `【シーン${change.index}を削除】\n`;
-          prompt += `削除対象text: "${change.scene.text?.substring(0, 30)}..."\n\n`;
-        } else if (change.type === 'modify') {
-          prompt += `【シーン${change.index}を修正】\n`;
-          for (const d of change.diffs) {
-            if (d.field === 'text') {
-              prompt += `text: "${d.from?.substring(0, 20)}..." → "${d.to}"\n`;
-              prompt += `※textが変更されたのでTTS再生成が必要です\n`;
-            } else if (d.field === 'highlight') {
-              prompt += `highlight: ${d.from?.text || '(なし)'} → ${d.to?.text || '(なし)'}\n`;
-            } else {
-              prompt += `${d.field}: ${d.from || '(なし)'} → ${d.to || '(なし)'}\n`;
+        for (const change of changes) {
+          if (change.type === "add") {
+            prompt += `【シーン${change.index}を追加】\n`;
+            prompt += `text: "${change.scene.text}"\n`;
+            prompt += `character: ${change.scene.character}\n`;
+            if (change.scene.image) prompt += `image: ${change.scene.image}\n`;
+            if (change.scene.highlight)
+              prompt += `highlight: "${change.scene.highlight.text}"\n`;
+            prompt += `※audio（TTS）の生成が必要です\n\n`;
+          } else if (change.type === "delete") {
+            prompt += `【シーン${change.index}を削除】\n`;
+            prompt += `削除対象text: "${change.scene.text?.substring(0, 30)}..."\n\n`;
+          } else if (change.type === "modify") {
+            prompt += `【シーン${change.index}を修正】\n`;
+            for (const d of change.diffs) {
+              if (d.field === "text") {
+                prompt += `text: "${d.from?.substring(0, 20)}..." → "${d.to}"\n`;
+                prompt += `※textが変更されたのでTTS再生成が必要です\n`;
+              } else if (d.field === "highlight") {
+                prompt += `highlight: ${d.from?.text || "(なし)"} → ${d.to?.text || "(なし)"}\n`;
+              } else {
+                prompt += `${d.field}: ${d.from || "(なし)"} → ${d.to || "(なし)"}\n`;
+              }
             }
+            prompt += `\n`;
+          } else if (change.type === "meta") {
+            prompt += `【${change.field}を修正】\n`;
+            prompt += `${change.from} → ${change.to}\n\n`;
           }
-          prompt += `\n`;
-        } else if (change.type === 'meta') {
-          prompt += `【${change.field}を修正】\n`;
-          prompt += `${change.from} → ${change.to}\n\n`;
+        }
+
+        prompt += `---\nvideo-planner phase3から対応をお願いします。`;
+        return prompt;
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function findSceneLine(content, index) {
+        const lines = content.split("\n");
+        let count = -1;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].match(/^\s+-\s+text:/)) {
+            count++;
+            if (count === index) return i + 1;
+          }
+        }
+        return 1;
+      }
+
+      function findSceneIndexByLine(lineNum) {
+        const content = editor.getValue();
+        const lines = content.split("\n");
+        let count = -1;
+        for (let i = 0; i < lines.length && i < lineNum; i++) {
+          if (lines[i].match(/^\s+-\s+text:/)) count++;
+        }
+        return Math.max(0, count);
+      }
+
+      function goToScene(index) {
+        const content = editor.getValue();
+        const line = findSceneLine(content, index);
+        currentSceneIndex = index;
+        editor.revealLineInCenter(line);
+        editor.setPosition({ lineNumber: line, column: 1 });
+        editor.focus();
+        highlightSceneNav();
+        updatePreview();
+      }
+
+      function loadJSON() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json,.yaml,.yml";
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            let content = ev.target.result;
+            try {
+              if (file.name.endsWith(".json")) {
+                const data = JSON.parse(content);
+                originalData = JSON.parse(JSON.stringify(data));
+                content = toYAML(data);
+              } else {
+                originalData = yaml.load(content);
+              }
+              originalYAML = content;
+              editor.setValue(content);
+            } catch (err) {
+              alert("エラー: " + err.message);
+            }
+          };
+          reader.readAsText(file);
+        };
+        input.click();
+      }
+
+      function saveJSON() {
+        try {
+          const data = yaml.load(editor.getValue());
+          const blob = new Blob([JSON.stringify(data, null, 2)], {
+            type: "application/json",
+          });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "video-script.json";
+          a.click();
+        } catch (e) {
+          alert("YAMLエラー: " + e.message);
         }
       }
 
-      prompt += `---\nvideo-planner phase3から対応をお願いします。`;
-      return prompt;
-    }
+      function insertScene() {
+        try {
+          const data = yaml.load(editor.getValue());
+          const lastScene = (data.scenes || [])[data.scenes?.length - 1] || {};
 
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+          // backgroundを引き継ぎ
+          let template = `\n  - text: ""`;
+          template += `\n    character: tsukuyomi`;
+          if (lastScene.background)
+            template += `\n    background: ${lastScene.background}`;
+          if (lastScene.image)
+            template += `\n    image: ${lastScene.image.replace(/[^/]+$/, "")}`;
 
-    function findSceneLine(content, index) {
-      const lines = content.split('\n');
-      let count = -1;
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].match(/^\s+-\s+text:/)) {
-          count++;
-          if (count === index) return i + 1;
+          // 末尾に挿入（Undo可能な方法）
+          const model = editor.getModel();
+          const lastLine = model.getLineCount();
+          const lastCol = model.getLineMaxColumn(lastLine);
+          editor.executeEdits("insert-scene", [
+            {
+              range: new monaco.Range(lastLine, lastCol, lastLine, lastCol),
+              text: template,
+            },
+          ]);
+          editor.focus();
+
+          // 新しいシーンにジャンプ
+          setTimeout(() => {
+            const newData = yaml.load(editor.getValue());
+            goToScene((newData.scenes?.length || 1) - 1);
+          }, 100);
+        } catch (e) {
+          alert("エラー: " + e.message);
         }
       }
-      return 1;
-    }
 
-    function findSceneIndexByLine(lineNum) {
-      const content = editor.getValue();
-      const lines = content.split('\n');
-      let count = -1;
-      for (let i = 0; i < lines.length && i < lineNum; i++) {
-        if (lines[i].match(/^\s+-\s+text:/)) count++;
+      function revertChanges() {
+        if (confirm("変更を元に戻しますか？")) {
+          editor.setValue(originalYAML);
+        }
       }
-      return Math.max(0, count);
-    }
 
-    function goToScene(index) {
-      const content = editor.getValue();
-      const line = findSceneLine(content, index);
-      currentSceneIndex = index;
-      editor.revealLineInCenter(line);
-      editor.setPosition({ lineNumber: line, column: 1 });
-      editor.focus();
-      highlightSceneNav();
-      updatePreview();
-    }
+      function copyDiffPrompt() {
+        const pre = document.querySelector("#diff-output pre");
+        if (pre) {
+          navigator.clipboard.writeText(pre.textContent).then(() => {
+            const btn = document.querySelector(".toolbar .primary");
+            const orig = btn.textContent;
+            btn.textContent = "コピーしました！";
+            setTimeout(() => (btn.textContent = orig), 1500);
+          });
+        } else {
+          alert("変更がありません");
+        }
+      }
 
-    function loadJSON() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json,.yaml,.yml';
-      input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+      // ドラッグ&ドロップ
+      document.addEventListener("dragover", (e) => e.preventDefault());
+      document.addEventListener("drop", function (e) {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (!file || !file.name.match(/\.(yaml|yml|json)$/)) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
           let content = ev.target.result;
           try {
-            if (file.name.endsWith('.json')) {
+            if (file.name.endsWith(".json")) {
               const data = JSON.parse(content);
               originalData = JSON.parse(JSON.stringify(data));
               content = toYAML(data);
@@ -704,101 +1030,20 @@
             }
             originalYAML = content;
             editor.setValue(content);
-          } catch (err) { alert('エラー: ' + err.message); }
+          } catch (err) {
+            alert("エラー: " + err.message);
+          }
         };
         reader.readAsText(file);
-      };
-      input.click();
-    }
+      });
 
-    function saveJSON() {
-      try {
-        const data = yaml.load(editor.getValue());
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'video-script.json';
-        a.click();
-      } catch (e) { alert('YAMLエラー: ' + e.message); }
-    }
-
-    function insertScene() {
-      try {
-        const data = yaml.load(editor.getValue());
-        const lastScene = (data.scenes || [])[data.scenes?.length - 1] || {};
-
-        // backgroundを引き継ぎ
-        let template = `\n  - text: ""`;
-        template += `\n    character: tsukuyomi`;
-        if (lastScene.background) template += `\n    background: ${lastScene.background}`;
-        if (lastScene.image) template += `\n    image: ${lastScene.image.replace(/[^/]+$/, '')}`;
-
-        // 末尾に挿入（Undo可能な方法）
-        const model = editor.getModel();
-        const lastLine = model.getLineCount();
-        const lastCol = model.getLineMaxColumn(lastLine);
-        editor.executeEdits('insert-scene', [{
-          range: new monaco.Range(lastLine, lastCol, lastLine, lastCol),
-          text: template
-        }]);
-        editor.focus();
-
-        // 新しいシーンにジャンプ
-        setTimeout(() => {
-          const newData = yaml.load(editor.getValue());
-          goToScene((newData.scenes?.length || 1) - 1);
-        }, 100);
-      } catch (e) { alert('エラー: ' + e.message); }
-    }
-
-    function revertChanges() {
-      if (confirm('変更を元に戻しますか？')) {
-        editor.setValue(originalYAML);
-      }
-    }
-
-    function copyDiffPrompt() {
-      const pre = document.querySelector('#diff-output pre');
-      if (pre) {
-        navigator.clipboard.writeText(pre.textContent).then(() => {
-          const btn = document.querySelector('.toolbar .primary');
-          const orig = btn.textContent;
-          btn.textContent = 'コピーしました！';
-          setTimeout(() => btn.textContent = orig, 1500);
-        });
-      } else {
-        alert('変更がありません');
-      }
-    }
-
-    // ドラッグ&ドロップ
-    document.addEventListener('dragover', e => e.preventDefault());
-    document.addEventListener('drop', function (e) {
-      e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (!file || !file.name.match(/\.(yaml|yml|json)$/)) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        let content = ev.target.result;
-        try {
-          if (file.name.endsWith('.json')) {
-            const data = JSON.parse(content);
-            originalData = JSON.parse(JSON.stringify(data));
-            content = toYAML(data);
-          } else {
-            originalData = yaml.load(content);
-          }
-          originalYAML = content;
-          editor.setValue(content);
-        } catch (err) { alert('エラー: ' + err.message); }
-      };
-      reader.readAsText(file);
-    });
-
-    // Ctrl+S
-    document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveJSON(); }
-    });
-  </script>
-</body>
+      // Ctrl+S
+      document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+          e.preventDefault();
+          saveJSON();
+        }
+      });
+    </script>
+  </body>
 </html>

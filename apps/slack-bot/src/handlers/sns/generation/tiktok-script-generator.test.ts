@@ -187,9 +187,7 @@ describe("generateTikTokScript", () => {
       .mockResolvedValueOnce(buildMockResult(RESEARCH_OUTPUT_JSON))
       .mockResolvedValueOnce(buildMockResult(STRUCTURE_OUTPUT_JSON))
       .mockResolvedValueOnce(buildMockResult(CONTENT_OUTPUT_JSON))
-      .mockResolvedValueOnce(
-        buildMockResult("This is not valid JSON at all"),
-      );
+      .mockResolvedValueOnce(buildMockResult("This is not valid JSON at all"));
 
     const result = await generateTikTokScript("TikTok動画を作って");
 

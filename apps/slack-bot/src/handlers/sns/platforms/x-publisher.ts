@@ -41,7 +41,9 @@ function generateOAuthHeader(
   ].join("&");
 
   const signingKey = `${encodeURIComponent(creds.apiKeySecret)}&${encodeURIComponent(creds.accessTokenSecret)}`;
-  const signature = createHmac("sha1", signingKey).update(baseString).digest("base64");
+  const signature = createHmac("sha1", signingKey)
+    .update(baseString)
+    .digest("base64");
 
   params.oauth_signature = signature;
 
@@ -53,9 +55,12 @@ function generateOAuthHeader(
   return `OAuth ${header}`;
 }
 
-export async function publishToX(
-  text: string,
-): Promise<{ success: boolean; tweetId?: string; url?: string; error?: string }> {
+export async function publishToX(text: string): Promise<{
+  success: boolean;
+  tweetId?: string;
+  url?: string;
+  error?: string;
+}> {
   const creds = getCredentials();
   if (!creds) {
     return { success: false, error: "X API credentials not configured" };
@@ -94,9 +99,12 @@ export async function publishToX(
   }
 }
 
-export async function publishThread(
-  posts: string[],
-): Promise<{ success: boolean; tweetIds: string[]; urls: string[]; error?: string }> {
+export async function publishThread(posts: string[]): Promise<{
+  success: boolean;
+  tweetIds: string[];
+  urls: string[];
+  error?: string;
+}> {
   const tweetIds: string[] = [];
   const urls: string[] = [];
   let replyToId: string | undefined;
@@ -104,7 +112,12 @@ export async function publishThread(
   for (const text of posts) {
     const creds = getCredentials();
     if (!creds) {
-      return { success: false, tweetIds, urls, error: "X API credentials not configured" };
+      return {
+        success: false,
+        tweetIds,
+        urls,
+        error: "X API credentials not configured",
+      };
     }
 
     const apiUrl = "https://api.x.com/2/tweets";
@@ -143,7 +156,12 @@ export async function publishThread(
         replyToId = tweetId;
       }
     } catch (error) {
-      return { success: false, tweetIds, urls, error: `Network error on post ${tweetIds.length + 1}: ${error}` };
+      return {
+        success: false,
+        tweetIds,
+        urls,
+        error: `Network error on post ${tweetIds.length + 1}: ${error}`,
+      };
     }
   }
 

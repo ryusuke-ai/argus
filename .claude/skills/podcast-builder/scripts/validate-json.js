@@ -17,7 +17,11 @@
 import { parseArgs } from "node:util";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { validateJson, printValidationErrors, schemaMap } from "../schemas/zod-schemas.js";
+import {
+  validateJson,
+  printValidationErrors,
+  schemaMap,
+} from "../schemas/zod-schemas.js";
 
 const { values } = parseArgs({
   options: {
@@ -29,7 +33,9 @@ const { values } = parseArgs({
 });
 
 if (!values.schema || !values.file) {
-  console.error("使用方法: node validate-json.js --schema <schema-name> --file <json-file>");
+  console.error(
+    "使用方法: node validate-json.js --schema <schema-name> --file <json-file>",
+  );
   console.error("");
   console.error("スキーマ名:");
   console.error("  - research : Phase 1 リサーチ結果");

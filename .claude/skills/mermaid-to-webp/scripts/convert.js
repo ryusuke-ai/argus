@@ -199,7 +199,13 @@ function getTempFilePath(extension) {
  * mermaid-cliを使用してMermaidをPNGに変換
  * （SVGはforeignObjectの関係でsharpでテキストがレンダリングされないためPNGを使用）
  */
-async function convertMermaidToPng(mermaidText, theme, background, tempMmdPath, tempPngPath) {
+async function convertMermaidToPng(
+  mermaidText,
+  theme,
+  background,
+  tempMmdPath,
+  tempPngPath,
+) {
   // Mermaidテキストを一時ファイルに保存
   fs.writeFileSync(tempMmdPath, mermaidText, "utf8");
 
@@ -212,17 +218,26 @@ async function convertMermaidToPng(mermaidText, theme, background, tempMmdPath, 
 
   return new Promise((resolve, reject) => {
     // mmdcコマンドを実行（PNG出力）
-    const mmdc = spawn("npx", [
-      "mmdc",
-      "-i", tempMmdPath,
-      "-o", tempPngPath,
-      "-c", configPath,
-      "-b", background,
-      "-s", "2",  // スケール2倍で高解像度出力
-    ], {
-      stdio: ["pipe", "pipe", "pipe"],
-      shell: true,
-    });
+    const mmdc = spawn(
+      "npx",
+      [
+        "mmdc",
+        "-i",
+        tempMmdPath,
+        "-o",
+        tempPngPath,
+        "-c",
+        configPath,
+        "-b",
+        background,
+        "-s",
+        "2", // スケール2倍で高解像度出力
+      ],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        shell: true,
+      },
+    );
 
     let stderr = "";
     mmdc.stderr.on("data", (data) => {
@@ -268,7 +283,9 @@ async function convertPngToWebp(pngPath, outputPath, options) {
 
   // 品質値の検証
   if (options.quality < 1 || options.quality > 100) {
-    throw new Error(`品質値は1-100の範囲で指定してください: ${options.quality}`);
+    throw new Error(
+      `品質値は1-100の範囲で指定してください: ${options.quality}`,
+    );
   }
 
   // 背景色のパース
@@ -296,7 +313,13 @@ async function convertMermaidToWebp(mermaidText, outputPath, options) {
 
   try {
     // Mermaid → PNG（mermaid-cliが直接PNGを生成）
-    await convertMermaidToPng(mermaidText, options.theme, options.background, tempMmdPath, tempPngPath);
+    await convertMermaidToPng(
+      mermaidText,
+      options.theme,
+      options.background,
+      tempMmdPath,
+      tempPngPath,
+    );
 
     // PNG → WebP
     await convertPngToWebp(tempPngPath, outputPath, options);
@@ -332,7 +355,9 @@ function validateOptions(options) {
   }
 
   if (options.stdin && options.input) {
-    console.error("Error: --input と --stdin を同時に指定することはできません。");
+    console.error(
+      "Error: --input と --stdin を同時に指定することはできません。",
+    );
     process.exit(1);
   }
 
@@ -359,7 +384,9 @@ function validateOptions(options) {
 
   const validThemes = ["default", "dark", "forest", "neutral"];
   if (!validThemes.includes(options.theme)) {
-    console.error(`Error: テーマは ${validThemes.join(", ")} のいずれかを指定してください。`);
+    console.error(
+      `Error: テーマは ${validThemes.join(", ")} のいずれかを指定してください。`,
+    );
     process.exit(1);
   }
 }
@@ -389,8 +416,12 @@ async function main() {
       throw new Error("Mermaidテキストが空です。");
     }
 
-    console.log(`変換中: ${options.stdin ? "(stdin)" : options.input} -> ${options.output}`);
-    console.log(`  サイズ: ${options.width}x${options.height}, 品質: ${options.quality}`);
+    console.log(
+      `変換中: ${options.stdin ? "(stdin)" : options.input} -> ${options.output}`,
+    );
+    console.log(
+      `  サイズ: ${options.width}x${options.height}, 品質: ${options.quality}`,
+    );
     console.log(`  テーマ: ${options.theme}, 背景: ${options.background}`);
 
     await convertMermaidToWebp(mermaidText, options.output, options);

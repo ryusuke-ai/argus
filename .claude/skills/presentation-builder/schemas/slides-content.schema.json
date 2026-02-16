@@ -21,7 +21,15 @@
           },
           "layout": {
             "type": "string",
-            "enum": ["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote"],
+            "enum": [
+              "title",
+              "section",
+              "text-only",
+              "text-and-image",
+              "image-full",
+              "comparison",
+              "quote"
+            ],
             "description": "スライドレイアウト"
           },
           "heading": {
@@ -59,7 +67,12 @@
               },
               "tool": {
                 "type": "string",
-                "enum": ["mermaid", "svg-diagram", "gen-ai-image", "gen-rich-image"],
+                "enum": [
+                  "mermaid",
+                  "svg-diagram",
+                  "gen-ai-image",
+                  "gen-rich-image"
+                ],
                 "description": "使用するスキル"
               }
             },

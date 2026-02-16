@@ -17,6 +17,7 @@
 
 `work/slides-content.json` と `work/structure.json` を入力として読み込む。
 特に以下を確認:
+
 - トーン（tech / proposal / education / report）
 - 各スライドの layout と visual フィールド
 - bullets の量（テキスト密度）
@@ -54,6 +55,7 @@ Task(
 ```
 
 委譲時の5要素:
+
 1. **cwd**: 作業ディレクトリの絶対パス
 2. **input**: `work/slides-content.json`, `work/structure.json`
 3. **output**: `work/design.json`
@@ -72,6 +74,7 @@ node .claude/skills/presentation-builder/scripts/validate-json.js \
 ### Step 4: 確認事項
 
 design.json の以下を確認:
+
 - [ ] タイトルスライドに `background: "gradient"` が設定されている
 - [ ] text-and-image スライドに `imageLayout` + `svgSpec` がある
 - [ ] key-number スライドに `keyNumber` がある
@@ -82,8 +85,8 @@ design.json の以下を確認:
 
 ## 成果物
 
-| ファイル | 説明 |
-|---------|------|
+| ファイル           | 説明         |
+| ------------------ | ------------ |
 | `work/design.json` | デザイン設計 |
 
 ---

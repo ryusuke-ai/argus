@@ -174,13 +174,13 @@ const phaseInfo = {
 
 ## Quick Reference
 
-| Phase | パッケージ         | 完了処理                         | 次Phaseへ   |
-| ----- | ------------------ | -------------------------------- | ----------- |
-| 1     | agent-core         | finishing-a-development-branch   | Phase 2提示 |
-| 2     | slack-bot + db     | finishing-a-development-branch   | Phase 3提示 |
-| 3     | dashboard          | finishing-a-development-branch   | Phase 4提示 |
-| 4     | agent-orchestrator | finishing-a-development-branch   | Phase 5提示 |
-| 5     | knowledge          | finishing-a-development-branch   | 全Phase完了 |
+| Phase | パッケージ         | 完了処理                       | 次Phaseへ   |
+| ----- | ------------------ | ------------------------------ | ----------- |
+| 1     | agent-core         | finishing-a-development-branch | Phase 2提示 |
+| 2     | slack-bot + db     | finishing-a-development-branch | Phase 3提示 |
+| 3     | dashboard          | finishing-a-development-branch | Phase 4提示 |
+| 4     | agent-orchestrator | finishing-a-development-branch | Phase 5提示 |
+| 5     | knowledge          | finishing-a-development-branch | 全Phase完了 |
 
 ## Example Usage
 

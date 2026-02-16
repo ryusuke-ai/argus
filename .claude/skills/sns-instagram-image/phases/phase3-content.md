@@ -11,8 +11,8 @@
 ## 出力（JSON）
 
 {
-  "type": "image" or "reels",
-  "caption": "日本語キャプション",
-  "hashtags": ["ハッシュタグ"],
-  "imagePrompt": "英語の画像生成プロンプト（image タイプのみ）"
+"type": "image" or "reels",
+"caption": "日本語キャプション",
+"hashtags": ["ハッシュタグ"],
+"imagePrompt": "英語の画像生成プロンプト（image タイプのみ）"
 }

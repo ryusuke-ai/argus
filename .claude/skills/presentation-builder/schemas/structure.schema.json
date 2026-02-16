@@ -82,7 +82,18 @@
                 },
                 "suggestedLayout": {
                   "type": "string",
-                  "enum": ["title", "section", "text-only", "text-and-image", "image-full", "comparison", "quote", "key-number", "timeline", "icon-grid"],
+                  "enum": [
+                    "title",
+                    "section",
+                    "text-only",
+                    "text-and-image",
+                    "image-full",
+                    "comparison",
+                    "quote",
+                    "key-number",
+                    "timeline",
+                    "icon-grid"
+                  ],
                   "description": "推奨レイアウト（Phase 2 でのレイアウト選択ガイド）"
                 }
               }

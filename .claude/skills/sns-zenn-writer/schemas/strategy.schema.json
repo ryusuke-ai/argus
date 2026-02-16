@@ -3,7 +3,16 @@
   "title": "ZennStrategy",
   "description": "Phase 1 出力: Zenn 記事のリサーチ & 戦略",
   "type": "object",
-  "required": ["version", "topic", "articleType", "category", "targetAudience", "competitors", "differentiators", "keywords"],
+  "required": [
+    "version",
+    "topic",
+    "articleType",
+    "category",
+    "targetAudience",
+    "competitors",
+    "differentiators",
+    "keywords"
+  ],
   "properties": {
     "version": {
       "type": "string",

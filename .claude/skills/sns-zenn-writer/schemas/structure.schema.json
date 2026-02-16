@@ -15,7 +15,12 @@
       "properties": {
         "emoji": { "type": "string" },
         "type": { "type": "string", "enum": ["tech", "idea"] },
-        "topics": { "type": "array", "minItems": 3, "maxItems": 5, "items": { "type": "string" } }
+        "topics": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 5,
+          "items": { "type": "string" }
+        }
       }
     },
     "hook": {

@@ -71,12 +71,8 @@
           "name": "agent_executions_agent_id_agents_id_fk",
           "tableFrom": "agent_executions",
           "tableTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -84,12 +80,8 @@
           "name": "agent_executions_session_id_sessions_id_fk",
           "tableFrom": "agent_executions",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -221,9 +213,7 @@
         "daily_plans_date_unique": {
           "name": "daily_plans_date_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "date"
-          ]
+          "columns": ["date"]
         }
       },
       "policies": {},
@@ -324,9 +314,7 @@
         "gmail_messages_gmail_id_unique": {
           "name": "gmail_messages_gmail_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "gmail_id"
-          ]
+          "columns": ["gmail_id"]
         }
       },
       "policies": {},
@@ -635,12 +623,8 @@
           "name": "lessons_session_id_sessions_id_fk",
           "tableFrom": "lessons",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -648,12 +632,8 @@
           "name": "lessons_task_id_tasks_id_fk",
           "tableFrom": "lessons",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -707,12 +687,8 @@
           "name": "messages_session_id_sessions_id_fk",
           "tableFrom": "messages",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -925,12 +901,8 @@
           "name": "tasks_session_id_sessions_id_fk",
           "tableFrom": "tasks",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

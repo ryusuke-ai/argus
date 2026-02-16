@@ -107,9 +107,8 @@ describe("generateYouTubeMetadata", () => {
   it("should generate YouTube metadata successfully", async () => {
     mockFourPhases(YOUTUBE_META_JSON);
 
-    const result = await generateYouTubeMetadata(
-      "MCPサーバーの作り方を解説する動画",
-    );
+    const result =
+      await generateYouTubeMetadata("MCPサーバーの作り方を解説する動画");
 
     expect(result.success).toBe(true);
     expect(result.content).toBeDefined();
@@ -157,9 +156,7 @@ describe("generateYouTubeMetadata", () => {
       .mockResolvedValueOnce(buildMockResult(RESEARCH_OUTPUT_JSON))
       .mockResolvedValueOnce(buildMockResult(STRUCTURE_OUTPUT_JSON))
       .mockResolvedValueOnce(buildMockResult(CONTENT_OUTPUT_JSON))
-      .mockResolvedValueOnce(
-        buildMockResult("This is not valid JSON at all"),
-      );
+      .mockResolvedValueOnce(buildMockResult("This is not valid JSON at all"));
 
     const result = await generateYouTubeMetadata("動画メタデータを作って");
 

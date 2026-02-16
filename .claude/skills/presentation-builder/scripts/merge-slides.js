@@ -33,7 +33,9 @@ const { values } = parseArgs({
 });
 
 if (!values.content || !values.output) {
-  console.error("使用方法: node merge-slides.js --content <file> --output <file>");
+  console.error(
+    "使用方法: node merge-slides.js --content <file> --output <file>",
+  );
   console.error("");
   console.error("オプション:");
   console.error("  --content    slides-content.json パス（必須）");
@@ -80,13 +82,17 @@ if (values.design) {
       const designValidation = validateJson("design", designData);
       if (!designValidation.success) {
         printValidationErrors("design", designValidation.errors);
-        console.error("\n⚠️ design.json にエラーがあります（デフォルトスタイルを使用）");
+        console.error(
+          "\n⚠️ design.json にエラーがあります（デフォルトスタイルを使用）",
+        );
         designData = null;
       } else {
         console.log("✅ design バリデーション成功");
       }
     } catch (e) {
-      console.error(`警告: design.json パース失敗: ${e.message}（デフォルトスタイルを使用）`);
+      console.error(
+        `警告: design.json パース失敗: ${e.message}（デフォルトスタイルを使用）`,
+      );
     }
   }
 }
@@ -102,13 +108,22 @@ if (designData?.slides) {
 
 // カラーパレット
 const palette = designData?.palette ?? {
-  primary: "#1a1a2e", secondary: "#16213e", accent: "#0f3460", highlight: "#e94560",
-  text: "#333333", textLight: "#666666", background: "#ffffff", backgroundAlt: "#f5f5f5",
+  primary: "#1a1a2e",
+  secondary: "#16213e",
+  accent: "#0f3460",
+  highlight: "#e94560",
+  text: "#333333",
+  textLight: "#666666",
+  background: "#ffffff",
+  backgroundAlt: "#f5f5f5",
 };
 
 const typo = designData?.typography ?? {
-  headingFont: "Hiragino Kaku Gothic ProN", bodyFont: "Hiragino Kaku Gothic ProN",
-  headingSize: "1.5em", bodySize: "0.95em", lineHeight: 1.8,
+  headingFont: "Hiragino Kaku Gothic ProN",
+  bodyFont: "Hiragino Kaku Gothic ProN",
+  headingSize: "1.5em",
+  bodySize: "0.95em",
+  lineHeight: 1.8,
 };
 
 // インライン CSS 生成
@@ -199,7 +214,9 @@ for (const slide of slides) {
   switch (slide.layout) {
     case "title": {
       parts.push("<!-- _class: title -->", "", `# ${slide.heading}`);
-      if (slide.subtitle) { parts.push("", `### ${slide.subtitle}`); }
+      if (slide.subtitle) {
+        parts.push("", `### ${slide.subtitle}`);
+      }
       break;
     }
     case "section": {
@@ -208,34 +225,57 @@ for (const slide of slides) {
     }
     case "text-only": {
       parts.push(`## ${slide.heading}`, "");
-      if (slide.bullets?.length > 0) for (const b of slide.bullets) parts.push(`- ${b}`);
-      if (slide.body) { parts.push("", slide.body); }
+      if (slide.bullets?.length > 0)
+        for (const b of slide.bullets) parts.push(`- ${b}`);
+      if (slide.body) {
+        parts.push("", slide.body);
+      }
       break;
     }
     case "text-and-image": {
       const imagePath = `${imagesDir}/${slide.id}.webp`;
       const imageExists = existsSync(resolve(imagePath));
-      if (!imageExists) { console.warn(`警告: 画像が見つかりません: ${imagePath}`); imageWarnings++; }
+      if (!imageExists) {
+        console.warn(`警告: 画像が見つかりません: ${imagePath}`);
+        imageWarnings++;
+      }
       parts.push(`## ${slide.heading}`, "");
-      if (imageExists) { parts.push(getImageDirective(slide.id, imagePath), ""); }
-      if (slide.bullets?.length > 0) for (const b of slide.bullets) parts.push(`- ${b}`);
+      if (imageExists) {
+        parts.push(getImageDirective(slide.id, imagePath), "");
+      }
+      if (slide.bullets?.length > 0)
+        for (const b of slide.bullets) parts.push(`- ${b}`);
       break;
     }
     case "image-full": {
       const imagePath = `${imagesDir}/${slide.id}.webp`;
       const imageExists = existsSync(resolve(imagePath));
-      if (!imageExists) { console.warn(`警告: 画像が見つかりません: ${imagePath}`); imageWarnings++; }
-      if (imageExists) { parts.push(`![bg contain](${imagePath})`, ""); }
+      if (!imageExists) {
+        console.warn(`警告: 画像が見つかりません: ${imagePath}`);
+        imageWarnings++;
+      }
+      if (imageExists) {
+        parts.push(`![bg contain](${imagePath})`, "");
+      }
       parts.push(`## ${slide.heading}`);
       break;
     }
     case "comparison": {
       parts.push(`## ${slide.heading}`, "");
-      const left = slide.leftColumn || {}; const right = slide.rightColumn || {};
-      parts.push(`| ${left.heading || "A"} | ${right.heading || "B"} |`, "|---|---|");
-      const maxLen = Math.max((left.bullets || []).length, (right.bullets || []).length);
+      const left = slide.leftColumn || {};
+      const right = slide.rightColumn || {};
+      parts.push(
+        `| ${left.heading || "A"} | ${right.heading || "B"} |`,
+        "|---|---|",
+      );
+      const maxLen = Math.max(
+        (left.bullets || []).length,
+        (right.bullets || []).length,
+      );
       for (let i = 0; i < maxLen; i++) {
-        parts.push(`| ${(left.bullets || [])[i] || ""} | ${(right.bullets || [])[i] || ""} |`);
+        parts.push(
+          `| ${(left.bullets || [])[i] || ""} | ${(right.bullets || [])[i] || ""} |`,
+        );
       }
       break;
     }
@@ -251,37 +291,52 @@ for (const slide of slides) {
       parts.push("<!-- _class: key-number -->", "", `## ${slide.heading}`, "");
       const kn = ds?.keyNumber;
       if (kn) {
-        parts.push(`<div class="number">${kn.value}</div>`, `<div class="unit">${kn.unit}</div>`);
-        if (kn.caption) { parts.push("", kn.caption); }
+        parts.push(
+          `<div class="number">${kn.value}</div>`,
+          `<div class="unit">${kn.unit}</div>`,
+        );
+        if (kn.caption) {
+          parts.push("", kn.caption);
+        }
       } else if (slide.bullets?.length > 0) {
         parts.push(`<div class="number">${slide.bullets[0]}</div>`);
-        if (slide.bullets.length > 1) { parts.push("", slide.bullets.slice(1).join("\n\n")); }
+        if (slide.bullets.length > 1) {
+          parts.push("", slide.bullets.slice(1).join("\n\n"));
+        }
       }
       break;
     }
     case "timeline": {
       parts.push("<!-- _class: timeline -->", "", `## ${slide.heading}`, "");
-      if (slide.bullets?.length > 0) for (const b of slide.bullets) parts.push(`- ${b}`);
+      if (slide.bullets?.length > 0)
+        for (const b of slide.bullets) parts.push(`- ${b}`);
       break;
     }
     case "icon-grid": {
       parts.push("<!-- _class: icon-grid -->", "", `## ${slide.heading}`, "");
-      if (slide.bullets?.length > 0) for (const b of slide.bullets) parts.push(`- ${b}`);
+      if (slide.bullets?.length > 0)
+        for (const b of slide.bullets) parts.push(`- ${b}`);
       break;
     }
     default: {
       parts.push(`## ${slide.heading}`);
-      if (slide.bullets) { parts.push(""); for (const b of slide.bullets) parts.push(`- ${b}`); }
+      if (slide.bullets) {
+        parts.push("");
+        for (const b of slide.bullets) parts.push(`- ${b}`);
+      }
       break;
     }
   }
 
-  if (slide.notes) { parts.push("", "<!--", slide.notes, "-->"); }
+  if (slide.notes) {
+    parts.push("", "<!--", slide.notes, "-->");
+  }
   slideMarkdowns.push(parts.join("\n"));
 }
 
 // 出力
-const output = frontmatter.join("\n") + "\n\n" + slideMarkdowns.join("\n\n---\n\n") + "\n";
+const output =
+  frontmatter.join("\n") + "\n\n" + slideMarkdowns.join("\n\n---\n\n") + "\n";
 const outputPath = resolve(values.output);
 writeFileSync(outputPath, output, "utf-8");
 
@@ -290,5 +345,7 @@ console.log(`  スライド数: ${slides.length}`);
 console.log(`  画像参照: ${slides.filter((s) => s.visual).length}`);
 console.log(`  デザイン: ${designData ? "design.json 適用" : "デフォルト"}`);
 if (imageWarnings > 0) {
-  console.warn(`  ⚠️ 画像未検出: ${imageWarnings}件（Phase 4-1 で生成予定の場合は正常）`);
+  console.warn(
+    `  ⚠️ 画像未検出: ${imageWarnings}件（Phase 4-1 で生成予定の場合は正常）`,
+  );
 }

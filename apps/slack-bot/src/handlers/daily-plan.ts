@@ -21,9 +21,7 @@ export function setupDailyPlanHandler(): void {
     if (!threadTs) return;
 
     const text =
-      "text" in message && typeof message.text === "string"
-        ? message.text
-        : "";
+      "text" in message && typeof message.text === "string" ? message.text : "";
     if (text.trim().length === 0) return;
 
     // このスレッドがデイリープランのスレッドか DB で確認
@@ -109,9 +107,7 @@ export function setupDailyPlanHandler(): void {
  * thread_ts からデイリープランを検索。
  * daily plan の投稿は thread_ts = slackMessageTs なのでこれで照合可能。
  */
-export async function findDailyPlanByThread(
-  threadTs: string,
-): Promise<{
+export async function findDailyPlanByThread(threadTs: string): Promise<{
   id: string;
   slackMessageTs: string | null;
   blocks: unknown;
@@ -162,8 +158,7 @@ ${editInstruction}
     // Try direct JSON parse first, fall back to regex
     try {
       const parsed = JSON.parse(text.trim());
-      if (Array.isArray(parsed))
-        return parsed as Record<string, unknown>[];
+      if (Array.isArray(parsed)) return parsed as Record<string, unknown>[];
     } catch {
       // Fall back to regex extraction
     }

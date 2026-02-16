@@ -27,7 +27,10 @@ import { validateJson, printValidationErrors } from "../schemas/zod-schemas.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // video-explainerのキャラクター設定を読み込み（TTS名マッピング用）
-const CHARACTERS_CONFIG_PATH = join(__dirname, "../../video-explainer/config/characters.json");
+const CHARACTERS_CONFIG_PATH = join(
+  __dirname,
+  "../../video-explainer/config/characters.json",
+);
 let charactersConfig = {};
 try {
   charactersConfig = JSON.parse(readFileSync(CHARACTERS_CONFIG_PATH, "utf-8"));
@@ -53,7 +56,9 @@ const { values } = parseArgs({
 // バリデーション
 if (!values.dialogue || !values.direction || !values.output) {
   console.error("エラー: --dialogue, --direction, --output は必須です");
-  console.error("使用方法: node merge-script.js --dialogue <file> --direction <file> --output <file>");
+  console.error(
+    "使用方法: node merge-script.js --dialogue <file> --direction <file> --output <file>",
+  );
   process.exit(1);
 }
 
@@ -102,12 +107,17 @@ const audioDir = values["audio-dir"] ?? "./parts";
 const bgm = values.bgm ?? "bgm";
 const bgmVolume = parseFloat(values["bgm-volume"] ?? "0.15");
 const title = values.title ?? dialogue.title ?? "Untitled";
-const watermark = values.watermark ?? "logo";  // render-video.jsがresolveWatermarkで解決
+const watermark = values.watermark ?? "logo"; // render-video.jsがresolveWatermarkで解決
 
 // パス形式のバリデーション（プロジェクト相対パスの誤用を防ぐ）
 function validatePathFormat(path, name) {
   // 有効な形式: "./" (相対), "/" (絶対), "http://" or "https://" (URL)
-  if (path.startsWith("./") || path.startsWith("/") || path.startsWith("http://") || path.startsWith("https://")) {
+  if (
+    path.startsWith("./") ||
+    path.startsWith("/") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
     return;
   }
   console.error(`\n❌ エラー: ${name} のパス形式が不正です`);
@@ -119,8 +129,12 @@ function validatePathFormat(path, name) {
   console.error(`\n   ❌ 無効な形式:`);
   console.error(`   - "agent-output/..." のようなプロジェクト相対パス`);
   console.error(`   - "images/..." のような "./" なしの相対パス`);
-  console.error(`\n   → video-script.jsonからの相対パス解決時に二重になってしまいます`);
-  console.error(`   → merge-script.jsはvideo-script.jsonと同じディレクトリで実行してください\n`);
+  console.error(
+    `\n   → video-script.jsonからの相対パス解決時に二重になってしまいます`,
+  );
+  console.error(
+    `   → merge-script.jsはvideo-script.jsonと同じディレクトリで実行してください\n`,
+  );
   process.exit(1);
 }
 
@@ -150,15 +164,15 @@ function findAudioFile(audioDir, index, speaker) {
 
   // 試行するファイル名パターン（優先順）
   const patterns = [
-    `${audioIndex}_${speaker}.wav`,                    // 標準: 001_tsukuyomi.wav
-    `${audioIndex}_${speaker.toUpperCase()}.wav`,     // 大文字: 001_TSUKUYOMI.wav
-    `${audioIndex}_${speaker.toLowerCase()}.wav`,     // 小文字: 001_tsukuyomi.wav
+    `${audioIndex}_${speaker}.wav`, // 標準: 001_tsukuyomi.wav
+    `${audioIndex}_${speaker.toUpperCase()}.wav`, // 大文字: 001_TSUKUYOMI.wav
+    `${audioIndex}_${speaker.toLowerCase()}.wav`, // 小文字: 001_tsukuyomi.wav
   ];
 
   // キャラクター設定からTTS名を取得して追加
   const charConfig = charactersConfig[speaker.toLowerCase()];
   if (charConfig?.ttsName) {
-    patterns.push(`${audioIndex}_${charConfig.ttsName}.wav`);  // TTS名: 001_AI声優-銀芽.wav
+    patterns.push(`${audioIndex}_${charConfig.ttsName}.wav`); // TTS名: 001_AI声優-銀芽.wav
   }
 
   // 存在するファイルを探す
@@ -242,7 +256,9 @@ const scenes = segments.map((segment, index) => {
 // オープニング（最初のシーン）でhighlightとimageが両方ある場合、highlightを削除
 // 動画の0秒目で両方表示されると違和感があるため
 if (scenes.length > 0 && scenes[0].image && scenes[0].highlight) {
-  console.log(`注意: 最初のシーンでhighlightとimageが両方存在するため、highlightを削除しました`);
+  console.log(
+    `注意: 最初のシーンでhighlightとimageが両方存在するため、highlightを削除しました`,
+  );
   delete scenes[0].highlight;
 }
 
@@ -287,11 +303,11 @@ if (outputValidation.success) {
 }
 console.log(`\n生成完了: ${outputPath}`);
 console.log(`  シーン数: ${scenes.length}`);
-console.log(`  画像あり: ${scenes.filter(s => s.image).length}`);
-console.log(`  transition: ${scenes.filter(s => s.transition).length}`);
-console.log(`  highlight: ${scenes.filter(s => s.highlight).length}`);
-console.log(`  section: ${scenes.filter(s => s.section).length}`);
-console.log(`  background: ${scenes.filter(s => s.background).length}`);
+console.log(`  画像あり: ${scenes.filter((s) => s.image).length}`);
+console.log(`  transition: ${scenes.filter((s) => s.transition).length}`);
+console.log(`  highlight: ${scenes.filter((s) => s.highlight).length}`);
+console.log(`  section: ${scenes.filter((s) => s.section).length}`);
+console.log(`  background: ${scenes.filter((s) => s.background).length}`);
 if (watermark) {
   console.log(`  watermark: ${watermark}`);
 }

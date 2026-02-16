@@ -4,14 +4,21 @@
  * 指定したシーンの静止画を出力して構図を確認
  */
 
-import { bundle } from '@remotion/bundler';
-import { renderStill, selectComposition } from '@remotion/renderer';
-import { readFileSync, existsSync, mkdirSync, copyFileSync, rmSync, writeFileSync } from 'fs';
-import { resolve, dirname, basename, extname } from 'path';
-import https from 'https';
-import http from 'http';
-import { fileURLToPath } from 'url';
-import { getWavDuration, secondsToFrames } from './wav-utils.js';
+import { bundle } from "@remotion/bundler";
+import { renderStill, selectComposition } from "@remotion/renderer";
+import {
+  readFileSync,
+  existsSync,
+  mkdirSync,
+  copyFileSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
+import { resolve, dirname, basename, extname } from "path";
+import https from "https";
+import http from "http";
+import { fileURLToPath } from "url";
+import { getWavDuration, secondsToFrames } from "./wav-utils.js";
 import {
   resolveAsset,
   resolveBackground,
@@ -22,20 +29,23 @@ import {
   resolveWatermark,
   getAssetBaseDir,
   loadCharactersConfig,
-} from './config-loader.js';
+} from "./config-loader.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // 設定（config-loaderを使用してグローバル設定に対応）
-const DEFAULT_BACKGROUND = resolveAsset('backgrounds', 'base.webp') || resolve(__dirname, '../assets/backgrounds/base.webp');
-const BACKGROUND_BASE_DIR = getAssetBaseDir('backgrounds');
-const CHARA_BASE_DIR = getAssetBaseDir('chara');
-const ACCENT_BASE_DIR = getAssetBaseDir('accent');
-const TRANSITION_SOUND_BASE_DIR = getAssetBaseDir('transition');
-const BGM_BASE_DIR = getAssetBaseDir('bgm');
-const FONT_PATH = resolveFont() || resolve(__dirname, '../assets/font/keifont.ttf');
-const WATERMARK_BASE_DIR = getAssetBaseDir('watermark');
+const DEFAULT_BACKGROUND =
+  resolveAsset("backgrounds", "base.webp") ||
+  resolve(__dirname, "../assets/backgrounds/base.webp");
+const BACKGROUND_BASE_DIR = getAssetBaseDir("backgrounds");
+const CHARA_BASE_DIR = getAssetBaseDir("chara");
+const ACCENT_BASE_DIR = getAssetBaseDir("accent");
+const TRANSITION_SOUND_BASE_DIR = getAssetBaseDir("transition");
+const BGM_BASE_DIR = getAssetBaseDir("bgm");
+const FONT_PATH =
+  resolveFont() || resolve(__dirname, "../assets/font/keifont.ttf");
+const WATERMARK_BASE_DIR = getAssetBaseDir("watermark");
 const charactersConfig = loadCharactersConfig();
 
 // 引数パース
@@ -51,23 +61,23 @@ function parseArgs() {
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
-      case '--input':
-      case '-i':
+      case "--input":
+      case "-i":
         options.input = args[++i];
         break;
-      case '--output':
-      case '-o':
+      case "--output":
+      case "-o":
         options.output = args[++i];
         break;
-      case '--scene':
-      case '-s':
+      case "--scene":
+      case "-s":
         options.scene = parseInt(args[++i], 10);
         break;
-      case '--frame':
-      case '-f':
+      case "--frame":
+      case "-f":
         options.frame = parseInt(args[++i], 10);
         break;
-      case '--fps':
+      case "--fps":
         options.fps = parseInt(args[++i], 10);
         break;
     }
@@ -79,30 +89,30 @@ function parseArgs() {
 // 背景パス解決（render-video.jsと同じ）
 function resolveBackgroundPath(background, scriptDir) {
   if (!background) return null;
-  if (background.startsWith('http://') || background.startsWith('https://')) {
-    return { type: 'url', value: background };
+  if (background.startsWith("http://") || background.startsWith("https://")) {
+    return { type: "url", value: background };
   }
-  if (background.startsWith('/')) {
-    if (existsSync(background)) return { type: 'file', value: background };
+  if (background.startsWith("/")) {
+    if (existsSync(background)) return { type: "file", value: background };
     return null;
   }
-  if (background.startsWith('./') || background.startsWith('../')) {
+  if (background.startsWith("./") || background.startsWith("../")) {
     const resolved = resolve(scriptDir, background);
-    if (existsSync(resolved)) return { type: 'file', value: resolved };
+    if (existsSync(resolved)) return { type: "file", value: resolved };
     return null;
   }
   const mp4Path = resolve(BACKGROUND_BASE_DIR, `${background}.mp4`);
-  if (existsSync(mp4Path)) return { type: 'file', value: mp4Path };
+  if (existsSync(mp4Path)) return { type: "file", value: mp4Path };
   const webpPath = resolve(BACKGROUND_BASE_DIR, `${background}.webp`);
-  if (existsSync(webpPath)) return { type: 'file', value: webpPath };
+  if (existsSync(webpPath)) return { type: "file", value: webpPath };
   const directPath = resolve(BACKGROUND_BASE_DIR, background);
-  if (existsSync(directPath)) return { type: 'file', value: directPath };
+  if (existsSync(directPath)) return { type: "file", value: directPath };
   return null;
 }
 
 // publicフォルダ準備（簡易版）
 async function preparePublicDir(scriptDir, scenes) {
-  const publicDir = resolve(__dirname, '../remotion/public');
+  const publicDir = resolve(__dirname, "../remotion/public");
   if (existsSync(publicDir)) rmSync(publicDir, { recursive: true });
   mkdirSync(publicDir, { recursive: true });
 
@@ -120,10 +130,10 @@ async function preparePublicDir(scriptDir, scenes) {
   scenes.forEach((scene, index) => {
     // 背景
     const bgResolved = resolveBackgroundPath(scene.background, scriptDir);
-    if (bgResolved?.type === 'file') {
-      assetMap[`bg_${index}`] = copyOnce(bgResolved.value, 'bg');
+    if (bgResolved?.type === "file") {
+      assetMap[`bg_${index}`] = copyOnce(bgResolved.value, "bg");
     } else if (existsSync(DEFAULT_BACKGROUND)) {
-      assetMap[`bg_${index}`] = copyOnce(DEFAULT_BACKGROUND, 'bg');
+      assetMap[`bg_${index}`] = copyOnce(DEFAULT_BACKGROUND, "bg");
     }
 
     // 音声（プレビューでは不要だがパス解決用）
@@ -138,26 +148,28 @@ async function preparePublicDir(scriptDir, scenes) {
 
     // キャラクター
     if (scene.character) {
-      const [charName, expression = 'default'] = scene.character.split('/');
+      const [charName, expression = "default"] = scene.character.split("/");
       const charaFileName = `${charName}-${expression}.png`;
       const charaPath = resolve(CHARA_BASE_DIR, charName, charaFileName);
       if (existsSync(charaPath)) {
-        assetMap[`chara_${index}`] = copyOnce(charaPath, 'chara');
+        assetMap[`chara_${index}`] = copyOnce(charaPath, "chara");
       }
     }
 
     // 説明画像
     if (scene.image) {
-      const imagePath = scene.image.startsWith('/') ? scene.image : resolve(scriptDir, scene.image);
+      const imagePath = scene.image.startsWith("/")
+        ? scene.image
+        : resolve(scriptDir, scene.image);
       if (existsSync(imagePath)) {
-        assetMap[`image_${index}`] = copyOnce(imagePath, 'image');
+        assetMap[`image_${index}`] = copyOnce(imagePath, "image");
       }
     }
   });
 
   // フォント
   if (existsSync(FONT_PATH)) {
-    assetMap['font'] = copyOnce(FONT_PATH, 'font');
+    assetMap["font"] = copyOnce(FONT_PATH, "font");
   }
 
   return { publicDir, assetMap };
@@ -166,7 +178,7 @@ async function preparePublicDir(scriptDir, scenes) {
 // スクリプト読み込み
 async function loadScript(inputPath, fps, targetSceneIndex) {
   const scriptPath = resolve(inputPath);
-  const script = JSON.parse(readFileSync(scriptPath, 'utf-8'));
+  const script = JSON.parse(readFileSync(scriptPath, "utf-8"));
   const scriptDir = dirname(scriptPath);
 
   // 対象シーンの周辺だけ処理（高速化）
@@ -186,7 +198,7 @@ async function loadScript(inputPath, fps, targetSceneIndex) {
     }
     return {
       actualIndex,
-      text: scene.text || '',
+      text: scene.text || "",
       durationInFrames,
       background: scene.background,
       audio: scene.audio,
@@ -202,8 +214,9 @@ async function loadScript(inputPath, fps, targetSceneIndex) {
   const { publicDir, assetMap } = await preparePublicDir(scriptDir, rawScenes);
 
   const scenes = rawScenes.map((scene, i) => {
-    const charName = scene.character ? scene.character.split('/')[0] : null;
-    const charConfig = charactersConfig[charName] || charactersConfig['default'];
+    const charName = scene.character ? scene.character.split("/")[0] : null;
+    const charConfig =
+      charactersConfig[charName] || charactersConfig["default"];
     return {
       text: scene.text,
       durationInFrames: scene.durationInFrames,
@@ -224,7 +237,7 @@ async function loadScript(inputPath, fps, targetSceneIndex) {
   const targetIndexInArray = targetSceneIndex - start;
 
   // フォーマット
-  const format = script.format || 'standard';
+  const format = script.format || "standard";
 
   return { scenes, publicDir, targetIndexInArray, format };
 }
@@ -233,14 +246,20 @@ async function main() {
   const options = parseArgs();
 
   if (!options.input) {
-    console.error('Usage: node preview-frame.js --input <script.json> --scene <index> [--frame <frame>] [--output <image.png>]');
-    console.error('  --scene: シーン番号（0始まり）');
-    console.error('  --frame: シーン開始からのフレーム数（デフォルト: 30）');
+    console.error(
+      "Usage: node preview-frame.js --input <script.json> --scene <index> [--frame <frame>] [--output <image.png>]",
+    );
+    console.error("  --scene: シーン番号（0始まり）");
+    console.error("  --frame: シーン開始からのフレーム数（デフォルト: 30）");
     process.exit(1);
   }
 
   console.log(`Loading scene ${options.scene}...`);
-  const { scenes, publicDir, targetIndexInArray, format } = await loadScript(options.input, options.fps, options.scene);
+  const { scenes, publicDir, targetIndexInArray, format } = await loadScript(
+    options.input,
+    options.fps,
+    options.scene,
+  );
   console.log(`Format: ${format}`);
 
   // フレーム計算
@@ -250,20 +269,30 @@ async function main() {
   }
   const targetFrame = frameOffset + options.frame;
 
-  console.log(`Target frame: ${targetFrame} (scene ${options.scene}, +${options.frame}f)`);
-  console.log(`Scene text: "${scenes[targetIndexInArray]?.text?.substring(0, 40)}..."`);
+  console.log(
+    `Target frame: ${targetFrame} (scene ${options.scene}, +${options.frame}f)`,
+  );
+  console.log(
+    `Scene text: "${scenes[targetIndexInArray]?.text?.substring(0, 40)}..."`,
+  );
 
   const outputPath = options.output || `preview_scene${options.scene}.png`;
-  const entryPoint = resolve(__dirname, '../remotion/index.jsx');
+  const entryPoint = resolve(__dirname, "../remotion/index.jsx");
 
-  console.log('Bundling...');
+  console.log("Bundling...");
   const bundleLocation = await bundle({ entryPoint, publicDir });
 
   const totalFrames = scenes.reduce((sum, s) => sum + s.durationInFrames, 0);
-  const inputProps = { scenes, bgmSrc: null, bgmVolume: 0, fontSrc: 'font_keifont.ttf' };
+  const inputProps = {
+    scenes,
+    bgmSrc: null,
+    bgmVolume: 0,
+    fontSrc: "font_keifont.ttf",
+  };
 
   // フォーマットに応じたコンポジションID
-  const compositionId = format === 'short' ? 'ExplainerVideoShort' : 'ExplainerVideo';
+  const compositionId =
+    format === "short" ? "ExplainerVideoShort" : "ExplainerVideo";
 
   const composition = await selectComposition({
     serveUrl: bundleLocation,
@@ -271,7 +300,7 @@ async function main() {
     inputProps,
   });
 
-  console.log('Rendering still...');
+  console.log("Rendering still...");
   await renderStill({
     composition: { ...composition, durationInFrames: totalFrames },
     serveUrl: bundleLocation,
@@ -284,6 +313,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Error:', err.message);
+  console.error("Error:", err.message);
   process.exit(1);
 });

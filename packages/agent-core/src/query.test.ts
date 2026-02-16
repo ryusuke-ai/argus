@@ -8,7 +8,9 @@ vi.mock("node:fs", () => ({
 }));
 
 /** SDKMessage の AsyncGenerator を作るヘルパー */
-async function* fakeStream(messages: sdk.SDKMessage[]): AsyncGenerator<sdk.SDKMessage, void> {
+async function* fakeStream(
+  messages: sdk.SDKMessage[],
+): AsyncGenerator<sdk.SDKMessage, void> {
   for (const msg of messages) {
     yield msg;
   }
@@ -32,7 +34,11 @@ const systemMsg = (sessionId = "test-session-123"): sdk.SDKSystemMessage => ({
   session_id: sessionId,
 });
 
-const successResult = (text = "Hello", cost = 0.001, sessionId = "test-session-123"): sdk.SDKResultSuccess => ({
+const successResult = (
+  text = "Hello",
+  cost = 0.001,
+  sessionId = "test-session-123",
+): sdk.SDKResultSuccess => ({
   type: "result",
   subtype: "success",
   duration_ms: 100,
@@ -42,7 +48,13 @@ const successResult = (text = "Hello", cost = 0.001, sessionId = "test-session-1
   result: text,
   stop_reason: "end_turn",
   total_cost_usd: cost,
-  usage: { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, server_tool_use_input_tokens: 0 },
+  usage: {
+    input_tokens: 10,
+    output_tokens: 20,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+    server_tool_use_input_tokens: 0,
+  },
   modelUsage: {},
   permission_denials: [],
   uuid: "00000000-0000-0000-0000-000000000002" as `${string}-${string}-${string}-${string}-${string}`,
@@ -141,7 +153,13 @@ describe("query (SDK)", () => {
       num_turns: 1,
       stop_reason: "error",
       total_cost_usd: 0.0005,
-      usage: { input_tokens: 5, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, server_tool_use_input_tokens: 0 },
+      usage: {
+        input_tokens: 5,
+        output_tokens: 0,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+        server_tool_use_input_tokens: 0,
+      },
       modelUsage: {},
       permission_denials: [],
       uuid: "00000000-0000-0000-0000-000000000003" as `${string}-${string}-${string}-${string}-${string}`,
@@ -166,12 +184,23 @@ describe("query (SDK)", () => {
         type: "message",
         role: "assistant",
         content: [
-          { type: "tool_use", id: "tu_1", name: "Read", input: { file_path: "test.ts" } },
+          {
+            type: "tool_use",
+            id: "tu_1",
+            name: "Read",
+            input: { file_path: "test.ts" },
+          },
         ],
         model: "claude-sonnet-4-5-20250929",
         stop_reason: "tool_use",
         stop_sequence: null,
-        usage: { input_tokens: 10, output_tokens: 20, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, server_tool_use_input_tokens: 0 },
+        usage: {
+          input_tokens: 10,
+          output_tokens: 20,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+          server_tool_use_input_tokens: 0,
+        },
       },
       parent_tool_use_id: null,
       uuid: "00000000-0000-0000-0000-000000000004" as `${string}-${string}-${string}-${string}-${string}`,
@@ -179,7 +208,11 @@ describe("query (SDK)", () => {
     };
 
     vi.mocked(sdk.query).mockReturnValue(
-      fakeStream([systemMsg(), assistantMsg, successResult("Done")]) as unknown as sdk.Query,
+      fakeStream([
+        systemMsg(),
+        assistantMsg,
+        successResult("Done"),
+      ]) as unknown as sdk.Query,
     );
 
     const result = await query("Read a file");

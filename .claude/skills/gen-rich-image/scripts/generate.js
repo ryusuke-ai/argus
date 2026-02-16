@@ -70,7 +70,9 @@ function imageToBase64(imagePath) {
 async function searchReferenceImage(query) {
   const apiKey = process.env.SERPAPI_API_KEY;
   if (!apiKey) {
-    throw new Error("SERPAPI_API_KEY environment variable is not set for image search");
+    throw new Error(
+      "SERPAPI_API_KEY environment variable is not set for image search",
+    );
   }
 
   const searchUrl = `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(query)}&api_key=${apiKey}&num=1`;
@@ -94,7 +96,9 @@ async function searchReferenceImage(query) {
   // 画像をダウンロードしてBase64に変換
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) {
-    throw new Error(`Failed to download reference image: ${imageResponse.status}`);
+    throw new Error(
+      `Failed to download reference image: ${imageResponse.status}`,
+    );
   }
 
   const arrayBuffer = await imageResponse.arrayBuffer();
@@ -176,25 +180,33 @@ function processTemplate(template, data) {
   let result = template;
 
   // {{#variable}}...{{/variable}} - 変数が存在する場合のみ出力
-  result = result.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (match, key, content) => {
-    const value = data[key];
-    if (value !== undefined && value !== null && value !== "") {
-      // 配列の場合はカンマ区切りで文字列化
-      const valueStr = Array.isArray(value) ? value.join("、") : String(value);
-      // コンテンツ内の {{variable}} を置換
-      return content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), valueStr);
-    }
-    return "";
-  });
+  result = result.replace(
+    /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
+    (match, key, content) => {
+      const value = data[key];
+      if (value !== undefined && value !== null && value !== "") {
+        // 配列の場合はカンマ区切りで文字列化
+        const valueStr = Array.isArray(value)
+          ? value.join("、")
+          : String(value);
+        // コンテンツ内の {{variable}} を置換
+        return content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), valueStr);
+      }
+      return "";
+    },
+  );
 
   // {{^variable}}...{{/variable}} - 変数が存在しない場合のみ出力
-  result = result.replace(/\{\{\^(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (match, key, content) => {
-    const value = data[key];
-    if (value === undefined || value === null || value === "") {
-      return content;
-    }
-    return "";
-  });
+  result = result.replace(
+    /\{\{\^(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
+    (match, key, content) => {
+      const value = data[key];
+      if (value === undefined || value === null || value === "") {
+        return content;
+      }
+      return "";
+    },
+  );
 
   // 残りの {{variable}} を置換
   result = result.replace(/\{\{(\w+)\}\}/g, (match, key) => {
@@ -239,7 +251,14 @@ function buildPrompt(template, userInput) {
  * @param {object|null} referenceImage - 参照画像データ {base64Data, mimeType, sourceUrl?}
  * @param {string|null} refInstruction - 参照画像の使用方法の指示
  */
-async function generateImage(prompt, aspectRatio, model, pattern, referenceImage = null, refInstruction = null) {
+async function generateImage(
+  prompt,
+  aspectRatio,
+  model,
+  pattern,
+  referenceImage = null,
+  refInstruction = null,
+) {
   const apiKey = process.env.GOOGLE_API_KEY;
 
   if (!apiKey) {
@@ -259,9 +278,11 @@ async function generateImage(prompt, aspectRatio, model, pattern, referenceImage
   // illustration: 日本語の手書きテキスト・ラベルを含める（graphrecスタイルでは必須）
   let textInstruction;
   if (pattern === "thumbnail") {
-    textInstruction = "重要: 日本語のタイトルテキストを画像内に大きく目立つように配置してください。太字で読みやすいフォントを使用し、サムネイルとして機能するようにしてください。";
+    textInstruction =
+      "重要: 日本語のタイトルテキストを画像内に大きく目立つように配置してください。太字で読みやすいフォントを使用し、サムネイルとして機能するようにしてください。";
   } else {
-    textInstruction = "重要: 日本語のテキスト（見出し、ラベル、キーワード）を画像内に含めてください。手書き風の日本語テキストでコンテンツを説明してください。テキストは必ず日本語で書いてください。";
+    textInstruction =
+      "重要: 日本語のテキスト（見出し、ラベル、キーワード）を画像内に含めてください。手書き風の日本語テキストでコンテンツを説明してください。テキストは必ず日本語で書いてください。";
   }
 
   // アスペクト比の指示をプロンプトに追加
@@ -287,7 +308,8 @@ async function generateImage(prompt, aspectRatio, model, pattern, referenceImage
     });
 
     // 参照画像の使用方法の指示
-    const defaultRefInstruction = "この参照画像のスタイル、構図、雰囲気を参考にして、新しい画像を生成してください。参照画像の要素を取り入れつつ、指定されたプロンプトの内容を表現してください。";
+    const defaultRefInstruction =
+      "この参照画像のスタイル、構図、雰囲気を参考にして、新しい画像を生成してください。参照画像の要素を取り入れつつ、指定されたプロンプトの内容を表現してください。";
     instructionPrefix = `【参照画像】${refInstruction || defaultRefInstruction}\n\n`;
   }
 
@@ -297,10 +319,12 @@ async function generateImage(prompt, aspectRatio, model, pattern, referenceImage
   });
 
   const response = await geminiModel.generateContent({
-    contents: [{
-      role: "user",
-      parts: parts,
-    }],
+    contents: [
+      {
+        role: "user",
+        parts: parts,
+      },
+    ],
     generationConfig: {
       responseModalities: ["image", "text"],
     },
@@ -320,7 +344,9 @@ async function generateImage(prompt, aspectRatio, model, pattern, referenceImage
     }
   }
 
-  throw new Error("No image was generated. The API response did not contain image data.");
+  throw new Error(
+    "No image was generated. The API response did not contain image data.",
+  );
 }
 
 /**
@@ -352,7 +378,11 @@ async function main() {
       pattern: { type: "string", short: "p", default: "thumbnail" },
       mode: { type: "string", short: "m" },
       prompt: { type: "string" },
-      aspect: { type: "string", short: "a", default: config.defaultAspectRatio },
+      aspect: {
+        type: "string",
+        short: "a",
+        default: config.defaultAspectRatio,
+      },
       "ref-image": { type: "string" },
       "ref-search": { type: "string" },
       "ref-instruction": { type: "string" },
@@ -384,7 +414,9 @@ async function main() {
   const pattern = config.patterns[values.pattern];
   if (!pattern) {
     console.error(`Error: Unknown pattern '${values.pattern}'`);
-    console.error(`Available patterns: ${Object.keys(config.patterns).join(", ")}`);
+    console.error(
+      `Available patterns: ${Object.keys(config.patterns).join(", ")}`,
+    );
     process.exit(1);
   }
 
@@ -392,7 +424,9 @@ async function main() {
   const modeName = values.mode || pattern.defaultMode;
   const mode = pattern.modes[modeName];
   if (!mode) {
-    console.error(`Error: Unknown mode '${modeName}' for pattern '${values.pattern}'`);
+    console.error(
+      `Error: Unknown mode '${modeName}' for pattern '${values.pattern}'`,
+    );
     console.error(`Available modes: ${Object.keys(pattern.modes).join(", ")}`);
     process.exit(1);
   }
@@ -400,7 +434,9 @@ async function main() {
   // アスペクト比の検証
   if (!config.supportedAspectRatios.includes(values.aspect)) {
     console.error(`Error: Unsupported aspect ratio '${values.aspect}'`);
-    console.error(`Supported ratios: ${config.supportedAspectRatios.join(", ")}`);
+    console.error(
+      `Supported ratios: ${config.supportedAspectRatios.join(", ")}`,
+    );
     process.exit(1);
   }
 
@@ -416,7 +452,9 @@ async function main() {
     let referenceImage = null;
 
     if (values["ref-image"] && values["ref-search"]) {
-      console.error("Error: Cannot use both --ref-image and --ref-search at the same time");
+      console.error(
+        "Error: Cannot use both --ref-image and --ref-search at the same time",
+      );
       process.exit(1);
     }
 
@@ -437,7 +475,7 @@ async function main() {
       config.model,
       values.pattern,
       referenceImage,
-      values["ref-instruction"]
+      values["ref-instruction"],
     );
 
     // 画像保存

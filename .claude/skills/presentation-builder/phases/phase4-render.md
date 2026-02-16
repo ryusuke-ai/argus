@@ -41,7 +41,7 @@ design.json の `svgSpec` が定義されている場合、以下の情報を SV
 ```javascript
 for (const slide of contentSlides) {
   if (slide.visual) {
-    const designSlide = designSlides.find(ds => ds.slideId === slide.id);
+    const designSlide = designSlides.find((ds) => ds.slideId === slide.id);
     const svgSpec = designSlide?.svgSpec;
     // slide.visual.tool に対応するスキルを呼び出し
     // svgSpec があればそれを仕様として渡す
@@ -75,6 +75,7 @@ node .claude/skills/presentation-builder/scripts/render-slides.js \
 ```
 
 出力:
+
 - `slides.pdf` — PDF 形式
 - `slides.html` — HTML 形式（ブラウザで直接閲覧可能）
 
@@ -111,12 +112,12 @@ slides.md を編集して再レンダリングすることも可能です。
 
 ## 成果物
 
-| ファイル | 説明 |
-|---------|------|
-| `images/*.webp` | 図解・画像 |
-| `slides.md` | Marp Markdown（編集可能） |
-| `slides.pdf` | PDF |
-| `slides.html` | HTML |
+| ファイル        | 説明                      |
+| --------------- | ------------------------- |
+| `images/*.webp` | 図解・画像                |
+| `slides.md`     | Marp Markdown（編集可能） |
+| `slides.pdf`    | PDF                       |
+| `slides.html`   | HTML                      |
 
 ---
 

@@ -11,8 +11,8 @@ Instagram 投稿のためのトレンドリサーチと戦略策定を行いま�
 ## 出力（JSON）
 
 {
-  "topic_analysis": "トピックの分析",
-  "trending_hashtags": ["ハッシュタグ候補"],
-  "angle": "投稿の切り口",
-  "visual_direction": "ビジュアル方向性"
+"topic_analysis": "トピックの分析",
+"trending_hashtags": ["ハッシュタグ候補"],
+"angle": "投稿の切り口",
+"visual_direction": "ビジュアル方向性"
 }

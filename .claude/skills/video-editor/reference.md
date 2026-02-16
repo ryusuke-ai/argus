@@ -37,15 +37,15 @@ video-explainer（レンダリング）
 
 ### 外部スキル
 
-| スキル | 用途 | 呼び出し方 |
-|-------|------|-----------|
-| tts | TTS生成 | `batch-tts.js` |
-| tts-dict | 辞書登録 | `dict.js add/apply` |
-| gen-rich-image | 高品質画像 | Skill呼び出し |
-| gen-ai-image | AI画像 | Skill呼び出し |
-| svg-header-image | 見出し画像 | Skill呼び出し |
-| mermaid-to-webp | フロー図 | Skill呼び出し |
-| svg-diagram | カスタム図解 | Skill呼び出し |
+| スキル           | 用途         | 呼び出し方          |
+| ---------------- | ------------ | ------------------- |
+| tts              | TTS生成      | `batch-tts.js`      |
+| tts-dict         | 辞書登録     | `dict.js add/apply` |
+| gen-rich-image   | 高品質画像   | Skill呼び出し       |
+| gen-ai-image     | AI画像       | Skill呼び出し       |
+| svg-header-image | 見出し画像   | Skill呼び出し       |
+| mermaid-to-webp  | フロー図     | Skill呼び出し       |
+| svg-diagram      | カスタム図解 | Skill呼び出し       |
 
 ## 編集フロー図
 
@@ -81,21 +81,22 @@ video-explainer（レンダリング）
 
 編集操作ごとに再生成が必要なファイルを示す。
 
-| 操作 | dialogue.json | direction.json | TTS | video-script.json |
-|------|:-------------:|:--------------:|:---:|:-----------------:|
-| セリフ修正 | Edit | - | 部分 | Merge |
-| セリフ追加 | Edit | Edit | 追加 | Merge |
-| セリフ削除 | Edit | Edit | 削除 | Merge |
-| セリフ並替 | Edit | Edit | Rename | Merge |
-| highlight変更 | - | Edit | - | Merge |
-| transition変更 | - | Edit | - | Merge |
-| background変更 | - | Edit | - | Merge |
-| 画像差替 | - | - | - | - |
-| 画像追加 | - | Edit | - | Merge |
-| TTS単体再生成 | - | - | 部分 | - |
-| 発音修正 | - | - | 部分 | - |
+| 操作           | dialogue.json | direction.json |  TTS   | video-script.json |
+| -------------- | :-----------: | :------------: | :----: | :---------------: |
+| セリフ修正     |     Edit      |       -        |  部分  |       Merge       |
+| セリフ追加     |     Edit      |      Edit      |  追加  |       Merge       |
+| セリフ削除     |     Edit      |      Edit      |  削除  |       Merge       |
+| セリフ並替     |     Edit      |      Edit      | Rename |       Merge       |
+| highlight変更  |       -       |      Edit      |   -    |       Merge       |
+| transition変更 |       -       |      Edit      |   -    |       Merge       |
+| background変更 |       -       |      Edit      |   -    |       Merge       |
+| 画像差替       |       -       |       -        |   -    |         -         |
+| 画像追加       |       -       |      Edit      |   -    |       Merge       |
+| TTS単体再生成  |       -       |       -        |  部分  |         -         |
+| 発音修正       |       -       |       -        |  部分  |         -         |
 
 凡例:
+
 - `Edit`: 直接編集が必要
 - `Merge`: merge-script.jsで再生成
 - `部分/追加/削除/Rename`: 該当ファイルに対する操作

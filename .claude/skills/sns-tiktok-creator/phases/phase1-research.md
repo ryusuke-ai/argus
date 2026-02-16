@@ -25,15 +25,15 @@ WebSearch で以下を調査:
 
 ### Step 3: カテゴリ・フォーマット決定
 
-| カテゴリ | テンプレート型 |
-|---------|-------------|
-| `tutorial` | ステップバイステップ型 |
-| `before_after` | ビフォーアフター型 |
-| `tips` | クイックtips型 |
-| `myth_busting` | 誤解破壊型 |
-| `day_in_life` | 日常密着型 |
-| `reaction` | リアクション型 |
-| `series` | シリーズ型 |
+| カテゴリ       | テンプレート型         |
+| -------------- | ---------------------- |
+| `tutorial`     | ステップバイステップ型 |
+| `before_after` | ビフォーアフター型     |
+| `tips`         | クイックtips型         |
+| `myth_busting` | 誤解破壊型             |
+| `day_in_life`  | 日常密着型             |
+| `reaction`     | リアクション型         |
+| `series`       | シリーズ型             |
 
 フォーマット: short (15-60秒) or standard (60-180秒)
 

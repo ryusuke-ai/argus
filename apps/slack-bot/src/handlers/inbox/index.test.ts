@@ -29,13 +29,22 @@ vi.mock("@argus/db", () => {
 
   const selectLimit = vi.fn();
   const selectOrderBy = vi.fn(() => ({ limit: selectLimit }));
-  const selectWhere = vi.fn(() => ({ orderBy: selectOrderBy, limit: selectLimit }));
+  const selectWhere = vi.fn(() => ({
+    orderBy: selectOrderBy,
+    limit: selectLimit,
+  }));
   const selectFrom = vi.fn(() => ({ where: selectWhere }));
   const select = vi.fn(() => ({ from: selectFrom }));
 
   return {
     db: { insert, update, select },
-    inboxTasks: { id: "id", status: "status", createdAt: "created_at", slackMessageTs: "slack_message_ts", slackChannel: "slack_channel" },
+    inboxTasks: {
+      id: "id",
+      status: "status",
+      createdAt: "created_at",
+      slackMessageTs: "slack_message_ts",
+      slackChannel: "slack_channel",
+    },
   };
 });
 
@@ -44,9 +53,18 @@ vi.mock("./classifier.js", () => ({
 }));
 
 vi.mock("./reporter.js", () => ({
-  buildClassificationBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "test" } }]),
-  buildResultBlocks: vi.fn(() => [{ type: "section", text: { type: "mrkdwn", text: "result" } }]),
-  buildArtifactSummaryBlocks: vi.fn(() => [{ type: "context", elements: [{ type: "mrkdwn", text: "artifact summary" }] }]),
+  buildClassificationBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "test" } },
+  ]),
+  buildResultBlocks: vi.fn(() => [
+    { type: "section", text: { type: "mrkdwn", text: "result" } },
+  ]),
+  buildArtifactSummaryBlocks: vi.fn(() => [
+    {
+      type: "context",
+      elements: [{ type: "mrkdwn", text: "artifact summary" }],
+    },
+  ]),
 }));
 
 vi.mock("./executor.js", () => ({
@@ -101,7 +119,10 @@ describe("setupInboxHandler", () => {
     expect(mockAppMessage).toHaveBeenCalledTimes(1);
     // app.event called once for reaction_added
     expect(mockAppEvent).toHaveBeenCalledTimes(1);
-    expect(mockAppEvent).toHaveBeenCalledWith("reaction_added", expect.any(Function));
+    expect(mockAppEvent).toHaveBeenCalledWith(
+      "reaction_added",
+      expect.any(Function),
+    );
   });
 
   it("should skip registration when INBOX_CHANNEL is not set", async () => {
@@ -115,7 +136,7 @@ describe("setupInboxHandler", () => {
 });
 
 describe("message handler", () => {
-  let messageHandler: Function;
+  let messageHandler: (...args: unknown[]) => unknown;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -158,20 +179,35 @@ describe("message handler", () => {
     (db.insert as any).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([
-          { id: "task-1", summary: "TypeScriptの型推論について回答", autonomyLevel: 2, slackThreadTs: "1.1", slackChannel: "C_INBOX" },
+          {
+            id: "task-1",
+            summary: "TypeScriptの型推論について回答",
+            autonomyLevel: 2,
+            slackThreadTs: "1.1",
+            slackChannel: "C_INBOX",
+          },
         ]),
       }),
     });
 
     const mockClient = {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
-      reactions: { add: vi.fn().mockResolvedValue({}), remove: vi.fn().mockResolvedValue({}) },
+      reactions: {
+        add: vi.fn().mockResolvedValue({}),
+        remove: vi.fn().mockResolvedValue({}),
+      },
     };
 
-    const message = { channel: "C_INBOX", ts: "1.1", text: "TypeScriptの型推論ってどうなってる？" };
+    const message = {
+      channel: "C_INBOX",
+      ts: "1.1",
+      text: "TypeScriptの型推論ってどうなってる？",
+    };
     await messageHandler({ message, client: mockClient });
 
-    expect(mockClassifyMessage).toHaveBeenCalledWith("TypeScriptの型推論ってどうなってる？");
+    expect(mockClassifyMessage).toHaveBeenCalledWith(
+      "TypeScriptの型推論ってどうなってる？",
+    );
     expect(db.insert).toHaveBeenCalled();
   });
 
@@ -189,14 +225,23 @@ describe("message handler", () => {
     (db.insert as any).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([
-          { id: "task-3", summary: "不明なタスク", autonomyLevel: 2, slackThreadTs: "1.3", slackChannel: "C_INBOX" },
+          {
+            id: "task-3",
+            summary: "不明なタスク",
+            autonomyLevel: 2,
+            slackThreadTs: "1.3",
+            slackChannel: "C_INBOX",
+          },
         ]),
       }),
     });
 
     const mockClient = {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
-      reactions: { add: vi.fn().mockResolvedValue({}), remove: vi.fn().mockResolvedValue({}) },
+      reactions: {
+        add: vi.fn().mockResolvedValue({}),
+        remove: vi.fn().mockResolvedValue({}),
+      },
     };
 
     const message = { channel: "C_INBOX", ts: "1.3", text: "なんかやって" };
@@ -215,7 +260,7 @@ describe("message handler", () => {
 });
 
 describe("reaction handler", () => {
-  let reactionHandler: Function;
+  let reactionHandler: (...args: unknown[]) => unknown;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -240,7 +285,13 @@ describe("reaction handler", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([
-            { id: "task-43", slackChannel: "C_INBOX", slackMessageTs: "1.2", slackThreadTs: "1.2", status: "pending" },
+            {
+              id: "task-43",
+              slackChannel: "C_INBOX",
+              slackMessageTs: "1.2",
+              slackThreadTs: "1.2",
+              status: "pending",
+            },
           ]),
         }),
       }),
@@ -255,7 +306,10 @@ describe("reaction handler", () => {
     const mockClient = {
       auth: { test: vi.fn().mockResolvedValue({ user_id: "BOT_USER" }) },
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
-      reactions: { add: vi.fn().mockResolvedValue({}), remove: vi.fn().mockResolvedValue({}) },
+      reactions: {
+        add: vi.fn().mockResolvedValue({}),
+        remove: vi.fn().mockResolvedValue({}),
+      },
     };
 
     const event = {
@@ -272,7 +326,9 @@ describe("reaction handler", () => {
     );
     // Should post rejection message
     expect(mockClient.chat.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining("却下されました") }),
+      expect.objectContaining({
+        text: expect.stringContaining("却下されました"),
+      }),
     );
   });
 
@@ -341,18 +397,20 @@ describe("processQueue", () => {
             limit: vi.fn().mockImplementation(() => {
               selectCallCount++;
               if (selectCallCount === 1) {
-                return Promise.resolve([{
-                  id: "task-q1",
-                  intent: "question",
-                  autonomyLevel: 2,
-                  summary: "テスト質問",
-                  slackChannel: "C_INBOX",
-                  slackThreadTs: "2.1",
-                  slackMessageTs: "2.1",
-                  executionPrompt: "質問に回答",
-                  originalMessage: "質問",
-                  status: "queued",
-                }]);
+                return Promise.resolve([
+                  {
+                    id: "task-q1",
+                    intent: "question",
+                    autonomyLevel: 2,
+                    summary: "テスト質問",
+                    slackChannel: "C_INBOX",
+                    slackThreadTs: "2.1",
+                    slackMessageTs: "2.1",
+                    executionPrompt: "質問に回答",
+                    originalMessage: "質問",
+                    status: "queued",
+                  },
+                ]);
               }
               return Promise.resolve([]);
             }),
@@ -364,7 +422,9 @@ describe("processQueue", () => {
     (db.update as any).mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: "task-q1", status: "running" }]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([{ id: "task-q1", status: "running" }]),
         }),
       }),
     });
@@ -381,7 +441,10 @@ describe("processQueue", () => {
 
     const mockClient = {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
-      reactions: { add: vi.fn().mockResolvedValue({}), remove: vi.fn().mockResolvedValue({}) },
+      reactions: {
+        add: vi.fn().mockResolvedValue({}),
+        remove: vi.fn().mockResolvedValue({}),
+      },
     };
 
     const mod = await import("./index.js");
@@ -392,7 +455,10 @@ describe("processQueue", () => {
 
     expect(mockExecuteTask).toHaveBeenCalledWith(
       expect.objectContaining({ id: "task-q1", intent: "question" }),
-      expect.objectContaining({ start: expect.any(Function), addStep: expect.any(Function) }),
+      expect.objectContaining({
+        start: expect.any(Function),
+        addStep: expect.any(Function),
+      }),
     );
     // Should post result
     expect(mockClient.chat.postMessage).toHaveBeenCalled();
@@ -400,7 +466,7 @@ describe("processQueue", () => {
 });
 
 describe("handleThreadReply", () => {
-  let messageHandler: Function;
+  let messageHandler: (...args: unknown[]) => unknown;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -446,7 +512,10 @@ describe("handleThreadReply", () => {
 
     const mockClient = {
       chat: { postMessage: vi.fn().mockResolvedValue({}) },
-      reactions: { add: vi.fn().mockResolvedValue({}), remove: vi.fn().mockResolvedValue({}) },
+      reactions: {
+        add: vi.fn().mockResolvedValue({}),
+        remove: vi.fn().mockResolvedValue({}),
+      },
     };
 
     // Thread reply (thread_ts !== ts means it's a reply)

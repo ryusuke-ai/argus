@@ -15,7 +15,10 @@ for (const line of envContent.split("\n")) {
   if (eqIdx === -1) continue;
   const key = trimmed.slice(0, eqIdx).trim();
   let val = trimmed.slice(eqIdx + 1).trim();
-  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+  if (
+    (val.startsWith('"') && val.endsWith('"')) ||
+    (val.startsWith("'") && val.endsWith("'"))
+  ) {
     val = val.slice(1, -1);
   }
   if (!process.env[key]) {
@@ -60,14 +63,26 @@ const CATEGORY_LABELS = {
   discussion: "質問 / 議論",
 };
 
-function buildXPostBlocks({ text, category, isThread, threadCount, scheduledTime, platformLabel }) {
+function buildXPostBlocks({
+  text,
+  category,
+  isThread,
+  threadCount,
+  scheduledTime,
+  platformLabel,
+}) {
   const categoryLabel = CATEGORY_LABELS[category] || category;
   const formatLabel = isThread ? `スレッド (${threadCount}ポスト)` : "単発投稿";
-  const charCountLabel = isThread ? `合計${text.length}文字` : `${text.length}文字`;
+  const charCountLabel = isThread
+    ? `合計${text.length}文字`
+    : `${text.length}文字`;
   const headerText = platformLabel || "X 投稿案";
 
   return [
-    { type: "header", text: { type: "plain_text", text: headerText, emoji: true } },
+    {
+      type: "header",
+      text: { type: "plain_text", text: headerText, emoji: true },
+    },
     {
       type: "context",
       elements: [
@@ -83,22 +98,56 @@ function buildXPostBlocks({ text, category, isThread, threadCount, scheduledTime
     {
       type: "actions",
       elements: [
-        { type: "button", text: { type: "plain_text", text: "スケジュール投稿", emoji: true }, style: "primary", action_id: "sns_schedule", value: "test-x" },
-        { type: "button", text: { type: "plain_text", text: "今すぐ投稿", emoji: true }, action_id: "sns_publish", value: "test-x" },
-        { type: "button", text: { type: "plain_text", text: "編集", emoji: true }, action_id: "sns_edit", value: "test-x" },
-        { type: "button", text: { type: "plain_text", text: "スキップ", emoji: true }, action_id: "sns_skip", value: "test-x" },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "スケジュール投稿", emoji: true },
+          style: "primary",
+          action_id: "sns_schedule",
+          value: "test-x",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "今すぐ投稿", emoji: true },
+          action_id: "sns_publish",
+          value: "test-x",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "編集", emoji: true },
+          action_id: "sns_edit",
+          value: "test-x",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "スキップ", emoji: true },
+          action_id: "sns_skip",
+          value: "test-x",
+        },
       ],
     },
   ];
 }
 
-function buildArticlePostBlocks({ platform, title, body, tags, scheduledTime }) {
-  const PLATFORM_LABELS = { note: "note 記事案", zenn: "Zenn 記事案", qiita: "Qiita 記事案" };
+function buildArticlePostBlocks({
+  platform,
+  title,
+  body,
+  tags,
+  scheduledTime,
+}) {
+  const PLATFORM_LABELS = {
+    note: "note 記事案",
+    zenn: "Zenn 記事案",
+    qiita: "Qiita 記事案",
+  };
   const platformLabel = PLATFORM_LABELS[platform] || `${platform} 記事案`;
   const tagText = tags.length > 0 ? tags.join(", ") : "なし";
 
   return [
-    { type: "header", text: { type: "plain_text", text: platformLabel, emoji: true } },
+    {
+      type: "header",
+      text: { type: "plain_text", text: platformLabel, emoji: true },
+    },
     { type: "section", text: { type: "mrkdwn", text: `*${title}*` } },
     {
       type: "context",
@@ -112,32 +161,92 @@ function buildArticlePostBlocks({ platform, title, body, tags, scheduledTime }) 
     {
       type: "actions",
       elements: [
-        { type: "button", text: { type: "plain_text", text: "スケジュール投稿", emoji: true }, style: "primary", action_id: "sns_schedule", value: `test-${platform}` },
-        { type: "button", text: { type: "plain_text", text: "今すぐ投稿", emoji: true }, action_id: "sns_publish", value: `test-${platform}` },
-        { type: "button", text: { type: "plain_text", text: "編集", emoji: true }, action_id: "sns_edit", value: `test-${platform}` },
-        { type: "button", text: { type: "plain_text", text: "スキップ", emoji: true }, action_id: "sns_skip", value: `test-${platform}` },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "スケジュール投稿", emoji: true },
+          style: "primary",
+          action_id: "sns_schedule",
+          value: `test-${platform}`,
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "今すぐ投稿", emoji: true },
+          action_id: "sns_publish",
+          value: `test-${platform}`,
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "編集", emoji: true },
+          action_id: "sns_edit",
+          value: `test-${platform}`,
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "スキップ", emoji: true },
+          action_id: "sns_skip",
+          value: `test-${platform}`,
+        },
       ],
     },
   ];
 }
 
-function buildVideoPostBlocks({ title, description, category, duration, platformLabel }) {
-  const VIDEO_CATEGORY_LABELS = { tutorial: "チュートリアル", review: "レビュー", demo: "デモ", news: "ニュース" };
+function buildVideoPostBlocks({
+  title,
+  description,
+  category,
+  duration,
+  platformLabel,
+}) {
+  const VIDEO_CATEGORY_LABELS = {
+    tutorial: "チュートリアル",
+    review: "レビュー",
+    demo: "デモ",
+    news: "ニュース",
+  };
   const categoryLabel = VIDEO_CATEGORY_LABELS[category] || category;
   const headerText = platformLabel || "YouTube 動画案";
 
   return [
-    { type: "header", text: { type: "plain_text", text: headerText, emoji: true } },
-    { type: "context", elements: [{ type: "mrkdwn", text: `*${categoryLabel}*` }, { type: "mrkdwn", text: duration }] },
+    {
+      type: "header",
+      text: { type: "plain_text", text: headerText, emoji: true },
+    },
+    {
+      type: "context",
+      elements: [
+        { type: "mrkdwn", text: `*${categoryLabel}*` },
+        { type: "mrkdwn", text: duration },
+      ],
+    },
     { type: "divider" },
-    { type: "section", text: { type: "mrkdwn", text: `*${title}*\n${description}` } },
+    {
+      type: "section",
+      text: { type: "mrkdwn", text: `*${title}*\n${description}` },
+    },
     { type: "divider" },
     {
       type: "actions",
       elements: [
-        { type: "button", text: { type: "plain_text", text: "メタデータ承認", emoji: true }, style: "primary", action_id: "sns_approve_metadata", value: "test-video" },
-        { type: "button", text: { type: "plain_text", text: "修正指示", emoji: true }, action_id: "sns_edit_thread", value: "test-video" },
-        { type: "button", text: { type: "plain_text", text: "スキップ", emoji: true }, action_id: "sns_skip", value: "test-video" },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "メタデータ承認", emoji: true },
+          style: "primary",
+          action_id: "sns_approve_metadata",
+          value: "test-video",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "修正指示", emoji: true },
+          action_id: "sns_edit_thread",
+          value: "test-video",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "スキップ", emoji: true },
+          action_id: "sns_skip",
+          value: "test-video",
+        },
       ],
     },
   ];
@@ -146,8 +255,14 @@ function buildVideoPostBlocks({ title, description, category, duration, platform
 function buildGitHubPostBlocks({ name, description, topics, scheduledTime }) {
   const topicsText = topics.length > 0 ? topics.join(", ") : "なし";
   return [
-    { type: "header", text: { type: "plain_text", text: "GitHub リポジトリ案", emoji: true } },
-    { type: "section", text: { type: "mrkdwn", text: `*${name}*\n${description}` } },
+    {
+      type: "header",
+      text: { type: "plain_text", text: "GitHub リポジトリ案", emoji: true },
+    },
+    {
+      type: "section",
+      text: { type: "mrkdwn", text: `*${name}*\n${description}` },
+    },
     {
       type: "context",
       elements: [
@@ -159,9 +274,25 @@ function buildGitHubPostBlocks({ name, description, topics, scheduledTime }) {
     {
       type: "actions",
       elements: [
-        { type: "button", text: { type: "plain_text", text: "今すぐ作成", emoji: true }, style: "primary", action_id: "sns_publish", value: "test-github" },
-        { type: "button", text: { type: "plain_text", text: "編集", emoji: true }, action_id: "sns_edit", value: "test-github" },
-        { type: "button", text: { type: "plain_text", text: "スキップ", emoji: true }, action_id: "sns_skip", value: "test-github" },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "今すぐ作成", emoji: true },
+          style: "primary",
+          action_id: "sns_publish",
+          value: "test-github",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "編集", emoji: true },
+          action_id: "sns_edit",
+          value: "test-github",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "スキップ", emoji: true },
+          action_id: "sns_skip",
+          value: "test-github",
+        },
       ],
     },
   ];
@@ -169,8 +300,14 @@ function buildGitHubPostBlocks({ name, description, topics, scheduledTime }) {
 
 function buildPodcastPostBlocks({ title, description, scheduledTime }) {
   return [
-    { type: "header", text: { type: "plain_text", text: "Podcast エピソード案", emoji: true } },
-    { type: "section", text: { type: "mrkdwn", text: `*${title}*\n${description}` } },
+    {
+      type: "header",
+      text: { type: "plain_text", text: "Podcast エピソード案", emoji: true },
+    },
+    {
+      type: "section",
+      text: { type: "mrkdwn", text: `*${title}*\n${description}` },
+    },
     {
       type: "context",
       elements: [
@@ -181,9 +318,25 @@ function buildPodcastPostBlocks({ title, description, scheduledTime }) {
     {
       type: "actions",
       elements: [
-        { type: "button", text: { type: "plain_text", text: "ドラフト保存", emoji: true }, style: "primary", action_id: "sns_publish", value: "test-podcast" },
-        { type: "button", text: { type: "plain_text", text: "編集", emoji: true }, action_id: "sns_edit", value: "test-podcast" },
-        { type: "button", text: { type: "plain_text", text: "スキップ", emoji: true }, action_id: "sns_skip", value: "test-podcast" },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "ドラフト保存", emoji: true },
+          style: "primary",
+          action_id: "sns_publish",
+          value: "test-podcast",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "編集", emoji: true },
+          action_id: "sns_edit",
+          value: "test-podcast",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "スキップ", emoji: true },
+          action_id: "sns_skip",
+          value: "test-podcast",
+        },
       ],
     },
   ];
@@ -234,8 +387,11 @@ const posts = [
     text: "[自動] Qiita 記事案: Claude Code Hooks API 完全ガイド",
     blocks: buildArticlePostBlocks({
       platform: "qiita",
-      title: "Claude Code Hooks API 完全ガイド - PreToolUse から PostToolUse まで",
-      body: "本記事では Claude Code の Hooks API について、基本的な使い方から実践的なユースケースまで解説します。Hooks を活用することで、ツール実行の監視・制御・カスタマイズが可能になり、エージェントの信頼性と透明性が大幅に向上します。環境構築から実装例、ベストプラクティスまで網羅的に説明していきます。".repeat(3),
+      title:
+        "Claude Code Hooks API 完全ガイド - PreToolUse から PostToolUse まで",
+      body: "本記事では Claude Code の Hooks API について、基本的な使い方から実践的なユースケースまで解説します。Hooks を活用することで、ツール実行の監視・制御・カスタマイズが可能になり、エージェントの信頼性と透明性が大幅に向上します。環境構築から実装例、ベストプラクティスまで網羅的に説明していきます。".repeat(
+        3,
+      ),
       tags: ["ClaudeCode", "AI", "エージェント", "TypeScript", "Hooks"],
       scheduledTime: "推奨投稿時間: 08:00",
     }),
@@ -247,7 +403,9 @@ const posts = [
     blocks: buildArticlePostBlocks({
       platform: "zenn",
       title: "pnpm monorepo でマルチエージェントシステムを構築する実践ガイド",
-      body: "pnpm workspace を活用して、Slack Bot・Dashboard・Agent Orchestrator を一つのリポジトリで管理するマルチエージェントシステムの構築方法を解説します。パッケージ間の依存関係管理、共通ライブラリの設計、ESM統一のポイントなど、実際のプロジェクトで得た知見を共有します。".repeat(3),
+      body: "pnpm workspace を活用して、Slack Bot・Dashboard・Agent Orchestrator を一つのリポジトリで管理するマルチエージェントシステムの構築方法を解説します。パッケージ間の依存関係管理、共通ライブラリの設計、ESM統一のポイントなど、実際のプロジェクトで得た知見を共有します。".repeat(
+        3,
+      ),
       tags: ["pnpm", "monorepo", "TypeScript", "AI", "マルチエージェント"],
       scheduledTime: "推奨投稿時間: 10:00",
     }),
@@ -259,7 +417,9 @@ const posts = [
     blocks: buildArticlePostBlocks({
       platform: "note",
       title: "AIエージェントと働く1ヶ月 - 個人開発者の体験記",
-      body: "Claude Code を導入してから1ヶ月。毎朝4時に自動でSNS投稿案が届き、コードレビューも自動化。最初は不安だったけど、今では欠かせないパートナーに。この記事では、個人開発者としてAIエージェントと一緒に働いた実体験を率直に綴ります。".repeat(3),
+      body: "Claude Code を導入してから1ヶ月。毎朝4時に自動でSNS投稿案が届き、コードレビューも自動化。最初は不安だったけど、今では欠かせないパートナーに。この記事では、個人開発者としてAIエージェントと一緒に働いた実体験を率直に綴ります。".repeat(
+        3,
+      ),
       tags: ["AI", "個人開発", "Claude", "エッセイ"],
       scheduledTime: "推奨投稿時間: 18:00",
     }),
@@ -270,7 +430,8 @@ const posts = [
     text: "[自動] YouTube 動画案: Claude Code で自動SNS運用システムを作る",
     blocks: buildVideoPostBlocks({
       title: "【ライブコーディング】Claude Code で自動SNS運用システムを作る",
-      description: "AI エージェントが毎朝SNS投稿案を自動生成し、Slack で承認→自動投稿する仕組みをゼロから構築します。Claude SDK、Block Kit、node-cron を使った実装をライブで解説。",
+      description:
+        "AI エージェントが毎朝SNS投稿案を自動生成し、Slack で承認→自動投稿する仕組みをゼロから構築します。Claude SDK、Block Kit、node-cron を使った実装をライブで解説。",
       category: "tutorial",
       duration: "15:00",
     }),
@@ -303,7 +464,8 @@ const posts = [
     text: "[自動] TikTok 動画案: 30秒で分かるClaude Code",
     blocks: buildVideoPostBlocks({
       title: "30秒で分かるClaude Code - AIがコード書く時代",
-      description: "Claude Code にプロジェクトの要件を伝えるだけで、テスト込みの実装が完成する様子を30秒でお見せします。2026年のプログラミングはこうなりました。",
+      description:
+        "Claude Code にプロジェクトの要件を伝えるだけで、テスト込みの実装が完成する様子を30秒でお見せします。2026年のプログラミングはこうなりました。",
       category: "demo",
       duration: "0:30",
       platformLabel: "TikTok 動画案",
@@ -315,7 +477,8 @@ const posts = [
     text: "[自動] GitHub リポジトリ案: claude-hooks-toolkit",
     blocks: buildGitHubPostBlocks({
       name: "claude-hooks-toolkit",
-      description: "Claude Code の Hooks API をより簡単に使うためのユーティリティ集。PreToolUse/PostToolUse のパターンマッチング、Slack通知、コスト計算、実行ログの自動保存などを提供します。",
+      description:
+        "Claude Code の Hooks API をより簡単に使うためのユーティリティ集。PreToolUse/PostToolUse のパターンマッチング、Slack通知、コスト計算、実行ログの自動保存などを提供します。",
       topics: ["ai", "claude-code", "hooks", "typescript"],
       scheduledTime: "推奨作成時間: 14:00",
     }),
@@ -326,7 +489,8 @@ const posts = [
     text: "[自動] Podcast エピソード案: AIエージェント開発の裏側",
     blocks: buildPodcastPostBlocks({
       title: "AIエージェント開発の裏側 - Argus プロジェクトで学んだこと",
-      description: "マルチエージェントシステム「Argus」を開発する中で得た知見を共有。セッション設計、権限分離、Memory中心アーキテクチャなど、実践的な話題を15分でお届けします。",
+      description:
+        "マルチエージェントシステム「Argus」を開発する中で得た知見を共有。セッション設計、権限分離、Memory中心アーキテクチャなど、実践的な話題を15分でお届けします。",
       scheduledTime: "推奨配信日: 来週月曜 08:00",
     }),
   },
@@ -337,7 +501,9 @@ const posts = [
 // ============================================================
 async function main() {
   const TOTAL = posts.length;
-  console.log(`Posting ${TOTAL} test SNS suggestions to channel ${SNS_CHANNEL}...\n`);
+  console.log(
+    `Posting ${TOTAL} test SNS suggestions to channel ${SNS_CHANNEL}...\n`,
+  );
   const results = [];
 
   for (let i = 0; i < TOTAL; i++) {
@@ -357,7 +523,9 @@ async function main() {
   console.log("\n--- Summary ---");
   const successCount = results.filter((r) => r.ok).length;
   for (const r of results) {
-    console.log(`  ${r.ok ? "OK" : "FAIL"} ${r.name}${r.error ? ` (${r.error})` : ""}`);
+    console.log(
+      `  ${r.ok ? "OK" : "FAIL"} ${r.name}${r.error ? ` (${r.error})` : ""}`,
+    );
   }
   console.log(`\nResult: ${successCount}/${TOTAL} succeeded`);
   if (successCount < TOTAL) process.exit(1);

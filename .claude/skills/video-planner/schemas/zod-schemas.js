@@ -12,7 +12,10 @@ import { z } from "zod";
 const subsectionSchema = z.object({
   id: z.string().describe("subsection ID"),
   topic: z.string().describe("小トピック名"),
-  visualIdea: z.string().optional().describe("この小トピックで使う画像アイデア"),
+  visualIdea: z
+    .string()
+    .optional()
+    .describe("この小トピックで使う画像アイデア"),
 });
 
 const sectionSchema = z.object({
@@ -21,7 +24,10 @@ const sectionSchema = z.object({
   displayTitle: z.string().describe("視聴者向け表示タイトル（8-15文字）"),
   purpose: z.string().describe("視聴者の感情目標"),
   keyPoints: z.array(z.string()).describe("伝える中身"),
-  visualIdeas: z.array(z.string()).optional().describe("使用する画像・図のアイデア"),
+  visualIdeas: z
+    .array(z.string())
+    .optional()
+    .describe("使用する画像・図のアイデア"),
   subsections: z.array(subsectionSchema).optional().describe("小トピック"),
 });
 
@@ -29,7 +35,10 @@ export const scenarioSchema = z.object({
   title: z.string().describe("動画タイトル（「〇分で解説」禁止）"),
   theme: z.string().describe("メインテーマ（1文で）"),
   mode: z.enum(["dialogue", "narration"]).describe("動画モード"),
-  tone: z.enum(["news", "tutorial", "deep-dive", "story"]).default("news").describe("動画のトーン"),
+  tone: z
+    .enum(["news", "tutorial", "deep-dive", "story"])
+    .default("news")
+    .describe("動画のトーン"),
   targetAudience: z.string().optional().describe("ターゲット視聴者"),
   sections: z.array(sectionSchema).min(1).describe("セクション一覧"),
 });
@@ -43,7 +52,10 @@ const segmentSchema = z.object({
   text: z.string().min(1).describe("セリフテキスト"),
   sectionId: z.string().optional().describe("所属セクションID"),
   subsectionId: z.string().optional().describe("所属サブセクションID"),
-  emotion: z.enum(["default", "angry", "doubt", "love", "thinking", "surprised"]).optional().describe("感情・表情"),
+  emotion: z
+    .enum(["default", "angry", "doubt", "love", "thinking", "surprised"])
+    .optional()
+    .describe("感情・表情"),
 });
 
 export const dialogueSchema = z.object({
@@ -56,16 +68,31 @@ export const dialogueSchema = z.object({
 // ============================================
 
 const highlightSchema = z.object({
-  text: z.string().min(1).describe("要点を伝える完成度のある文（10-20文字程度）"),
+  text: z
+    .string()
+    .min(1)
+    .describe("要点を伝える完成度のある文（10-20文字程度）"),
   sound: z.enum(["shakin", "pa", "jean"]).describe("効果音"),
 });
 
 const sceneDirectionSchema = z.object({
-  index: z.number().int().min(0).describe("dialogue.jsonのsegmentsインデックス（0始まり）"),
+  index: z
+    .number()
+    .int()
+    .min(0)
+    .describe("dialogue.jsonのsegmentsインデックス（0始まり）"),
   image: z.string().nullable().optional().describe("説明画像ファイル名"),
-  transition: z.enum(["fade", "slideLeft", "slideRight"]).nullable().optional().describe("トランジション効果"),
+  transition: z
+    .enum(["fade", "slideLeft", "slideRight"])
+    .nullable()
+    .optional()
+    .describe("トランジション効果"),
   highlight: highlightSchema.nullable().optional().describe("ハイライト"),
-  section: z.string().nullable().optional().describe("視聴者向けセクション名（2-6文字）"),
+  section: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("視聴者向けセクション名（2-6文字）"),
   background: z.string().nullable().optional().describe("背景素材"),
 });
 
@@ -78,7 +105,10 @@ const imageInstructionSchema = z.object({
 
 export const directionSchema = z.object({
   scenes: z.array(sceneDirectionSchema).min(1).describe("各シーンの演出情報"),
-  imageInstructions: z.array(imageInstructionSchema).optional().describe("作成が必要な画像の指示一覧"),
+  imageInstructions: z
+    .array(imageInstructionSchema)
+    .optional()
+    .describe("作成が必要な画像の指示一覧"),
 });
 
 // ============================================
@@ -106,16 +136,22 @@ const validPathSchema = z.string().refine(
     return false;
   },
   {
-    message: "パスは './'（相対）、'/'（絶対）、または 'http(s)://'（URL）で始まる必要があります。'agent-output/' などのプロジェクト相対パスは使用できません。",
-  }
+    message:
+      "パスは './'（相対）、'/'（絶対）、または 'http(s)://'（URL）で始まる必要があります。'agent-output/' などのプロジェクト相対パスは使用できません。",
+  },
 );
 
 const videoSceneSchema = z.object({
   text: z.string().describe("セリフテキスト"),
   audio: validPathSchema.describe("音声ファイルパス（./parts/xxx.wav 形式）"),
   character: z.string().describe("キャラクター名（感情込み）"),
-  image: validPathSchema.optional().describe("画像ファイルパス（./images/xxx.webp 形式またはURL）"),
-  transition: z.enum(["fade", "slideLeft", "slideRight"]).optional().describe("トランジション効果"),
+  image: validPathSchema
+    .optional()
+    .describe("画像ファイルパス（./images/xxx.webp 形式またはURL）"),
+  transition: z
+    .enum(["fade", "slideLeft", "slideRight"])
+    .optional()
+    .describe("トランジション効果"),
   highlight: highlightSchema.optional().describe("ハイライト"),
   section: z.string().optional().describe("セクション名"),
   background: z.string().optional().describe("背景素材"),

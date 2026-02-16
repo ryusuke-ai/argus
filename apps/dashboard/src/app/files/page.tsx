@@ -55,7 +55,9 @@ export default async function FilesPage() {
 
   return (
     <main className="p-8 max-w-5xl">
-      <h1 className="text-3xl font-bold text-slate-900 mb-6">Generated Files</h1>
+      <h1 className="text-3xl font-bold text-slate-900 mb-6">
+        Generated Files
+      </h1>
       <FileList entries={entries} />
     </main>
   );

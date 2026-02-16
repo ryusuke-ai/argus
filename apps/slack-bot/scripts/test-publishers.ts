@@ -36,20 +36,33 @@ async function testXAuth(): Promise<void> {
     oauth_token: creds.accessToken,
     oauth_version: "1.0",
   };
-  const paramString = Object.keys(params).sort()
-    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join("&");
-  const baseString = ["GET", encodeURIComponent(url), encodeURIComponent(paramString)].join("&");
+  const paramString = Object.keys(params)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join("&");
+  const baseString = [
+    "GET",
+    encodeURIComponent(url),
+    encodeURIComponent(paramString),
+  ].join("&");
   const signingKey = `${encodeURIComponent(creds.apiKeySecret)}&${encodeURIComponent(creds.accessTokenSecret)}`;
-  const signature = createHmac("sha1", signingKey).update(baseString).digest("base64");
+  const signature = createHmac("sha1", signingKey)
+    .update(baseString)
+    .digest("base64");
   params.oauth_signature = signature;
-  const header = Object.keys(params).sort()
+  const header = Object.keys(params)
+    .sort()
     .map((k) => `${encodeURIComponent(k)}="${encodeURIComponent(params[k])}"`)
     .join(", ");
 
-  const res = await fetch(url, { headers: { Authorization: `OAuth ${header}` } });
+  const res = await fetch(url, {
+    headers: { Authorization: `OAuth ${header}` },
+  });
   if (res.ok) {
-    const data = await res.json() as any;
-    console.log(`[X] ✅ 認証成功! ユーザー: @${data.data?.username} (${data.data?.name})`);
+    const data = (await res.json()) as any;
+    console.log(
+      `[X] ✅ 認証成功! ユーザー: @${data.data?.username} (${data.data?.name})`,
+    );
   } else {
     const err = await res.json().catch(() => ({}));
     console.log(`[X] ❌ 認証失敗: ${res.status}`, JSON.stringify(err));
@@ -70,8 +83,10 @@ async function testQiitaAuth(): Promise<void> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.ok) {
-    const data = await res.json() as any;
-    console.log(`[Qiita] ✅ 認証成功! ユーザー: @${data.id} (${data.name || data.id})`);
+    const data = (await res.json()) as any;
+    console.log(
+      `[Qiita] ✅ 認証成功! ユーザー: @${data.id} (${data.name || data.id})`,
+    );
   } else {
     console.log(`[Qiita] ❌ 認証失敗: ${res.status}`);
   }

@@ -23,10 +23,15 @@ interface PublishResult {
   error?: string;
 }
 
-export async function publishToInstagram(input: PublishInput): Promise<PublishResult> {
+export async function publishToInstagram(
+  input: PublishInput,
+): Promise<PublishResult> {
   const creds = getCredentials();
   if (!creds) {
-    return { success: false, error: "Instagram API credentials not configured" };
+    return {
+      success: false,
+      error: "Instagram API credentials not configured",
+    };
   }
 
   const { userId, accessToken } = creds;
@@ -54,13 +59,19 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
 
     if (!containerRes.ok) {
       const err = await containerRes.json().catch(() => ({}));
-      return { success: false, error: `Instagram API error ${containerRes.status}: ${JSON.stringify(err)}` };
+      return {
+        success: false,
+        error: `Instagram API error ${containerRes.status}: ${JSON.stringify(err)}`,
+      };
     }
 
     const containerData = (await containerRes.json()) as { id?: string };
     const creationId = containerData.id;
     if (!creationId) {
-      return { success: false, error: "No creation_id returned from container creation" };
+      return {
+        success: false,
+        error: "No creation_id returned from container creation",
+      };
     }
 
     // Step 1.5: Poll for REELS processing completion
@@ -80,7 +91,10 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
         const statusData = (await statusRes.json()) as { status_code?: string };
         if (statusData.status_code === "FINISHED") break;
         if (statusData.status_code === "ERROR") {
-          return { success: false, error: "Reel processing failed on Instagram servers" };
+          return {
+            success: false,
+            error: "Reel processing failed on Instagram servers",
+          };
         }
       }
 
@@ -90,7 +104,10 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
       );
       const finalData = (await finalRes.json()) as { status_code?: string };
       if (finalData.status_code !== "FINISHED") {
-        return { success: false, error: "Reel processing timeout — video not ready" };
+        return {
+          success: false,
+          error: "Reel processing timeout — video not ready",
+        };
       }
     }
 
@@ -98,12 +115,18 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
     const publishRes = await fetch(`${API_BASE}/${userId}/media_publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ creation_id: creationId, access_token: accessToken }),
+      body: JSON.stringify({
+        creation_id: creationId,
+        access_token: accessToken,
+      }),
     });
 
     if (!publishRes.ok) {
       const err = await publishRes.json().catch(() => ({}));
-      return { success: false, error: `Instagram publish error ${publishRes.status}: ${JSON.stringify(err)}` };
+      return {
+        success: false,
+        error: `Instagram publish error ${publishRes.status}: ${JSON.stringify(err)}`,
+      };
     }
 
     const publishData = (await publishRes.json()) as { id?: string };
@@ -116,7 +139,9 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
         `${API_BASE}/${mediaId}?fields=permalink&access_token=${accessToken}`,
       );
       if (permalinkRes.ok) {
-        const permalinkData = (await permalinkRes.json()) as { permalink?: string };
+        const permalinkData = (await permalinkRes.json()) as {
+          permalink?: string;
+        };
         url = permalinkData.permalink || "";
       }
     }

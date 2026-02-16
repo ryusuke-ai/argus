@@ -14,9 +14,7 @@ describe("extractText", () => {
   });
 
   it("returns empty string for no text blocks", () => {
-    const content: Block[] = [
-      { type: "tool_use", name: "Bash", input: {} },
-    ];
+    const content: Block[] = [{ type: "tool_use", name: "Bash", input: {} }];
     expect(extractText(content)).toBe("");
   });
 
@@ -86,7 +84,9 @@ describe("summarizeJa", () => {
   });
 
   it("removes leading filler 'では' without eating 'は'", () => {
-    const result = summarizeJa("では明日の朝までにレポートをまとめておいてください");
+    const result = summarizeJa(
+      "では明日の朝までにレポートをまとめておいてください",
+    );
     expect(result).not.toMatch(/^は/);
     expect(result).toContain("レポート");
     expect(result).toContain("まとめ");

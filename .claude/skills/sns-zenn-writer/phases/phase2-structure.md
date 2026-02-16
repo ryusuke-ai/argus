@@ -18,7 +18,7 @@ Zenn 固有のフロントマターを設計:
 ---
 title: "{タイトル}"
 emoji: "{関連する絵文字}"
-type: "tech"  # or "idea"
+type: "tech" # or "idea"
 topics: ["topic1", "topic2", "topic3"]
 published: false
 ---

@@ -82,37 +82,29 @@ describe("Integration: Agent Executor", () => {
         (...args: unknown[]) => {
           if (args.length > 0) {
             return {
-              from: vi
-                .fn()
-                .mockReturnValue({
-                  orderBy: vi
-                    .fn()
-                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
-                }),
+              from: vi.fn().mockReturnValue({
+                orderBy: vi
+                  .fn()
+                  .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+              }),
             };
           }
           return {
-            from: vi
-              .fn()
-              .mockReturnValue({
-                where: vi
-                  .fn()
-                  .mockReturnValue({
-                    limit: vi
-                      .fn()
-                      .mockResolvedValue([
-                        {
-                          id: mockAgentId,
-                          name: "TestAgent",
-                          type: "collector",
-                          config: {
-                            prompt: "Test prompt for integration test",
-                          },
-                          enabled: true,
-                        },
-                      ]),
-                  }),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: mockAgentId,
+                    name: "TestAgent",
+                    type: "collector",
+                    config: {
+                      prompt: "Test prompt for integration test",
+                    },
+                    enabled: true,
+                  },
+                ]),
               }),
+            }),
           };
         },
       );
@@ -216,35 +208,27 @@ describe("Integration: Agent Executor", () => {
         (...args: unknown[]) => {
           if (args.length > 0) {
             return {
-              from: vi
-                .fn()
-                .mockReturnValue({
-                  orderBy: vi
-                    .fn()
-                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
-                }),
+              from: vi.fn().mockReturnValue({
+                orderBy: vi
+                  .fn()
+                  .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+              }),
             };
           }
           return {
-            from: vi
-              .fn()
-              .mockReturnValue({
-                where: vi
-                  .fn()
-                  .mockReturnValue({
-                    limit: vi
-                      .fn()
-                      .mockResolvedValue([
-                        {
-                          id: mockAgentId,
-                          name: "FailingAgent",
-                          type: "executor",
-                          config: { prompt: "This will fail" },
-                          enabled: true,
-                        },
-                      ]),
-                  }),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: mockAgentId,
+                    name: "FailingAgent",
+                    type: "executor",
+                    config: { prompt: "This will fail" },
+                    enabled: true,
+                  },
+                ]),
               }),
+            }),
           };
         },
       );
@@ -331,35 +315,27 @@ describe("Integration: Agent Executor", () => {
         (...args: unknown[]) => {
           if (args.length > 0) {
             return {
-              from: vi
-                .fn()
-                .mockReturnValue({
-                  orderBy: vi
-                    .fn()
-                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
-                }),
+              from: vi.fn().mockReturnValue({
+                orderBy: vi
+                  .fn()
+                  .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+              }),
             };
           }
           return {
-            from: vi
-              .fn()
-              .mockReturnValue({
-                where: vi
-                  .fn()
-                  .mockReturnValue({
-                    limit: vi
-                      .fn()
-                      .mockResolvedValue([
-                        {
-                          id: mockAgentId,
-                          name: "TimedAgent",
-                          type: "collector",
-                          config: { prompt: "Time me" },
-                          enabled: true,
-                        },
-                      ]),
-                  }),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: mockAgentId,
+                    name: "TimedAgent",
+                    type: "collector",
+                    config: { prompt: "Time me" },
+                    enabled: true,
+                  },
+                ]),
               }),
+            }),
           };
         },
       );
@@ -434,35 +410,27 @@ describe("Integration: Agent Executor", () => {
         (...args: unknown[]) => {
           if (args.length > 0) {
             return {
-              from: vi
-                .fn()
-                .mockReturnValue({
-                  orderBy: vi
-                    .fn()
-                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
-                }),
+              from: vi.fn().mockReturnValue({
+                orderBy: vi
+                  .fn()
+                  .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+              }),
             };
           }
           return {
-            from: vi
-              .fn()
-              .mockReturnValue({
-                where: vi
-                  .fn()
-                  .mockReturnValue({
-                    limit: vi
-                      .fn()
-                      .mockResolvedValue([
-                        {
-                          id: mockAgentId,
-                          name: "MisconfiguredAgent",
-                          type: "collector",
-                          config: {},
-                          enabled: true,
-                        },
-                      ]),
-                  }),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: mockAgentId,
+                    name: "MisconfiguredAgent",
+                    type: "collector",
+                    config: {},
+                    enabled: true,
+                  },
+                ]),
               }),
+            }),
           };
         },
       );
@@ -517,35 +485,27 @@ describe("Integration: Agent Executor", () => {
         (...args: unknown[]) => {
           if (args.length > 0) {
             return {
-              from: vi
-                .fn()
-                .mockReturnValue({
-                  orderBy: vi
-                    .fn()
-                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
-                }),
+              from: vi.fn().mockReturnValue({
+                orderBy: vi
+                  .fn()
+                  .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+              }),
             };
           }
           return {
-            from: vi
-              .fn()
-              .mockReturnValue({
-                where: vi
-                  .fn()
-                  .mockReturnValue({
-                    limit: vi
-                      .fn()
-                      .mockResolvedValue([
-                        {
-                          id: mockAgentId,
-                          name: "ToolUsingAgent",
-                          type: "executor",
-                          config: { prompt: "Use some tools" },
-                          enabled: true,
-                        },
-                      ]),
-                  }),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: mockAgentId,
+                    name: "ToolUsingAgent",
+                    type: "executor",
+                    config: { prompt: "Use some tools" },
+                    enabled: true,
+                  },
+                ]),
               }),
+            }),
           };
         },
       );

@@ -88,12 +88,12 @@ cat > ~/.argus/video-explainer/config.json << 'EOF'
 EOF
 ```
 
-| フィールド | 説明 |
-|-----------|------|
-| ttsName | TTS話者名（VOICEVOX、COEIROINK等） |
-| textBoxColor | 字幕ボックスの背景色（RGBA） |
-| playbackRate | 音声再生速度（1.0 = 等倍） |
-| fileId | ファイル識別子（通常はキャラ名と同じ） |
+| フィールド   | 説明                                   |
+| ------------ | -------------------------------------- |
+| ttsName      | TTS話者名（VOICEVOX、COEIROINK等）     |
+| textBoxColor | 字幕ボックスの背景色（RGBA）           |
+| playbackRate | 音声再生速度（1.0 = 等倍）             |
+| fileId       | ファイル識別子（通常はキャラ名と同じ） |
 
 ### 3. video-script.json で使用
 
@@ -130,38 +130,38 @@ cp my-background.mp4 ~/.argus/video-explainer/assets/backgrounds/simple.mp4
 
 ### 背景 (backgrounds/)
 
-| ファイル名 | 説明 |
-|-----------|------|
-| base.webp | デフォルト背景 |
-| simple.mp4 | シンプル |
-| deepblue.mp4 | 深青 |
-| skyblue.mp4 | 空色 |
-| cherry.mp4 | 桜 |
-| kokuban.mp4 | 黒板 |
-| その他 | dot, emphasis, hyperspace, kirakira, love, mowamowa, planet, room, worries |
+| ファイル名   | 説明                                                                       |
+| ------------ | -------------------------------------------------------------------------- |
+| base.webp    | デフォルト背景                                                             |
+| simple.mp4   | シンプル                                                                   |
+| deepblue.mp4 | 深青                                                                       |
+| skyblue.mp4  | 空色                                                                       |
+| cherry.mp4   | 桜                                                                         |
+| kokuban.mp4  | 黒板                                                                       |
+| その他       | dot, emphasis, hyperspace, kirakira, love, mowamowa, planet, room, worries |
 
 ### 効果音 (accent/)
 
-| ファイル名 | 用途 |
-|-----------|------|
-| shakin | ハイライト用（シャキーン） |
-| pa | ハイライト用（パッ） |
-| jean | ハイライト用（ジャーン） |
-| accent-1, accent-2 | 汎用 |
+| ファイル名         | 用途                       |
+| ------------------ | -------------------------- |
+| shakin             | ハイライト用（シャキーン） |
+| pa                 | ハイライト用（パッ）       |
+| jean               | ハイライト用（ジャーン）   |
+| accent-1, accent-2 | 汎用                       |
 
 ### トランジション (transition/)
 
-| ファイル名 | 用途 |
-|-----------|------|
+| ファイル名   | 用途                     |
+| ------------ | ------------------------ |
 | transition-1 | スライドトランジション用 |
-| transition-2 | 汎用 |
+| transition-2 | 汎用                     |
 
 ### キャラクター (chara/)
 
-| キャラ名 | 表情 |
-|---------|------|
+| キャラ名  | 表情                                             |
+| --------- | ------------------------------------------------ |
 | tsukuyomi | default, angry, doubt, love, surprised, thinking |
-| ginga | default, angry, doubt, love, surprised, thinking |
+| ginga     | default, angry, doubt, love, surprised, thinking |
 
 ---
 

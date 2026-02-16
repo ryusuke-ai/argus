@@ -509,7 +509,8 @@ describe("markdownToMrkdwn", () => {
   });
 
   it("should preserve code blocks", () => {
-    const input = "## Title\n```\n## not a heading\n**not bold**\n```\n## Footer";
+    const input =
+      "## Title\n```\n## not a heading\n**not bold**\n```\n## Footer";
     const result = markdownToMrkdwn(input);
     expect(result).toContain("*Title*");
     expect(result).toContain("## not a heading");
@@ -555,7 +556,9 @@ describe("markdownToMrkdwn", () => {
     ].join("\n");
 
     const result = markdownToMrkdwn(input);
-    expect(result).toContain("• *Web検索（推奨）* — エージェントがWeb検索で収集");
+    expect(result).toContain(
+      "• *Web検索（推奨）* — エージェントがWeb検索で収集",
+    );
     expect(result).toContain("• *RSS* — フィードから取得");
     expect(result).not.toContain("|");
   });
@@ -575,10 +578,7 @@ describe("markdownToMrkdwn", () => {
 describe("parseModelCommand", () => {
   let parseModelCommand: (
     text: string,
-  ) =>
-    | { action: "switch"; model: string }
-    | { action: "status" }
-    | null;
+  ) => { action: "switch"; model: string } | { action: "status" } | null;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -643,7 +643,8 @@ describe("parseDeepResearchTrigger", () => {
   });
 
   it("should detect 'リサーチして' trigger", () => {
-    const result = parseDeepResearchTrigger("量子コンピュータについてリサーチして");
+    const result =
+      parseDeepResearchTrigger("量子コンピュータについてリサーチして");
     expect(result).toBe("量子コンピュータ");
   });
 
@@ -658,7 +659,9 @@ describe("parseDeepResearchTrigger", () => {
   });
 
   it("should detect 'ディープリサーチ' trigger", () => {
-    const result = parseDeepResearchTrigger("ディープリサーチ React 19の新機能");
+    const result = parseDeepResearchTrigger(
+      "ディープリサーチ React 19の新機能",
+    );
     expect(result).toBe("React 19の新機能");
   });
 

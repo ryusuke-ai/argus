@@ -29,7 +29,9 @@ const { values } = parseArgs({
 // バリデーション
 if (!values.input || !values.output) {
   console.error("エラー: --input, --output は必須です");
-  console.error("使用方法: node summarize-dialogue.js --input <dialogue.json> --output <dialogue-summary.md>");
+  console.error(
+    "使用方法: node summarize-dialogue.js --input <dialogue.json> --output <dialogue-summary.md>",
+  );
   process.exit(1);
 }
 

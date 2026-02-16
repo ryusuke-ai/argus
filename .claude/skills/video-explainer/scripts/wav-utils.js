@@ -4,7 +4,7 @@
  * WAVファイルの長さ（秒）を取得する
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync } from "fs";
 
 /**
  * WAVファイルの長さを秒で取得
@@ -25,10 +25,10 @@ export function getWavDuration(filePath) {
   // データチャンクを探す
   let offset = 12;
   while (offset < buffer.length - 8) {
-    const chunkId = buffer.toString('ascii', offset, offset + 4);
+    const chunkId = buffer.toString("ascii", offset, offset + 4);
     const chunkSize = buffer.readUInt32LE(offset + 4);
 
-    if (chunkId === 'data') {
+    if (chunkId === "data") {
       const bytesPerSample = bitsPerSample / 8;
       const numSamples = chunkSize / (numChannels * bytesPerSample);
       return numSamples / sampleRate;
@@ -37,7 +37,7 @@ export function getWavDuration(filePath) {
     offset += 8 + chunkSize;
   }
 
-  throw new Error('WAVファイルのdataチャンクが見つかりません');
+  throw new Error("WAVファイルのdataチャンクが見つかりません");
 }
 
 /**
@@ -51,10 +51,10 @@ export function secondsToFrames(seconds, fps = 30) {
 }
 
 // CLI実行時
-if (process.argv[1].includes('wav-utils')) {
+if (process.argv[1].includes("wav-utils")) {
   const args = process.argv.slice(2);
   if (args.length === 0) {
-    console.log('Usage: node wav-utils.js <wav-file>');
+    console.log("Usage: node wav-utils.js <wav-file>");
     process.exit(1);
   }
 

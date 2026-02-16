@@ -12,7 +12,10 @@ import { z } from "zod";
 const sourceSchema = z.object({
   url: z.string().url().describe("ソースURL"),
   type: z.enum(["official", "community", "curation"]).describe("ソース種別"),
-  verified: z.boolean().optional().describe("裏取り済みか（communityソースのみ）"),
+  verified: z
+    .boolean()
+    .optional()
+    .describe("裏取り済みか（communityソースのみ）"),
   summary: z.string().describe("ソースからの要約"),
 });
 
@@ -23,7 +26,9 @@ const researchTopicSchema = z.object({
   deep_analysis: z.string().min(1).describe("詳細な分析テキスト"),
   key_points: z.array(z.string()).min(1).describe("キーポイント"),
   implications: z.string().describe("今後への影響や意義"),
-  media_type: z.enum(["video", "podcast"]).describe("動画 or ポッドキャスト向き"),
+  media_type: z
+    .enum(["video", "podcast"])
+    .describe("動画 or ポッドキャスト向き"),
   media_reason: z.string().describe("メディア種別の判断理由"),
 });
 
@@ -43,10 +48,23 @@ const segmentSchema = z.object({
 });
 
 const sectionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("opening"), segments: z.array(segmentSchema).min(1).describe("対話セグメント") }),
-  z.object({ type: z.literal("topic"), topic_title: z.string().describe("トピック名"), segments: z.array(segmentSchema).min(1).describe("対話セグメント") }),
-  z.object({ type: z.literal("transition"), se: z.string().optional().describe("効果音ファイル名") }),
-  z.object({ type: z.literal("ending"), segments: z.array(segmentSchema).min(1).describe("対話セグメント") }),
+  z.object({
+    type: z.literal("opening"),
+    segments: z.array(segmentSchema).min(1).describe("対話セグメント"),
+  }),
+  z.object({
+    type: z.literal("topic"),
+    topic_title: z.string().describe("トピック名"),
+    segments: z.array(segmentSchema).min(1).describe("対話セグメント"),
+  }),
+  z.object({
+    type: z.literal("transition"),
+    se: z.string().optional().describe("効果音ファイル名"),
+  }),
+  z.object({
+    type: z.literal("ending"),
+    segments: z.array(segmentSchema).min(1).describe("対話セグメント"),
+  }),
 ]);
 
 export const scriptSchema = z.object({

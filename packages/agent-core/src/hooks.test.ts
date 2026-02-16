@@ -23,7 +23,9 @@ describe("buildSDKHooks", () => {
       tool_input: { file_path: "test.ts" },
     };
 
-    const result = await hookFn(mockInput, "tu_1", { signal: new AbortController().signal });
+    const result = await hookFn(mockInput, "tu_1", {
+      signal: new AbortController().signal,
+    });
 
     expect(onPreToolUse).toHaveBeenCalledWith({
       sessionId: "sess-1",
@@ -54,7 +56,9 @@ describe("buildSDKHooks", () => {
       tool_response: "File written",
     };
 
-    const result = await hookFn(mockInput, "tu_2", { signal: new AbortController().signal });
+    const result = await hookFn(mockInput, "tu_2", {
+      signal: new AbortController().signal,
+    });
 
     expect(onPostToolUse).toHaveBeenCalledWith({
       sessionId: "sess-1",
@@ -87,7 +91,9 @@ describe("buildSDKHooks", () => {
       error: "Command failed with exit code 1",
     };
 
-    const result = await hookFn(mockInput, "tu_3", { signal: new AbortController().signal });
+    const result = await hookFn(mockInput, "tu_3", {
+      signal: new AbortController().signal,
+    });
 
     expect(onToolFailure).toHaveBeenCalledWith({
       sessionId: "sess-1",

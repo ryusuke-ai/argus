@@ -14,7 +14,12 @@
       "properties": {
         "hook": {
           "type": "object",
-          "required": ["duration", "narration", "textOverlay", "visualDirection"],
+          "required": [
+            "duration",
+            "narration",
+            "textOverlay",
+            "visualDirection"
+          ],
           "properties": {
             "duration": { "type": "string" },
             "narration": { "type": "string" },
@@ -28,7 +33,12 @@
           "maxItems": 8,
           "items": {
             "type": "object",
-            "required": ["duration", "narration", "textOverlay", "visualDirection"],
+            "required": [
+              "duration",
+              "narration",
+              "textOverlay",
+              "visualDirection"
+            ],
             "properties": {
               "duration": { "type": "string" },
               "narration": { "type": "string" },
@@ -39,7 +49,12 @@
         },
         "cta": {
           "type": "object",
-          "required": ["duration", "narration", "textOverlay", "visualDirection"],
+          "required": [
+            "duration",
+            "narration",
+            "textOverlay",
+            "visualDirection"
+          ],
           "properties": {
             "duration": { "type": "string" },
             "narration": { "type": "string" },
@@ -53,9 +68,27 @@
       "type": "object",
       "required": ["category", "estimatedDuration"],
       "properties": {
-        "category": { "enum": ["tutorial", "before_after", "tips", "myth_busting", "day_in_life", "reaction", "series"] },
-        "estimatedDuration": { "type": "integer", "minimum": 15, "maximum": 180 },
-        "hashtags": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },
+        "category": {
+          "enum": [
+            "tutorial",
+            "before_after",
+            "tips",
+            "myth_busting",
+            "day_in_life",
+            "reaction",
+            "series"
+          ]
+        },
+        "estimatedDuration": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 180
+        },
+        "hashtags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 10
+        },
         "suggestedSound": { "type": "string" },
         "scheduledHour": { "type": "integer", "minimum": 0, "maximum": 23 }
       }

@@ -12,7 +12,15 @@
     "topic": { "type": "string" },
     "category": {
       "type": "string",
-      "enum": ["tutorial", "before_after", "tips", "myth_busting", "day_in_life", "reaction", "series"]
+      "enum": [
+        "tutorial",
+        "before_after",
+        "tips",
+        "myth_busting",
+        "day_in_life",
+        "reaction",
+        "series"
+      ]
     },
     "format": {
       "type": "string",

@@ -20,7 +20,11 @@ import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateJson, printValidationErrors, schemaMap } from "../schemas/zod-schemas.js";
+import {
+  validateJson,
+  printValidationErrors,
+  schemaMap,
+} from "../schemas/zod-schemas.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -35,7 +39,9 @@ const { values } = parseArgs({
 });
 
 if (!values.schema || !values.file) {
-  console.error("使用方法: node validate-json.js --schema <schema-name> --file <json-file>");
+  console.error(
+    "使用方法: node validate-json.js --schema <schema-name> --file <json-file>",
+  );
   console.error("");
   console.error("スキーマ名:");
   console.error("  - scenario     : Phase 1 シナリオ構成");
@@ -108,12 +114,17 @@ if (values.fix) {
       }
 
       // emotion のデフォルト値（dialogue）
-      if (pathParts[pathParts.length - 1] === "emotion" && values.schema === "dialogue") {
+      if (
+        pathParts[pathParts.length - 1] === "emotion" &&
+        values.schema === "dialogue"
+      ) {
         // segmentsの該当インデックスにemotion追加
         const index = parseInt(pathParts[1]);
         if (!isNaN(index) && fixedData.segments?.[index]) {
           fixedData.segments[index].emotion = "default";
-          console.log(`🔧 自動修正: segments[${index}].emotion = "default" を追加`);
+          console.log(
+            `🔧 自動修正: segments[${index}].emotion = "default" を追加`,
+          );
           fixed = true;
         }
       }
@@ -121,7 +132,9 @@ if (values.fix) {
 
     // 空文字列を修正
     if (error.code === "too_small" && error.minimum === 1) {
-      console.error(`⚠️ 自動修正不可: ${error.path} が空です。内容を入力してください`);
+      console.error(
+        `⚠️ 自動修正不可: ${error.path} が空です。内容を入力してください`,
+      );
     }
   }
 

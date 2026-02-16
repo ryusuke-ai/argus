@@ -1,5 +1,5 @@
 /* @theme presentation-default */
-@import 'default';
+@import "default";
 
 :root {
   --color-primary: #1a1a2e;
@@ -13,7 +13,12 @@
 }
 
 section {
-  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP",
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: var(--color-text);
   background: var(--color-bg);
   padding: 48px 64px;
@@ -30,7 +35,11 @@ section.title {
   justify-content: center;
   align-items: center;
   text-align: center;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-accent) 100%
+  );
   color: #ffffff;
   padding: 60px 80px;
 }
@@ -146,7 +155,7 @@ tr:nth-child(even) td {
 
 /* コードブロック */
 code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 0.85em;
   background: var(--color-bg-alt);
   padding: 0.1em 0.3em;

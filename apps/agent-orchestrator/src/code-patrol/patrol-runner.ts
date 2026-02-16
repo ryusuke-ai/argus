@@ -221,7 +221,7 @@ export async function buildQualityInput(): Promise<string> {
       { cwd: REPO_ROOT, timeout: 30_000, env },
     ),
     execAsync(
-      `grep -rn "from ['\\"]\(fs\|path\|child_process\|util\|crypto\|os\|http\|https\|stream\|url\|events\)['\"]" packages/ apps/ --include="*.ts" --exclude="*.test.ts" || true`,
+      `grep -rn "from ['\\"]\\(fs\\|path\\|child_process\\|util\\|crypto\\|os\\|http\\|https\\|stream\\|url\\|events\\)['\\"]" packages/ apps/ --include="*.ts" --exclude="*.test.ts" || true`,
       { cwd: REPO_ROOT, timeout: 30_000, env },
     ),
   ]);

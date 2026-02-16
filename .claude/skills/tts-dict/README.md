@@ -56,11 +56,13 @@ node .claude/skills/tts-dict/scripts/dict.js reset
 スクリプトは、カタカナ読みからモーラ数を自動計算します。
 
 計算ルール:
+
 - カタカナ1文字 = 1モーラ
 - 小書き文字（ャュョッァィゥェォヮ）= モーラとしてカウントしない
 - 撥音（ン）・長音（ー）= 前の文字に含まれる
 
 例:
+
 - スキルズ → 4モーラ（ス+キ+ル+ズ）
 - ギットハブ → 4モーラ（ギ+ッ+ト+ハ+ブ → ギ+ト+ハ+ブ）
 - ディスクリプション → 7モーラ（ディ+ス+ク+リ+プ+ショ+ン → ディ+ス+ク+リ+プ+ショ）
@@ -70,6 +72,7 @@ node .claude/skills/tts-dict/scripts/dict.js reset
 エンドポイント: `POST http://127.0.0.1:50032/v1/set_dictionary`
 
 リクエストボディ:
+
 ```json
 {
   "dictionaryWords": [
@@ -84,6 +87,7 @@ node .claude/skills/tts-dict/scripts/dict.js reset
 ```
 
 注意点:
+
 - `word`: 全角アルファベット必須（自動変換されます）
 - `yomi`: カタカナ読み
 - `accent`: アクセント位置（デフォルト: 1）
@@ -110,6 +114,7 @@ node .claude/skills/tts-dict/scripts/dict.js reset
 ### COEIROINKに接続できない
 
 COEIROINKが起動していることを確認してください:
+
 ```bash
 curl http://127.0.0.1:50032/v1/speakers
 ```
@@ -117,6 +122,7 @@ curl http://127.0.0.1:50032/v1/speakers
 ### 辞書が反映されない
 
 辞書を追加した後、必ず`apply`コマンドを実行してください:
+
 ```bash
 node .claude/skills/tts-dict/scripts/dict.js apply
 ```

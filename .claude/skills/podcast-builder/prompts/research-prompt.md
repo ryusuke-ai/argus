@@ -30,7 +30,12 @@ JSON形式で出力:
   "title": "トピックタイトル",
   "category": "カテゴリ",
   "sources": [
-    { "url": "...", "type": "official|community|curation", "verified": true, "summary": "..." }
+    {
+      "url": "...",
+      "type": "official|community|curation",
+      "verified": true,
+      "summary": "..."
+    }
   ],
   "deep_analysis": "詳細な分析テキスト（300-500文字）",
   "key_points": ["ポイント1", "ポイント2", "ポイント3"],
@@ -43,12 +48,14 @@ JSON形式で出力:
 ## メディア種別の判断基準
 
 ### video（動画）にするもの
+
 - アーキテクチャ図が要る
 - コードの動作デモが要る
 - 比較表・フローチャートが要る
 - ビジュアルがないと伝わりにくい
 
 ### podcast（ポッドキャスト）にするもの
+
 - ニュースの解説・意見
 - トレンド分析
 - ツール紹介・使い方 Tips

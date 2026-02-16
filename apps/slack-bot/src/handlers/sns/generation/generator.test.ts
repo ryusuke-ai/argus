@@ -126,9 +126,7 @@ describe("generateXPost", () => {
     // Research phase succeeds, generate phase returns invalid JSON
     (query as Mock)
       .mockResolvedValueOnce(buildMockResult(RESEARCH_OUTPUT_JSON))
-      .mockResolvedValueOnce(
-        buildMockResult("This is not valid JSON at all"),
-      );
+      .mockResolvedValueOnce(buildMockResult("This is not valid JSON at all"));
 
     const result = await generateXPost("投稿を作って");
 

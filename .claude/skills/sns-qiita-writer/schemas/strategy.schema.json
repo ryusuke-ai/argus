@@ -3,7 +3,16 @@
   "title": "QiitaStrategy",
   "description": "Phase 1 出力: Qiita 記事のリサーチ & 戦略",
   "type": "object",
-  "required": ["version", "topic", "category", "targetAudience", "competitors", "differentiators", "keywords", "trends"],
+  "required": [
+    "version",
+    "topic",
+    "category",
+    "targetAudience",
+    "competitors",
+    "differentiators",
+    "keywords",
+    "trends"
+  ],
   "properties": {
     "version": {
       "type": "string",

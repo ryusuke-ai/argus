@@ -25,14 +25,14 @@ WebSearch で以下を調査:
 
 ### Step 3: エピソードカテゴリ決定
 
-| カテゴリ | テンプレート型 |
-|---------|-------------|
-| `deep_dive` | 深掘り解説型 |
-| `tutorial` | チュートリアル型 |
-| `weekly_roundup` | 週間まとめ型 |
-| `experience` | 体験記型 |
-| `tool_review` | ツールレビュー型 |
-| `behind_the_scenes` | 舞台裏型 |
+| カテゴリ            | テンプレート型   |
+| ------------------- | ---------------- |
+| `deep_dive`         | 深掘り解説型     |
+| `tutorial`          | チュートリアル型 |
+| `weekly_roundup`    | 週間まとめ型     |
+| `experience`        | 体験記型         |
+| `tool_review`       | ツールレビュー型 |
+| `behind_the_scenes` | 舞台裏型         |
 
 ### Step 4: 戦略 JSON 出力
 

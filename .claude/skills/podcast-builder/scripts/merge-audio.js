@@ -15,7 +15,15 @@
  */
 
 import { parseArgs } from "node:util";
-import { readFileSync, statSync, existsSync, writeFileSync, unlinkSync, mkdirSync, rmSync } from "node:fs";
+import {
+  readFileSync,
+  statSync,
+  existsSync,
+  writeFileSync,
+  unlinkSync,
+  mkdirSync,
+  rmSync,
+} from "node:fs";
 import { resolve, join, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -49,7 +57,8 @@ const partsDir = resolve(values["parts-dir"]);
 const outputPath = resolve(values.output);
 const bgmVolume = parseFloat(values["bgm-volume"] ?? "0.1");
 const assetsDir = resolve(
-  values["assets-dir"] ?? join(dirname(scriptPath), "../../video-explainer/assets"),
+  values["assets-dir"] ??
+    join(dirname(scriptPath), "../../video-explainer/assets"),
 );
 
 // ============================================
@@ -94,7 +103,16 @@ function runFfmpeg(args, description) {
 
 function generateSilence(outputFile, durationSec, sampleRate = 44100) {
   runFfmpeg(
-    ["-y", "-f", "lavfi", "-i", `anullsrc=r=${sampleRate}:cl=mono`, "-t", String(durationSec), outputFile],
+    [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `anullsrc=r=${sampleRate}:cl=mono`,
+      "-t",
+      String(durationSec),
+      outputFile,
+    ],
     `無音生成 (${durationSec}秒)`,
   );
 }
@@ -109,7 +127,15 @@ function getAudioDuration(filePath) {
   try {
     const output = execFileSync(
       "ffprobe",
-      ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filePath],
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        filePath,
+      ],
       { stdio: "pipe" },
     );
     return parseFloat(output.toString().trim());
@@ -190,11 +216,16 @@ async function main() {
           const dur = getAudioDuration(seWavPath);
           console.log(`  [SE] ${basename(seFile)} (${formatDuration(dur)})`);
         } else {
-          const silencePath = join(tmpDir, `silence_${concatEntries.length}.wav`);
+          const silencePath = join(
+            tmpDir,
+            `silence_${concatEntries.length}.wav`,
+          );
           generateSilence(silencePath, 0.5);
           concatEntries.push(silencePath);
           if (seName) {
-            console.warn(`  [SE] 警告: ${seName} が見つかりません。0.5秒の無音を挿入`);
+            console.warn(
+              `  [SE] 警告: ${seName} が見つかりません。0.5秒の無音を挿入`,
+            );
           } else {
             console.log("  [SE] 無音挿入 (0.5秒)");
           }
@@ -217,7 +248,9 @@ async function main() {
         const wavFilePath = join(partsDir, wavFileName);
 
         if (!existsSync(wavFilePath)) {
-          console.warn(`    警告: ${wavFileName} が見つかりません。スキップします`);
+          console.warn(
+            `    警告: ${wavFileName} が見つかりません。スキップします`,
+          );
           skippedCount++;
           continue;
         }
@@ -243,12 +276,25 @@ async function main() {
       `対象ファイル数: ${concatEntries.length} (スキップ: ${skippedCount}/${totalSegments})`,
     );
 
-    const concatListContent = concatEntries.map((f) => `file '${f}'`).join("\n");
+    const concatListContent = concatEntries
+      .map((f) => `file '${f}'`)
+      .join("\n");
     writeFileSync(concatListPath, concatListContent, "utf-8");
 
     console.log("全セグメントを結合中...");
     runFfmpeg(
-      ["-y", "-f", "concat", "-safe", "0", "-i", concatListPath, "-c", "copy", concatWavPath],
+      [
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        concatListPath,
+        "-c",
+        "copy",
+        concatWavPath,
+      ],
       "WAV結合",
     );
 
@@ -260,9 +306,22 @@ async function main() {
       console.log(`\nBGMミキシング (音量: ${bgmVolume})...`);
       runFfmpeg(
         [
-          "-y", "-i", concatWavPath, "-stream_loop", "-1", "-i", bgmFile,
-          "-filter_complex", `[1:a]volume=${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=3[out]`,
-          "-map", "[out]", "-codec:a", "libmp3lame", "-q:a", "2", outputPath,
+          "-y",
+          "-i",
+          concatWavPath,
+          "-stream_loop",
+          "-1",
+          "-i",
+          bgmFile,
+          "-filter_complex",
+          `[1:a]volume=${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=3[out]`,
+          "-map",
+          "[out]",
+          "-codec:a",
+          "libmp3lame",
+          "-q:a",
+          "2",
+          outputPath,
         ],
         "BGMミキシング",
       );
@@ -271,7 +330,16 @@ async function main() {
       console.warn(`警告: BGMファイルが見つかりません: ${bgmFile}`);
       console.log("BGMなしでMP3に変換中...");
       runFfmpeg(
-        ["-y", "-i", concatWavPath, "-codec:a", "libmp3lame", "-q:a", "2", outputPath],
+        [
+          "-y",
+          "-i",
+          concatWavPath,
+          "-codec:a",
+          "libmp3lame",
+          "-q:a",
+          "2",
+          outputPath,
+        ],
         "MP3変換",
       );
     }
