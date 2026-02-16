@@ -35,6 +35,12 @@ importers:
 
   apps/agent-orchestrator:
     dependencies:
+      '@anthropic-ai/claude-agent-sdk':
+        specifier: ^0.2.34
+        version: 0.2.34(zod@4.3.6)
+      '@anthropic-ai/sdk':
+        specifier: ^0.74.0
+        version: 0.74.0(zod@4.3.6)
       '@argus/agent-core':
         specifier: workspace:*
         version: link:../../packages/agent-core

@@ -11,6 +11,8 @@
     "seed:demo": "tsx scripts/seed-demo-agents.ts"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.34",
+    "@anthropic-ai/sdk": "^0.74.0",
     "@argus/agent-core": "workspace:*",
     "@argus/db": "workspace:*",
     "@argus/gmail": "workspace:*",
