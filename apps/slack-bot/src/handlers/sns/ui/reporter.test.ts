@@ -1,5 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { buildXPostBlocks, buildVideoPostBlocks, buildArticlePostBlocks, buildPublishedBlocks, buildSkippedBlocks, buildScheduledBlocks, buildRenderedBlocks, buildInstagramPostBlocks, buildInstagramImageBlocks } from "./reporter.js";
+import type {
+  KnownBlock,
+  SectionBlock,
+  ContextBlock,
+  ActionsBlock,
+  Button,
+} from "@slack/types";
+import {
+  buildXPostBlocks,
+  buildVideoPostBlocks,
+  buildArticlePostBlocks,
+  buildPublishedBlocks,
+  buildSkippedBlocks,
+  buildScheduledBlocks,
+  buildRenderedBlocks,
+  buildInstagramPostBlocks,
+  buildInstagramImageBlocks,
+} from "./reporter.js";
+
+/** ContextBlock の elements からテキストを安全に抽出するヘルパー */
+function contextElementTexts(block: ContextBlock): string[] {
+  return block.elements.map((e) => ("text" in e ? e.text : ""));
+}
 
 describe("SNS Reporter", () => {
   describe("buildXPostBlocks", () => {
@@ -15,10 +37,14 @@ describe("SNS Reporter", () => {
       // ヘッダー
       expect(blocks[0]).toMatchObject({ type: "header" });
       // コンテンツ
-      const sectionBlock = blocks.find((b: any) => b.type === "section");
+      const sectionBlock = blocks.find(
+        (b: KnownBlock) => b.type === "section",
+      ) as SectionBlock | undefined;
       expect(sectionBlock?.text?.text).toContain("Claude Code");
       // ボタン
-      const actionsBlock = blocks.find((b: any) => b.type === "actions");
+      const actionsBlock = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock | undefined;
       expect(actionsBlock?.elements).toHaveLength(4);
       expect(actionsBlock?.elements[0]?.action_id).toBe("sns_schedule");
       expect(actionsBlock?.elements[1]?.action_id).toBe("sns_publish");
@@ -36,8 +62,12 @@ describe("SNS Reporter", () => {
       });
 
       // context ブロックに "スレッド" が含まれる
-      const contextBlock = blocks.find((b: any) => b.type === "context");
-      const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+      const contextBlock = blocks.find(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock | undefined;
+      const contextTexts = contextBlock
+        ? contextElementTexts(contextBlock).join(" ")
+        : "";
       expect(contextTexts).toContain("スレッド");
     });
 
@@ -49,8 +79,12 @@ describe("SNS Reporter", () => {
         category: "tips",
       });
 
-      const contextBlock = blocks.find((b: any) => b.type === "context");
-      const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+      const contextBlock = blocks.find(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock | undefined;
+      const contextTexts = contextBlock
+        ? contextElementTexts(contextBlock).join(" ")
+        : "";
       expect(contextTexts).toContain(`${text.length}文字`);
     });
 
@@ -64,8 +98,12 @@ describe("SNS Reporter", () => {
         threadCount: 3,
       });
 
-      const contextBlock = blocks.find((b: any) => b.type === "context");
-      const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+      const contextBlock = blocks.find(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock | undefined;
+      const contextTexts = contextBlock
+        ? contextElementTexts(contextBlock).join(" ")
+        : "";
       expect(contextTexts).toContain(`合計${text.length}文字`);
     });
 
@@ -75,16 +113,22 @@ describe("SNS Reporter", () => {
         text: "Check out https://example.com",
         category: "tips",
         warnings: [
-          { code: "CONTAINS_EXTERNAL_LINK", message: "Post contains an external link" },
+          {
+            code: "CONTAINS_EXTERNAL_LINK",
+            message: "Post contains an external link",
+          },
         ],
       });
 
       // Find all context blocks
-      const contextBlocks = blocks.filter((b: any) => b.type === "context");
+      const contextBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock[];
       // Should have 2 context blocks: metadata + warnings
       expect(contextBlocks.length).toBe(2);
       const warningBlock = contextBlocks[1];
-      expect(warningBlock.elements[0].text).toContain("外部リンクを含んでいます");
+      const warningTexts = contextElementTexts(warningBlock);
+      expect(warningTexts[0]).toContain("外部リンクを含んでいます");
     });
 
     it("should not show warnings block when no warnings", () => {
@@ -95,7 +139,9 @@ describe("SNS Reporter", () => {
       });
 
       // Should have exactly 1 context block (metadata only)
-      const contextBlocks = blocks.filter((b: any) => b.type === "context");
+      const contextBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock[];
       expect(contextBlocks.length).toBe(1);
     });
 
@@ -107,10 +153,13 @@ describe("SNS Reporter", () => {
         hideScheduleButton: true,
       });
 
-      const actionsBlock = blocks.find((b: any) => b.type === "actions");
+      const actionsBlock = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock | undefined;
       expect(actionsBlock?.elements).toHaveLength(3);
-      expect(actionsBlock?.elements[0]?.action_id).toBe("sns_publish");
-      expect(actionsBlock?.elements[0]?.style).toBe("primary");
+      const firstBtn = actionsBlock?.elements[0] as Button | undefined;
+      expect(firstBtn?.action_id).toBe("sns_publish");
+      expect(firstBtn?.style).toBe("primary");
       expect(actionsBlock?.elements[1]?.action_id).toBe("sns_edit");
       expect(actionsBlock?.elements[2]?.action_id).toBe("sns_skip");
     });
@@ -131,9 +180,11 @@ describe("SNS Reporter", () => {
         ],
       });
 
-      const contextBlocks = blocks.filter((b: any) => b.type === "context");
+      const contextBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock[];
       expect(contextBlocks.length).toBe(2);
-      const warningText = contextBlocks[1].elements.map((e: any) => e.text).join("\n");
+      const warningText = contextElementTexts(contextBlocks[1]).join("\n");
 
       expect(warningText).toContain("外部リンクを含んでいます");
       expect(warningText).toContain("短縮URLを含んでいます");
@@ -161,17 +212,22 @@ describe("SNS Reporter", () => {
       expect(blocks[0]).toMatchObject({ type: "header" });
       expect(blocks[0].text.text).toContain("YouTube");
       // タイトルと説明
-      const titleBlock = blocks.find((b: any) =>
-        b.type === "section" && b.text?.text?.includes("Claude Code 完全ガイド"),
-      );
+      const titleBlock = blocks.find(
+        (b: KnownBlock) =>
+          b.type === "section" &&
+          b.text?.text?.includes("Claude Code 完全ガイド"),
+      ) as SectionBlock | undefined;
       expect(titleBlock).toBeTruthy();
       // プレビューリンク
-      const previewBlock = blocks.find((b: any) =>
-        b.type === "section" && b.text?.text?.includes("プレビュー"),
-      );
+      const previewBlock = blocks.find(
+        (b: KnownBlock) =>
+          b.type === "section" && b.text?.text?.includes("プレビュー"),
+      ) as SectionBlock | undefined;
       expect(previewBlock).toBeTruthy();
       // ボタン: 投稿 / 修正指示 / スキップ
-      const actionsBlock = blocks.find((b: any) => b.type === "actions");
+      const actionsBlock = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock | undefined;
       expect(actionsBlock?.elements).toHaveLength(3);
       expect(actionsBlock?.elements[0]?.action_id).toBe("sns_publish");
       expect(actionsBlock?.elements[1]?.action_id).toBe("sns_edit_thread");
@@ -188,8 +244,12 @@ describe("SNS Reporter", () => {
         videoUrl: "http://localhost:3150/api/files/test/output.mp4",
       });
 
-      const contextBlock = blocks.find((b: any) => b.type === "context");
-      const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+      const contextBlock = blocks.find(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock | undefined;
+      const contextTexts = contextBlock
+        ? contextElementTexts(contextBlock).join(" ")
+        : "";
       expect(contextTexts).toContain("5:30");
       expect(contextTexts).toContain("デモ");
     });
@@ -202,13 +262,18 @@ describe("SNS Reporter", () => {
         category: "tutorial",
         duration: "10:00",
         videoUrl: "http://localhost:3150/api/files/test/output.mp4",
-        warnings: [{ code: "LOW_QUALITY", message: "低画質の可能性があります" }],
+        warnings: [
+          { code: "LOW_QUALITY", message: "低画質の可能性があります" },
+        ],
       });
 
-      const contextBlocks = blocks.filter((b: any) => b.type === "context");
+      const contextBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock[];
       // 2つの context ブロック: メタ情報 + 警告
       expect(contextBlocks.length).toBe(2);
-      expect(contextBlocks[1].elements[0].text).toContain("低画質");
+      const warningTexts = contextElementTexts(contextBlocks[1]);
+      expect(warningTexts[0]).toContain("低画質");
     });
 
     it("should hide publish button and preview link when videoUrl is empty", () => {
@@ -222,12 +287,15 @@ describe("SNS Reporter", () => {
       });
 
       // プレビューリンクなし
-      const previewBlock = blocks.find((b: any) =>
-        b.type === "section" && b.text?.text?.includes("プレビュー"),
-      );
+      const previewBlock = blocks.find(
+        (b: KnownBlock) =>
+          b.type === "section" && b.text?.text?.includes("プレビュー"),
+      ) as SectionBlock | undefined;
       expect(previewBlock).toBeUndefined();
       // ボタン: 承認してレンダリング開始 / 修正指示 / スキップ（投稿なし）
-      const actionsBlock = blocks.find((b: any) => b.type === "actions");
+      const actionsBlock = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock | undefined;
       expect(actionsBlock?.elements).toHaveLength(3);
       expect(actionsBlock?.elements[0]?.action_id).toBe("sns_approve_metadata");
       expect(actionsBlock?.elements[1]?.action_id).toBe("sns_edit_thread");
@@ -248,8 +316,12 @@ describe("SNS Reporter", () => {
           videoUrl: "http://localhost:3150/test",
         });
 
-        const contextBlock = blocks.find((b: any) => b.type === "context");
-        const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+        const contextBlock = blocks.find(
+          (b: KnownBlock) => b.type === "context",
+        ) as ContextBlock | undefined;
+        const contextTexts = contextBlock
+          ? contextElementTexts(contextBlock).join(" ")
+          : "";
         expect(contextTexts).toContain(expected[i]);
       });
     });
@@ -268,11 +340,14 @@ describe("SNS Reporter", () => {
       expect(blocks.length).toBeGreaterThan(0);
       expect(blocks[0]).toMatchObject({ type: "header" });
       expect(blocks[0].text.text).toContain("Qiita");
-      const titleBlock = blocks.find((b: any) =>
-        b.type === "section" && b.text?.text?.includes("Claude Code"),
-      );
+      const titleBlock = blocks.find(
+        (b: KnownBlock) =>
+          b.type === "section" && b.text?.text?.includes("Claude Code"),
+      ) as SectionBlock | undefined;
       expect(titleBlock).toBeTruthy();
-      const actionsBlock = blocks.find((b: any) => b.type === "actions");
+      const actionsBlock = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock | undefined;
       expect(actionsBlock?.elements).toHaveLength(4);
     });
 
@@ -287,9 +362,11 @@ describe("SNS Reporter", () => {
       });
 
       // メインメッセージにはタイトルの section のみ（本文なし）
-      const sectionBlocks = blocks.filter((b: any) => b.type === "section");
+      const sectionBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "section",
+      ) as SectionBlock[];
       expect(sectionBlocks).toHaveLength(1);
-      expect(sectionBlocks[0].text.text).toBe("*タイトル*");
+      expect(sectionBlocks[0].text?.text).toBe("*タイトル*");
     });
 
     it("should normalize object tags to display names", () => {
@@ -298,11 +375,15 @@ describe("SNS Reporter", () => {
         platform: "qiita",
         title: "テスト",
         body: "本文",
-        tags: [{ name: "ClaudeCode" }, { name: "AI" }] as any,
+        tags: [{ name: "ClaudeCode" }, { name: "AI" }] as unknown as string[],
       });
 
-      const contextBlock = blocks.find((b: any) => b.type === "context");
-      const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+      const contextBlock = blocks.find(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock | undefined;
+      const contextTexts = contextBlock
+        ? contextElementTexts(contextBlock).join(" ")
+        : "";
       expect(contextTexts).toContain("ClaudeCode");
       expect(contextTexts).toContain("AI");
       expect(contextTexts).not.toContain("[object Object]");
@@ -318,8 +399,12 @@ describe("SNS Reporter", () => {
         tags: [],
       });
 
-      const contextBlock = blocks.find((b: any) => b.type === "context");
-      const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+      const contextBlock = blocks.find(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock | undefined;
+      const contextTexts = contextBlock
+        ? contextElementTexts(contextBlock).join(" ")
+        : "";
       expect(contextTexts).toContain(`${body.length}文字`);
     });
 
@@ -332,8 +417,12 @@ describe("SNS Reporter", () => {
         tags: ["zenn", "typescript"],
       });
 
-      const contextBlock = blocks.find((b: any) => b.type === "context");
-      const contextTexts = contextBlock?.elements.map((e: any) => e.text).join(" ");
+      const contextBlock = blocks.find(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock | undefined;
+      const contextTexts = contextBlock
+        ? contextElementTexts(contextBlock).join(" ")
+        : "";
       expect(contextTexts).toContain("zenn");
       expect(contextTexts).toContain("5000文字");
     });
@@ -348,9 +437,12 @@ describe("SNS Reporter", () => {
         warnings: [{ code: "BODY_TOO_SHORT", message: "Body is too short" }],
       });
 
-      const contextBlocks = blocks.filter((b: any) => b.type === "context");
+      const contextBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock[];
       expect(contextBlocks.length).toBe(2);
-      expect(contextBlocks[1].elements[0].text).toContain("Body is too short");
+      const warningTexts = contextElementTexts(contextBlocks[1]);
+      expect(warningTexts[0]).toContain("Body is too short");
     });
 
     it("should hide schedule button when hideScheduleButton is true", () => {
@@ -363,10 +455,13 @@ describe("SNS Reporter", () => {
         hideScheduleButton: true,
       });
 
-      const actionsBlock = blocks.find((b: any) => b.type === "actions");
+      const actionsBlock = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock | undefined;
       expect(actionsBlock?.elements).toHaveLength(3);
-      expect(actionsBlock?.elements[0]?.action_id).toBe("sns_publish");
-      expect(actionsBlock?.elements[0]?.style).toBe("primary");
+      const firstBtn = actionsBlock?.elements[0] as Button | undefined;
+      expect(firstBtn?.action_id).toBe("sns_publish");
+      expect(firstBtn?.style).toBe("primary");
       expect(actionsBlock?.elements[1]?.action_id).toBe("sns_edit");
       expect(actionsBlock?.elements[2]?.action_id).toBe("sns_skip");
     });
@@ -390,8 +485,13 @@ describe("SNS Reporter", () => {
 
   describe("buildPublishedBlocks", () => {
     it("should show published status with URL", () => {
-      const blocks = buildPublishedBlocks("X", "https://x.com/i/web/status/123");
-      const section = blocks.find((b: any) => b.type === "section");
+      const blocks = buildPublishedBlocks(
+        "X",
+        "https://x.com/i/web/status/123",
+      );
+      const section = blocks.find((b: KnownBlock) => b.type === "section") as
+        | SectionBlock
+        | undefined;
       expect(section?.text?.text).toContain("投稿完了");
       expect(section?.text?.text).toContain("https://x.com/");
     });
@@ -400,7 +500,9 @@ describe("SNS Reporter", () => {
   describe("buildSkippedBlocks", () => {
     it("should show skipped status", () => {
       const blocks = buildSkippedBlocks();
-      const section = blocks.find((b: any) => b.type === "section");
+      const section = blocks.find((b: KnownBlock) => b.type === "section") as
+        | SectionBlock
+        | undefined;
       expect(section?.text?.text).toContain("スキップ");
     });
   });
@@ -408,7 +510,9 @@ describe("SNS Reporter", () => {
   describe("buildScheduledBlocks", () => {
     it("should show scheduled status with platform and time", () => {
       const blocks = buildScheduledBlocks("X", "今日 07:30");
-      const section = blocks.find((b: any) => b.type === "section");
+      const section = blocks.find((b: KnownBlock) => b.type === "section") as
+        | SectionBlock
+        | undefined;
       expect(section?.text?.text).toContain("スケジュール投稿");
       expect(section?.text?.text).toContain("X");
       expect(section?.text?.text).toContain("07:30");
@@ -416,7 +520,9 @@ describe("SNS Reporter", () => {
 
     it("should work for article platforms", () => {
       const blocks = buildScheduledBlocks("Qiita", "明日 12:15");
-      const section = blocks.find((b: any) => b.type === "section");
+      const section = blocks.find((b: KnownBlock) => b.type === "section") as
+        | SectionBlock
+        | undefined;
       expect(section?.text?.text).toContain("Qiita");
       expect(section?.text?.text).toContain("12:15");
     });
@@ -456,8 +562,12 @@ describe("SNS Reporter", () => {
         category: "tips",
       });
       const context = blocks.find(
-        (b: any) => b.type === "context" && b.elements?.some((e: any) => e.text === "TikTok & Instagram 共用動画"),
-      );
+        (b: KnownBlock) =>
+          b.type === "context" &&
+          b.elements?.some(
+            (e) => "text" in e && e.text === "TikTok & Instagram 共用動画",
+          ),
+      ) as ContextBlock | undefined;
       expect(context).toBeTruthy();
     });
 
@@ -469,11 +579,15 @@ describe("SNS Reporter", () => {
         hashtags: [],
         category: "tips",
       });
-      const actions = blocks.find((b: any) => b.type === "actions");
-      const publishBtn = actions.elements.find((e: any) => e.action_id === "sns_publish");
+      const actions = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock;
+      const publishBtn = actions.elements.find(
+        (e) => e.action_id === "sns_publish",
+      ) as Button | undefined;
       expect(publishBtn).toBeTruthy();
-      expect(publishBtn.text.text).toBe("投稿する");
-      expect(publishBtn.style).toBe("primary");
+      expect(publishBtn!.text.text).toBe("投稿する");
+      expect(publishBtn!.style).toBe("primary");
     });
 
     it("should include sns_schedule button", () => {
@@ -484,10 +598,14 @@ describe("SNS Reporter", () => {
         hashtags: [],
         category: "tips",
       });
-      const actions = blocks.find((b: any) => b.type === "actions");
-      const scheduleBtn = actions.elements.find((e: any) => e.action_id === "sns_schedule");
+      const actions = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock;
+      const scheduleBtn = actions.elements.find(
+        (e) => e.action_id === "sns_schedule",
+      ) as Button | undefined;
       expect(scheduleBtn).toBeTruthy();
-      expect(scheduleBtn.text.text).toBe("スケジュール");
+      expect(scheduleBtn!.text.text).toBe("スケジュール");
     });
 
     it("should include sns_edit_thread button", () => {
@@ -498,10 +616,14 @@ describe("SNS Reporter", () => {
         hashtags: [],
         category: "tips",
       });
-      const actions = blocks.find((b: any) => b.type === "actions");
-      const editBtn = actions.elements.find((e: any) => e.action_id === "sns_edit_thread");
+      const actions = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock;
+      const editBtn = actions.elements.find(
+        (e) => e.action_id === "sns_edit_thread",
+      ) as Button | undefined;
       expect(editBtn).toBeTruthy();
-      expect(editBtn.text.text).toBe("修正指示");
+      expect(editBtn!.text.text).toBe("修正指示");
     });
 
     it("should include sns_skip button", () => {
@@ -512,10 +634,14 @@ describe("SNS Reporter", () => {
         hashtags: [],
         category: "tips",
       });
-      const actions = blocks.find((b: any) => b.type === "actions");
-      const skipBtn = actions.elements.find((e: any) => e.action_id === "sns_skip");
+      const actions = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock;
+      const skipBtn = actions.elements.find(
+        (e) => e.action_id === "sns_skip",
+      ) as Button | undefined;
       expect(skipBtn).toBeTruthy();
-      expect(skipBtn.text.text).toBe("スキップ");
+      expect(skipBtn!.text.text).toBe("スキップ");
     });
 
     it("should show hashtags in context block when hashtags are present", () => {
@@ -526,14 +652,17 @@ describe("SNS Reporter", () => {
         hashtags: ["#AI", "#tech", "#reels"],
         category: "tips",
       });
-      const contextBlocks = blocks.filter((b: any) => b.type === "context");
-      const hashtagContext = contextBlocks.find(
-        (b: any) => b.elements?.some((e: any) => e.text.includes("#AI")),
+      const contextBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock[];
+      const hashtagContext = contextBlocks.find((b: ContextBlock) =>
+        b.elements?.some((e) => "text" in e && e.text.includes("#AI")),
       );
       expect(hashtagContext).toBeTruthy();
-      expect(hashtagContext.elements[0].text).toContain("#AI");
-      expect(hashtagContext.elements[0].text).toContain("#tech");
-      expect(hashtagContext.elements[0].text).toContain("#reels");
+      const hashtagTexts = contextElementTexts(hashtagContext!);
+      expect(hashtagTexts[0]).toContain("#AI");
+      expect(hashtagTexts[0]).toContain("#tech");
+      expect(hashtagTexts[0]).toContain("#reels");
     });
 
     it("should not show hashtag context block when hashtags are empty", () => {
@@ -545,11 +674,17 @@ describe("SNS Reporter", () => {
         category: "tips",
       });
       // Only one context block (metadata), no hashtag context block
-      const contextBlocks = blocks.filter((b: any) => b.type === "context");
+      const contextBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "context",
+      ) as ContextBlock[];
       expect(contextBlocks).toHaveLength(1);
       // The single context block should contain category and char count, not hashtags
       const metaContext = contextBlocks[0];
-      expect(metaContext.elements.some((e: any) => e.text.includes("Tips"))).toBeTruthy();
+      expect(
+        metaContext.elements.some(
+          (e) => "text" in e && e.text.includes("Tips"),
+        ),
+      ).toBeTruthy();
     });
   });
 
@@ -562,8 +697,12 @@ describe("SNS Reporter", () => {
       });
       expect(blocks.length).toBeGreaterThanOrEqual(4);
       expect(blocks[0].text.text).toContain("画像生成完了");
-      const actions = blocks.find((b: any) => b.type === "actions");
-      const publishBtn = actions.elements.find((e: any) => e.action_id === "sns_publish");
+      const actions = blocks.find(
+        (b: KnownBlock) => b.type === "actions",
+      ) as ActionsBlock;
+      const publishBtn = actions.elements.find(
+        (e) => e.action_id === "sns_publish",
+      ) as Button | undefined;
       expect(publishBtn).toBeTruthy();
     });
   });

@@ -4,29 +4,38 @@ import * as calendarClient from "./calendar-client.js";
 
 vi.mock("./calendar-client.js", () => ({
   createEvent: vi.fn().mockResolvedValue({
-    id: "evt1",
-    title: "Test",
-    start: "2026-03-15T10:00:00+09:00",
-    end: "2026-03-15T11:00:00+09:00",
-    htmlLink: "",
-  }),
-  listEvents: vi.fn().mockResolvedValue([
-    {
+    success: true,
+    data: {
       id: "evt1",
       title: "Test",
       start: "2026-03-15T10:00:00+09:00",
       end: "2026-03-15T11:00:00+09:00",
       htmlLink: "",
     },
-  ]),
-  updateEvent: vi.fn().mockResolvedValue({
-    id: "evt1",
-    title: "Updated",
-    start: "2026-03-15T10:00:00+09:00",
-    end: "2026-03-15T11:00:00+09:00",
-    htmlLink: "",
   }),
-  deleteEvent: vi.fn().mockResolvedValue(undefined),
+  listEvents: vi.fn().mockResolvedValue({
+    success: true,
+    data: [
+      {
+        id: "evt1",
+        title: "Test",
+        start: "2026-03-15T10:00:00+09:00",
+        end: "2026-03-15T11:00:00+09:00",
+        htmlLink: "",
+      },
+    ],
+  }),
+  updateEvent: vi.fn().mockResolvedValue({
+    success: true,
+    data: {
+      id: "evt1",
+      title: "Updated",
+      start: "2026-03-15T10:00:00+09:00",
+      end: "2026-03-15T11:00:00+09:00",
+      htmlLink: "",
+    },
+  }),
+  deleteEvent: vi.fn().mockResolvedValue({ success: true, data: undefined }),
 }));
 
 describe("CalendarMcpServer", () => {
@@ -118,9 +127,9 @@ describe("CalendarMcpServer", () => {
     });
 
     it("should throw error for unknown tool", async () => {
-      await expect(
-        server.handleToolCall("unknown_tool", {}),
-      ).rejects.toThrow("Unknown tool: unknown_tool");
+      await expect(server.handleToolCall("unknown_tool", {})).rejects.toThrow(
+        "Unknown tool: unknown_tool",
+      );
     });
   });
 });

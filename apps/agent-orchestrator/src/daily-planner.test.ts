@@ -236,23 +236,29 @@ describe("daily-planner", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockListEvents.mockResolvedValue([
-        {
-          id: "event-1",
-          title: "Standup",
-          start: "2026-02-08T10:00:00+09:00",
-          end: "2026-02-08T10:30:00+09:00",
-          location: "Room A",
-        },
-        {
-          id: "event-2",
-          title: "Lunch",
-          start: "2026-02-08T12:00:00+09:00",
-          end: "",
-          location: "",
-        },
-      ]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockListEvents.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "event-1",
+            title: "Standup",
+            start: "2026-02-08T10:00:00+09:00",
+            end: "2026-02-08T10:30:00+09:00",
+            location: "Room A",
+          },
+          {
+            id: "event-2",
+            title: "Lunch",
+            start: "2026-02-08T12:00:00+09:00",
+            end: "",
+            location: "",
+          },
+        ],
+      });
 
       const result = await collectCalendarEvents("2026-02-08");
 
@@ -297,7 +303,10 @@ describe("daily-planner", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
       mockListEvents.mockRejectedValue(new Error("Calendar API error"));
 
       const result = await collectCalendarEvents("2026-02-08");
@@ -494,16 +503,22 @@ describe("daily-planner", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockListEvents.mockResolvedValue([
-        {
-          id: "event-1",
-          title: "Standup",
-          start: "2026-02-08T10:00:00+09:00",
-          end: "2026-02-08T10:30:00+09:00",
-          location: "Room A",
-        },
-      ]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockListEvents.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "event-1",
+            title: "Standup",
+            start: "2026-02-08T10:00:00+09:00",
+            end: "2026-02-08T10:30:00+09:00",
+            location: "Room A",
+          },
+        ],
+      });
 
       (db.select as ReturnType<typeof vi.fn>).mockImplementation(() => ({
         from: vi.fn().mockImplementation(() => ({
@@ -1442,8 +1457,11 @@ describe("daily-planner", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockListEvents.mockResolvedValue([]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockListEvents.mockResolvedValue({ success: true, data: [] });
 
       // Mock emails + tasks + todos (empty) + findExistingCanvasId (no existing canvas)
       (db.select as ReturnType<typeof vi.fn>).mockImplementation(() => ({

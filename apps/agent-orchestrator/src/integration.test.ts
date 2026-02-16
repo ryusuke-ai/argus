@@ -33,6 +33,7 @@ vi.mock("@argus/agent-core", () => ({
   formatLessonsForPrompt: vi.fn(() => ""),
   scanOutputDir: vi.fn(() => new Map()),
   findNewArtifacts: vi.fn(() => []),
+  fireAndForget: vi.fn(),
   createDBObservationHooks: vi.fn(() => ({
     onPreToolUse: vi.fn(),
     onPostToolUse: vi.fn(),
@@ -77,17 +78,48 @@ describe("Integration: Agent Executor", () => {
     { timeout: 30000 },
     async () => {
       // Setup: Mock agent found with valid prompt (handles both agent lookup and lessons query)
-      (db.select as ReturnType<typeof vi.fn>).mockImplementation((...args: unknown[]) => {
-        if (args.length > 0) {
-          return { from: vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }) }) };
-        }
-        return { from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([
-          { id: mockAgentId, name: "TestAgent", type: "collector", config: { prompt: "Test prompt for integration test" }, enabled: true },
-        ]) }) }) };
-      });
+      (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+        (...args: unknown[]) => {
+          if (args.length > 0) {
+            return {
+              from: vi
+                .fn()
+                .mockReturnValue({
+                  orderBy: vi
+                    .fn()
+                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+                }),
+            };
+          }
+          return {
+            from: vi
+              .fn()
+              .mockReturnValue({
+                where: vi
+                  .fn()
+                  .mockReturnValue({
+                    limit: vi
+                      .fn()
+                      .mockResolvedValue([
+                        {
+                          id: mockAgentId,
+                          name: "TestAgent",
+                          type: "collector",
+                          config: {
+                            prompt: "Test prompt for integration test",
+                          },
+                          enabled: true,
+                        },
+                      ]),
+                  }),
+              }),
+          };
+        },
+      );
 
       // Setup: Mock insert for execution record then session record
-      const insertMock = vi.fn()
+      const insertMock = vi
+        .fn()
         .mockReturnValueOnce({
           values: vi.fn().mockReturnValue({
             returning: vi
@@ -180,17 +212,46 @@ describe("Integration: Agent Executor", () => {
     { timeout: 30000 },
     async () => {
       // Setup: Mock agent found (handles both agent lookup and lessons query)
-      (db.select as ReturnType<typeof vi.fn>).mockImplementation((...args: unknown[]) => {
-        if (args.length > 0) {
-          return { from: vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }) }) };
-        }
-        return { from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([
-          { id: mockAgentId, name: "FailingAgent", type: "executor", config: { prompt: "This will fail" }, enabled: true },
-        ]) }) }) };
-      });
+      (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+        (...args: unknown[]) => {
+          if (args.length > 0) {
+            return {
+              from: vi
+                .fn()
+                .mockReturnValue({
+                  orderBy: vi
+                    .fn()
+                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+                }),
+            };
+          }
+          return {
+            from: vi
+              .fn()
+              .mockReturnValue({
+                where: vi
+                  .fn()
+                  .mockReturnValue({
+                    limit: vi
+                      .fn()
+                      .mockResolvedValue([
+                        {
+                          id: mockAgentId,
+                          name: "FailingAgent",
+                          type: "executor",
+                          config: { prompt: "This will fail" },
+                          enabled: true,
+                        },
+                      ]),
+                  }),
+              }),
+          };
+        },
+      );
 
       // Setup: Mock insert for execution record then session record (×2 for retry)
-      const insertMock = vi.fn()
+      const insertMock = vi
+        .fn()
         .mockReturnValueOnce({
           values: vi.fn().mockReturnValue({
             returning: vi
@@ -209,9 +270,7 @@ describe("Integration: Agent Executor", () => {
           values: vi.fn().mockReturnValue({
             returning: vi
               .fn()
-              .mockResolvedValue([
-                { id: "retry-exec", startedAt: new Date() },
-              ]),
+              .mockResolvedValue([{ id: "retry-exec", startedAt: new Date() }]),
           }),
         })
         .mockReturnValueOnce({
@@ -268,17 +327,46 @@ describe("Integration: Agent Executor", () => {
     { timeout: 30000 },
     async () => {
       // Setup: Mock agent found (handles both agent lookup and lessons query)
-      (db.select as ReturnType<typeof vi.fn>).mockImplementation((...args: unknown[]) => {
-        if (args.length > 0) {
-          return { from: vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }) }) };
-        }
-        return { from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([
-          { id: mockAgentId, name: "TimedAgent", type: "collector", config: { prompt: "Time me" }, enabled: true },
-        ]) }) }) };
-      });
+      (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+        (...args: unknown[]) => {
+          if (args.length > 0) {
+            return {
+              from: vi
+                .fn()
+                .mockReturnValue({
+                  orderBy: vi
+                    .fn()
+                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+                }),
+            };
+          }
+          return {
+            from: vi
+              .fn()
+              .mockReturnValue({
+                where: vi
+                  .fn()
+                  .mockReturnValue({
+                    limit: vi
+                      .fn()
+                      .mockResolvedValue([
+                        {
+                          id: mockAgentId,
+                          name: "TimedAgent",
+                          type: "collector",
+                          config: { prompt: "Time me" },
+                          enabled: true,
+                        },
+                      ]),
+                  }),
+              }),
+          };
+        },
+      );
 
       // Setup: Mock insert for execution record then session record
-      const insertMock = vi.fn()
+      const insertMock = vi
+        .fn()
         .mockReturnValueOnce({
           values: vi.fn().mockReturnValue({
             returning: vi
@@ -342,14 +430,42 @@ describe("Integration: Agent Executor", () => {
     { timeout: 30000 },
     async () => {
       // Setup: Mock agent found but without prompt (handles both agent lookup and lessons query)
-      (db.select as ReturnType<typeof vi.fn>).mockImplementation((...args: unknown[]) => {
-        if (args.length > 0) {
-          return { from: vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }) }) };
-        }
-        return { from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([
-          { id: mockAgentId, name: "MisconfiguredAgent", type: "collector", config: {}, enabled: true },
-        ]) }) }) };
-      });
+      (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+        (...args: unknown[]) => {
+          if (args.length > 0) {
+            return {
+              from: vi
+                .fn()
+                .mockReturnValue({
+                  orderBy: vi
+                    .fn()
+                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+                }),
+            };
+          }
+          return {
+            from: vi
+              .fn()
+              .mockReturnValue({
+                where: vi
+                  .fn()
+                  .mockReturnValue({
+                    limit: vi
+                      .fn()
+                      .mockResolvedValue([
+                        {
+                          id: mockAgentId,
+                          name: "MisconfiguredAgent",
+                          type: "collector",
+                          config: {},
+                          enabled: true,
+                        },
+                      ]),
+                  }),
+              }),
+          };
+        },
+      );
 
       // Setup: Mock execution record creation
       const insertMock = vi.fn().mockReturnValue({
@@ -397,17 +513,46 @@ describe("Integration: Agent Executor", () => {
     { timeout: 30000 },
     async () => {
       // Setup: Mock agent found (handles both agent lookup and lessons query)
-      (db.select as ReturnType<typeof vi.fn>).mockImplementation((...args: unknown[]) => {
-        if (args.length > 0) {
-          return { from: vi.fn().mockReturnValue({ orderBy: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }) }) };
-        }
-        return { from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([
-          { id: mockAgentId, name: "ToolUsingAgent", type: "executor", config: { prompt: "Use some tools" }, enabled: true },
-        ]) }) }) };
-      });
+      (db.select as ReturnType<typeof vi.fn>).mockImplementation(
+        (...args: unknown[]) => {
+          if (args.length > 0) {
+            return {
+              from: vi
+                .fn()
+                .mockReturnValue({
+                  orderBy: vi
+                    .fn()
+                    .mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+                }),
+            };
+          }
+          return {
+            from: vi
+              .fn()
+              .mockReturnValue({
+                where: vi
+                  .fn()
+                  .mockReturnValue({
+                    limit: vi
+                      .fn()
+                      .mockResolvedValue([
+                        {
+                          id: mockAgentId,
+                          name: "ToolUsingAgent",
+                          type: "executor",
+                          config: { prompt: "Use some tools" },
+                          enabled: true,
+                        },
+                      ]),
+                  }),
+              }),
+          };
+        },
+      );
 
       // Setup: Mock insert for execution record then session record
-      const insertMock = vi.fn()
+      const insertMock = vi
+        .fn()
         .mockReturnValueOnce({
           values: vi.fn().mockReturnValue({
             returning: vi

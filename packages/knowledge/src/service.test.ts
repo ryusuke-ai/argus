@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KnowledgeServiceImpl } from "./service.js";
 import type { Knowledge } from "@argus/db";
-import { PermissionError } from "./types.js";
 
 // Mock query result holder
 let mockQueryResult: any = [];
@@ -47,6 +46,7 @@ vi.mock("@argus/db", () => {
   return {
     db: mockDb,
     knowledges: mockKnowledges,
+    escapeIlike: (value: string) => value.replace(/[%_\\]/g, "\\$&"),
   };
 });
 
@@ -122,7 +122,10 @@ describe("KnowledgeService", () => {
       );
 
       expect(db.insert).toHaveBeenCalled();
-      expect(result).toEqual(mockKnowledge);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(mockKnowledge);
+      }
     });
 
     it("should allow update operation", async () => {
@@ -158,7 +161,10 @@ describe("KnowledgeService", () => {
 
       expect(db.select).toHaveBeenCalled();
       expect(db.update).toHaveBeenCalled();
-      expect(result.name).toBe("New Name");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.name).toBe("New Name");
+      }
     });
 
     it("should allow archive operation", async () => {
@@ -175,8 +181,9 @@ describe("KnowledgeService", () => {
       // Mock getById - it uses limit
       vi.mocked(db.limit).mockResolvedValueOnce([existingKnowledge]);
 
-      await service.archive("1");
+      const result = await service.archive("1");
 
+      expect(result.success).toBe(true);
       expect(db.select).toHaveBeenCalled();
       expect(db.delete).toHaveBeenCalled();
     });
@@ -204,24 +211,37 @@ describe("KnowledgeService", () => {
       expect(result).toEqual(mockKnowledges);
     });
 
-    it("should deny add operation", async () => {
+    it("should deny add operation with success: false", async () => {
       const service = new KnowledgeServiceImpl("executor");
 
-      await expect(service.add("New Knowledge", "New content")).rejects.toThrow(
-        PermissionError,
-      );
+      const result = await service.add("New Knowledge", "New content");
 
-      await expect(service.add("New Knowledge", "New content")).rejects.toThrow(
-        "Operation 'write' requires collector role",
-      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Operation 'write' requires collector role");
+      }
     });
 
-    it("should deny update operation", async () => {
+    it("should deny update operation with success: false", async () => {
       const service = new KnowledgeServiceImpl("executor");
 
-      await expect(service.update("1", { name: "New Name" })).rejects.toThrow(
-        PermissionError,
-      );
+      const result = await service.update("1", { name: "New Name" });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Operation 'write' requires collector role");
+      }
+    });
+
+    it("should deny archive operation with success: false", async () => {
+      const service = new KnowledgeServiceImpl("executor");
+
+      const result = await service.archive("1");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Operation 'write' requires collector role");
+      }
     });
   });
 });

@@ -3,12 +3,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // DB モック
 const mockSelect = vi.fn();
 const mockInsert = vi.fn();
-const mockUpdate = vi.fn();
 const mockFrom = vi.fn();
 const mockWhere = vi.fn();
 const mockLimit = vi.fn();
-const mockSet = vi.fn();
 const mockValues = vi.fn();
+const mockOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@argus/db", () => ({
   db: {
@@ -37,20 +36,8 @@ vi.mock("@argus/db", () => ({
       return {
         values: (vals: unknown) => {
           mockValues(vals);
-          return Promise.resolve();
-        },
-      };
-    },
-    update: (table: unknown) => {
-      mockUpdate(table);
-      return {
-        set: (vals: unknown) => {
-          mockSet(vals);
           return {
-            where: (condition: unknown) => {
-              mockWhere(condition);
-              return Promise.resolve();
-            },
+            onConflictDoUpdate: mockOnConflictDoUpdate,
           };
         },
       };
@@ -120,8 +107,8 @@ describe("auth", () => {
           }),
       });
 
-      // DB select returns empty (new token)
-      mockSelect.mockResolvedValueOnce([]);
+      // saveTokens: upsert
+      mockOnConflictDoUpdate.mockResolvedValueOnce(undefined);
 
       const result = await exchangeCodeForTokens("test-code");
 
@@ -218,8 +205,8 @@ describe("auth", () => {
           }),
       });
 
-      // DB select for saveTokens (upsert check)
-      mockSelect.mockResolvedValueOnce([{ openId: "oid-1" }]);
+      // saveTokens: upsert (no select needed)
+      mockOnConflictDoUpdate.mockResolvedValueOnce(undefined);
 
       const result = await refreshTokenIfNeeded();
 
@@ -233,8 +220,6 @@ describe("auth", () => {
     it("should insert new tokens when none exist", async () => {
       const { saveTokens } = await import("./auth.js");
 
-      mockSelect.mockResolvedValueOnce([]);
-
       await saveTokens({
         accessToken: "at",
         refreshToken: "rt",
@@ -245,12 +230,11 @@ describe("auth", () => {
 
       expect(mockInsert).toHaveBeenCalled();
       expect(mockValues).toHaveBeenCalled();
+      expect(mockOnConflictDoUpdate).toHaveBeenCalled();
     });
 
-    it("should update existing tokens", async () => {
+    it("should upsert existing tokens", async () => {
       const { saveTokens } = await import("./auth.js");
-
-      mockSelect.mockResolvedValueOnce([{ openId: "existing-oid" }]);
 
       await saveTokens({
         accessToken: "new-at",
@@ -260,8 +244,13 @@ describe("auth", () => {
         scopes: "video.upload",
       });
 
-      expect(mockUpdate).toHaveBeenCalled();
-      expect(mockSet).toHaveBeenCalled();
+      expect(mockInsert).toHaveBeenCalled();
+      expect(mockValues).toHaveBeenCalled();
+      expect(mockOnConflictDoUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: "open_id",
+        }),
+      );
     });
   });
 

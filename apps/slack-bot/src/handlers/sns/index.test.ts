@@ -53,6 +53,20 @@ vi.mock("./ui/validator.js", () => ({
   validateXPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
   validateThread: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
   validateArticle: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateThreadsPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateInstagramPost: vi.fn(() => ({
+    valid: true,
+    warnings: [],
+    errors: [],
+  })),
+  validateTikTokMeta: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateYouTubeMeta: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validatePodcastEpisode: vi.fn(() => ({
+    valid: true,
+    warnings: [],
+    errors: [],
+  })),
+  validateGitHubRepo: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
 }));
 
 vi.mock("./scheduling/scheduler.js", () => ({

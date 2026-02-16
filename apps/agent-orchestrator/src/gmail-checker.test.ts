@@ -132,8 +132,11 @@ describe("gmail-checker", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockFetchUnreadMessages.mockResolvedValue([]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockFetchUnreadMessages.mockResolvedValue({ success: true, data: [] });
 
       await checkGmail();
 
@@ -147,18 +150,24 @@ describe("gmail-checker", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockFetchUnreadMessages.mockResolvedValue([
-        {
-          id: "msg-1",
-          threadId: "thread-1",
-          from: "sender@example.com",
-          subject: "Test",
-          snippet: "Test",
-          body: "Test body",
-          receivedAt: new Date(),
-        },
-      ]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockFetchUnreadMessages.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "msg-1",
+            threadId: "thread-1",
+            from: "sender@example.com",
+            subject: "Test",
+            snippet: "Test",
+            body: "Test body",
+            receivedAt: new Date(),
+          },
+        ],
+      });
 
       // DB returns existing record (duplicate)
       (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -185,18 +194,24 @@ describe("gmail-checker", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockFetchUnreadMessages.mockResolvedValue([
-        {
-          id: "msg-2",
-          threadId: "thread-2",
-          from: "human@example.com",
-          subject: "Meeting tomorrow?",
-          snippet: "Can we meet?",
-          body: "Can we meet tomorrow at 3pm?",
-          receivedAt: new Date(),
-        },
-      ]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockFetchUnreadMessages.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "msg-2",
+            threadId: "thread-2",
+            from: "human@example.com",
+            subject: "Meeting tomorrow?",
+            snippet: "Can we meet?",
+            body: "Can we meet tomorrow at 3pm?",
+            receivedAt: new Date(),
+          },
+        ],
+      });
 
       // No existing record
       (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -264,18 +279,24 @@ describe("gmail-checker", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockFetchUnreadMessages.mockResolvedValue([
-        {
-          id: "msg-3",
-          threadId: "thread-3",
-          from: "newsletter@example.com",
-          subject: "Weekly digest",
-          snippet: "News",
-          body: "Weekly newsletter content",
-          receivedAt: new Date(),
-        },
-      ]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockFetchUnreadMessages.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "msg-3",
+            threadId: "thread-3",
+            from: "newsletter@example.com",
+            subject: "Weekly digest",
+            snippet: "News",
+            body: "Weekly newsletter content",
+            receivedAt: new Date(),
+          },
+        ],
+      });
 
       (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -328,18 +349,24 @@ describe("gmail-checker", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockFetchUnreadMessages.mockResolvedValue([
-        {
-          id: "msg-fail",
-          threadId: "thread-fail",
-          from: "test@example.com",
-          subject: "Test",
-          snippet: "Test",
-          body: "Test body",
-          receivedAt: new Date(),
-        },
-      ]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockFetchUnreadMessages.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "msg-fail",
+            threadId: "thread-fail",
+            from: "test@example.com",
+            subject: "Test",
+            snippet: "Test",
+            body: "Test body",
+            receivedAt: new Date(),
+          },
+        ],
+      });
 
       (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -371,19 +398,25 @@ describe("gmail-checker", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
       const receivedAt = new Date();
-      mockFetchUnreadMessages.mockResolvedValue([
-        {
-          id: "msg-skip",
-          threadId: "thread-skip",
-          from: "noreply@example.com",
-          subject: "Your order has shipped",
-          snippet: "Shipped",
-          body: "Your order is on the way",
-          receivedAt,
-        },
-      ]);
+      mockFetchUnreadMessages.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "msg-skip",
+            threadId: "thread-skip",
+            from: "noreply@example.com",
+            subject: "Your order has shipped",
+            snippet: "Shipped",
+            body: "Your order is on the way",
+            receivedAt,
+          },
+        ],
+      });
 
       // Mock insert without returning (skipped emails don't need returning)
       (db.insert as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -415,18 +448,24 @@ describe("gmail-checker", () => {
         refreshToken: "refresh",
         expiry: new Date(Date.now() + 3600000),
       });
-      mockRefreshTokenIfNeeded.mockResolvedValue("token");
-      mockFetchUnreadMessages.mockResolvedValue([
-        {
-          id: "msg-urgent",
-          threadId: "thread-urgent",
-          from: "no-reply@google.com",
-          subject: "セキュリティ警告: 不正なログインが検出されました",
-          snippet: "不正なログイン",
-          body: "お使いのアカウントに不審なログインがありました。",
-          receivedAt: new Date(),
-        },
-      ]);
+      mockRefreshTokenIfNeeded.mockResolvedValue({
+        success: true,
+        data: "token",
+      });
+      mockFetchUnreadMessages.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: "msg-urgent",
+            threadId: "thread-urgent",
+            from: "no-reply@google.com",
+            subject: "セキュリティ警告: 不正なログインが検出されました",
+            snippet: "不正なログイン",
+            body: "お使いのアカウントに不審なログインがありました。",
+            receivedAt: new Date(),
+          },
+        ],
+      });
 
       (db.insert as ReturnType<typeof vi.fn>).mockReturnValue({
         values: vi.fn().mockReturnValue({

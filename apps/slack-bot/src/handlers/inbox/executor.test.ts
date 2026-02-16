@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
   resume: vi.fn(),
+  createMcpServers: vi.fn().mockReturnValue({}),
 }));
 
 describe("InboxExecutor", () => {

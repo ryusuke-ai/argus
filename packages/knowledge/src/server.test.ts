@@ -1,35 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock @argus/db before importing server
-vi.mock("@argus/db", () => {
-  const mockDb = {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue([]),
-  };
-  return {
-    db: mockDb,
-    lessons: {
-      errorPattern: "error_pattern",
-      reflection: "reflection",
-      resolution: "resolution",
-      severity: "severity",
-      createdAt: "created_at",
-    },
-  };
-});
-
-vi.mock("drizzle-orm", () => ({
-  desc: vi.fn((col) => col),
-  ilike: vi.fn((col, val) => ({ col, val })),
-}));
-
 import { KnowledgeMcpServer } from "./server.js";
 import type { KnowledgeService } from "./types.js";
 import type { Knowledge } from "@argus/db";
-import { db } from "@argus/db";
 
 describe("KnowledgeMcpServer", () => {
   const mockKnowledge: Knowledge = {
@@ -45,9 +18,10 @@ describe("KnowledgeMcpServer", () => {
     list: vi.fn().mockResolvedValue([mockKnowledge]),
     getById: vi.fn().mockResolvedValue(mockKnowledge),
     search: vi.fn().mockResolvedValue([mockKnowledge]),
-    add: vi.fn().mockResolvedValue(mockKnowledge),
-    update: vi.fn().mockResolvedValue(mockKnowledge),
-    archive: vi.fn().mockResolvedValue(undefined),
+    searchLessons: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue({ success: true, data: mockKnowledge }),
+    update: vi.fn().mockResolvedValue({ success: true, data: mockKnowledge }),
+    archive: vi.fn().mockResolvedValue({ success: true, data: undefined }),
   });
 
   describe("Collector role", () => {
@@ -98,14 +72,20 @@ describe("KnowledgeMcpServer", () => {
       });
 
       expect(mockService.search).toHaveBeenCalledWith("test");
-      expect(result).toEqual([mockKnowledge]);
+      expect(result).toEqual({
+        success: true,
+        data: [mockKnowledge],
+      });
     });
 
     it("should execute knowledge_list tool", async () => {
       const result = await server.handleToolCall("knowledge_list", {});
 
       expect(mockService.list).toHaveBeenCalled();
-      expect(result).toEqual([mockKnowledge]);
+      expect(result).toEqual({
+        success: true,
+        data: [mockKnowledge],
+      });
     });
 
     it("should execute knowledge_add tool", async () => {
@@ -120,7 +100,7 @@ describe("KnowledgeMcpServer", () => {
         "New content",
         "New description",
       );
-      expect(result).toEqual(mockKnowledge);
+      expect(result).toEqual({ success: true, data: mockKnowledge });
     });
 
     it("should execute knowledge_update tool", async () => {
@@ -135,7 +115,7 @@ describe("KnowledgeMcpServer", () => {
         content: "Updated content",
         description: undefined,
       });
-      expect(result).toEqual(mockKnowledge);
+      expect(result).toEqual({ success: true, data: mockKnowledge });
     });
 
     it("should execute knowledge_archive tool", async () => {
@@ -144,13 +124,16 @@ describe("KnowledgeMcpServer", () => {
       });
 
       expect(mockService.archive).toHaveBeenCalledWith("test-id");
-      expect(result).toBeUndefined();
+      expect(result).toEqual({ success: true, data: undefined });
     });
 
-    it("should throw error for unknown tool", async () => {
-      await expect(server.handleToolCall("unknown_tool", {})).rejects.toThrow(
-        "Unknown tool: unknown_tool",
-      );
+    it("should return error for unknown tool", async () => {
+      const result = await server.handleToolCall("unknown_tool", {});
+
+      expect(result).toEqual({
+        success: false,
+        error: "Unknown tool: unknown_tool",
+      });
     });
 
     it("should execute search_lessons tool", async () => {
@@ -162,19 +145,19 @@ describe("KnowledgeMcpServer", () => {
         createdAt: new Date("2026-01-15T10:00:00Z"),
       };
 
-      // Mock the db chain for search_lessons
-      const limitMock = vi.fn().mockResolvedValue([mockLesson]);
-      const orderByMock = vi.fn().mockReturnValue({ limit: limitMock });
-      const whereMock = vi.fn().mockReturnValue({ orderBy: orderByMock });
-      const fromMock = vi.fn().mockReturnValue({ where: whereMock });
-      const selectMock = vi.fn().mockReturnValue({ from: fromMock });
-      (db.select as ReturnType<typeof vi.fn>).mockImplementation(selectMock);
+      (mockService.searchLessons as ReturnType<typeof vi.fn>).mockResolvedValue(
+        [mockLesson],
+      );
 
       const result = await server.handleToolCall("search_lessons", {
         query: "Gmail",
       });
 
-      expect(result).toEqual([mockLesson]);
+      expect(mockService.searchLessons).toHaveBeenCalledWith("Gmail");
+      expect(result).toEqual({
+        success: true,
+        data: [mockLesson],
+      });
     });
   });
 });

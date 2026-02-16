@@ -26,6 +26,9 @@ vi.mock("node:util", () => ({
 // Mock @argus/agent-core
 vi.mock("@argus/agent-core", () => ({
   query: mockQuery,
+  fireAndForget: (promise: Promise<unknown>, _ctx?: string) => {
+    promise.catch(() => {});
+  },
 }));
 
 // Mock @argus/knowledge
@@ -1331,9 +1334,12 @@ Another random line`;
   describe("saveToKnowledge", () => {
     it("should save report to knowledge base", async () => {
       mockKnowledgeAdd.mockResolvedValue({
-        id: "k-1",
-        name: "test",
-        content: "test",
+        success: true,
+        data: {
+          id: "k-1",
+          name: "test",
+          content: "test",
+        },
       });
 
       await saveToKnowledge(makeReport());
@@ -1350,9 +1356,12 @@ Another random line`;
 
     it("should include remediation details in knowledge", async () => {
       mockKnowledgeAdd.mockResolvedValue({
-        id: "k-1",
-        name: "test",
-        content: "test",
+        success: true,
+        data: {
+          id: "k-1",
+          name: "test",
+          content: "test",
+        },
       });
 
       const report = makeReport({

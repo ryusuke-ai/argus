@@ -27,7 +27,8 @@ vi.mock("googleapis", () => {
 // Mock auth module
 vi.mock("./auth.js", () => ({
   getAuthenticatedClient: vi.fn().mockResolvedValue({
-    credentials: { access_token: "mock-token" },
+    success: true,
+    data: { credentials: { access_token: "mock-token" } },
   }),
 }));
 
@@ -109,8 +110,11 @@ describe("gmail-client", () => {
         },
       );
 
-      const messages = await fetchUnreadMessages();
+      const result = await fetchUnreadMessages();
 
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      const messages = result.data;
       expect(messages).toHaveLength(2);
       expect(messages[0].id).toBe("msg-1");
       expect(messages[0].threadId).toBe("thread-msg-1");
@@ -132,8 +136,11 @@ describe("gmail-client", () => {
         data: { messages: [] },
       });
 
-      const messages = await fetchUnreadMessages();
-      expect(messages).toEqual([]);
+      const result = await fetchUnreadMessages();
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual([]);
+      }
     });
 
     it("should return empty array when messages is null", async () => {
@@ -141,22 +148,29 @@ describe("gmail-client", () => {
         data: {},
       });
 
-      const messages = await fetchUnreadMessages();
-      expect(messages).toEqual([]);
+      const result = await fetchUnreadMessages();
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual([]);
+      }
     });
   });
 
   describe("sendReply", () => {
     it("should send a reply with correct RFC 2822 format", async () => {
-      gmailMock.users.messages.send.mockResolvedValue({ data: {} });
+      gmailMock.users.messages.send.mockResolvedValue({
+        data: { id: "sent-1" },
+      });
 
-      await sendReply(
+      const result = await sendReply(
         "msg-123",
         "thread-456",
         "recipient@example.com",
         "Test Subject",
         "Thank you for your email.",
       );
+
+      expect(result.success).toBe(true);
 
       expect(gmailMock.users.messages.send).toHaveBeenCalledTimes(1);
 
@@ -181,15 +195,19 @@ describe("gmail-client", () => {
     });
 
     it("should strip existing Re: prefix from subject", async () => {
-      gmailMock.users.messages.send.mockResolvedValue({ data: {} });
+      gmailMock.users.messages.send.mockResolvedValue({
+        data: { id: "sent-2" },
+      });
 
-      await sendReply(
+      const result = await sendReply(
         "msg-123",
         "thread-456",
         "recipient@example.com",
         "Re: Already a reply",
         "Body text",
       );
+
+      expect(result.success).toBe(true);
 
       const callArgs = gmailMock.users.messages.send.mock.calls[0][0];
       const rawDecoded = Buffer.from(
@@ -208,8 +226,9 @@ describe("gmail-client", () => {
     it("should remove UNREAD label", async () => {
       gmailMock.users.messages.modify.mockResolvedValue({ data: {} });
 
-      await markAsRead("msg-789");
+      const result = await markAsRead("msg-789");
 
+      expect(result.success).toBe(true);
       expect(gmailMock.users.messages.modify).toHaveBeenCalledWith({
         userId: "me",
         id: "msg-789",

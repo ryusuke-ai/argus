@@ -19,6 +19,7 @@ vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
   scanOutputDir: vi.fn(() => new Map()),
   findNewArtifacts: vi.fn(() => []),
+  fireAndForget: vi.fn(),
   createDBObservationHooks: vi.fn(() => ({
     onPreToolUse: vi.fn(),
     onPostToolUse: vi.fn(),

@@ -36,8 +36,15 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((col: unknown, val: unknown) => ({ col, val })),
 }));
 
+/** Slack Bolt アクションハンドラーの引数型 */
+interface ActionHandlerArgs {
+  ack: () => void;
+  body: Record<string, unknown>;
+  client: Record<string, unknown>;
+}
+
 describe("Daily Plan Action Handlers", () => {
-  let actionHandler: (args: any) => Promise<void>;
+  let actionHandler: (args: ActionHandlerArgs) => Promise<void>;
   let app: { action: Mock };
 
   beforeEach(async () => {
@@ -49,9 +56,14 @@ describe("Daily Plan Action Handlers", () => {
     app = appModule.app as unknown as { action: Mock };
 
     // Capture handler when registered
-    (app.action as Mock).mockImplementation((_pattern: RegExp, handler: any) => {
-      actionHandler = handler;
-    });
+    (app.action as Mock).mockImplementation(
+      (
+        _pattern: RegExp,
+        handler: (args: ActionHandlerArgs) => Promise<void>,
+      ) => {
+        actionHandler = handler;
+      },
+    );
 
     // Reset DB mocks
     mockUpdateWhere.mockReset().mockResolvedValue(undefined);
@@ -65,7 +77,10 @@ describe("Daily Plan Action Handlers", () => {
 
   it("should register 1 action handler with regex pattern", () => {
     expect(app.action).toHaveBeenCalledTimes(1);
-    expect(app.action).toHaveBeenCalledWith(expect.any(RegExp), expect.any(Function));
+    expect(app.action).toHaveBeenCalledWith(
+      expect.any(RegExp),
+      expect.any(Function),
+    );
   });
 
   describe("todo type", () => {
@@ -173,7 +188,7 @@ describe("Daily Plan Action Handlers", () => {
   });
 
   describe("email type", () => {
-    it("should update gmail_messages status to resolved", async () => {
+    it("should update gmail_messages status to dismissed", async () => {
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -202,7 +217,7 @@ describe("Daily Plan Action Handlers", () => {
 
       expect(mockAck).toHaveBeenCalled();
       expect(mockUpdateFn).toHaveBeenCalled();
-      expect(mockUpdateSet).toHaveBeenCalledWith({ status: "resolved" });
+      expect(mockUpdateSet).toHaveBeenCalledWith({ status: "dismissed" });
       expect(mockUpdateWhere).toHaveBeenCalled();
     });
   });
@@ -271,7 +286,13 @@ describe("Daily Plan Action Handlers", () => {
                     type: "checkboxes",
                     action_id: "dp_check_todo_123",
                     options: [
-                      { text: { type: "mrkdwn", text: "Buy milk" }, value: JSON.stringify({ type: "todo", id: "todo-uuid-1" }) },
+                      {
+                        text: { type: "mrkdwn", text: "Buy milk" },
+                        value: JSON.stringify({
+                          type: "todo",
+                          id: "todo-uuid-1",
+                        }),
+                      },
                     ],
                   },
                 ],
@@ -299,14 +320,21 @@ describe("Daily Plan Action Handlers", () => {
     it("should not replace unrelated actions block", async () => {
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
-      const checkboxBlock = (actionId: string, label: string, value: object) => ({
+      const checkboxBlock = (
+        actionId: string,
+        label: string,
+        value: object,
+      ) => ({
         type: "actions",
         elements: [
           {
             type: "checkboxes",
             action_id: actionId,
             options: [
-              { text: { type: "mrkdwn", text: label }, value: JSON.stringify(value) },
+              {
+                text: { type: "mrkdwn", text: label },
+                value: JSON.stringify(value),
+              },
             ],
           },
         ],
@@ -328,8 +356,14 @@ describe("Daily Plan Action Handlers", () => {
           message: {
             ts: "1234567890.123456",
             blocks: [
-              checkboxBlock("dp_check_todo_123", "Task A", { type: "todo", id: "todo-uuid-1" }),
-              checkboxBlock("dp_check_todo_456", "Task B", { type: "todo", id: "todo-uuid-2" }),
+              checkboxBlock("dp_check_todo_123", "Task A", {
+                type: "todo",
+                id: "todo-uuid-1",
+              }),
+              checkboxBlock("dp_check_todo_456", "Task B", {
+                type: "todo",
+                id: "todo-uuid-2",
+              }),
             ],
           },
         },
@@ -344,7 +378,10 @@ describe("Daily Plan Action Handlers", () => {
       });
       // Second actions block should remain unchanged
       expect(call.blocks[1]).toEqual(
-        checkboxBlock("dp_check_todo_456", "Task B", { type: "todo", id: "todo-uuid-2" }),
+        checkboxBlock("dp_check_todo_456", "Task B", {
+          type: "todo",
+          id: "todo-uuid-2",
+        }),
       );
     });
 
@@ -366,7 +403,10 @@ describe("Daily Plan Action Handlers", () => {
           message: {
             ts: "1234567890.123456",
             blocks: [
-              { type: "section", text: { type: "mrkdwn", text: "読書をToDoリストに追加" } },
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: "読書をToDoリストに追加" },
+              },
               {
                 type: "actions",
                 elements: [{ type: "button", action_id: "dp_check_todo_123" }],
@@ -381,7 +421,10 @@ describe("Daily Plan Action Handlers", () => {
       const call = mockClient.chat.update.mock.calls[0][0];
       // Preceding section + button actions → merged into single strikethrough
       expect(call.blocks).toEqual([
-        { type: "section", text: { type: "mrkdwn", text: "~読書をToDoリストに追加~" } },
+        {
+          type: "section",
+          text: { type: "mrkdwn", text: "~読書をToDoリストに追加~" },
+        },
         { type: "section", text: { type: "mrkdwn", text: "Footer" } },
       ]);
     });
@@ -389,7 +432,9 @@ describe("Daily Plan Action Handlers", () => {
 
   describe("error handling", () => {
     it("should handle invalid JSON value gracefully", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -438,7 +483,9 @@ describe("Daily Plan Action Handlers", () => {
     });
 
     it("should handle unknown type gracefully", async () => {
-      const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const consoleLogSpy = vi
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -468,7 +515,9 @@ describe("Daily Plan Action Handlers", () => {
     });
 
     it("should handle DB error gracefully", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       mockUpdateWhere.mockRejectedValue(new Error("DB connection failed"));
 
       const mockAck = vi.fn();

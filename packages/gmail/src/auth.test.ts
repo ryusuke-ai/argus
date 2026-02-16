@@ -34,7 +34,10 @@ vi.mock("googleapis", () => ({
 // DB モック
 const mockLimit = vi.fn();
 const mockWhere = vi.fn();
-const mockValues = vi.fn();
+const mockOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+const mockValues = vi
+  .fn()
+  .mockReturnValue({ onConflictDoUpdate: mockOnConflictDoUpdate });
 
 vi.mock("@argus/db", () => ({
   db: {
@@ -71,27 +74,30 @@ describe("gmail auth", () => {
     vi.clearAllMocks();
     vi.stubEnv("GMAIL_CLIENT_ID", "test-client-id");
     vi.stubEnv("GMAIL_CLIENT_SECRET", "test-client-secret");
-    vi.stubEnv("GMAIL_REDIRECT_URI", "http://localhost:3950/api/gmail/callback");
+    vi.stubEnv(
+      "GMAIL_REDIRECT_URI",
+      "http://localhost:3950/api/gmail/callback",
+    );
     vi.stubEnv("GMAIL_ADDRESS", "test@gmail.com");
   });
 
   describe("getAuthUrl", () => {
-    it("should return a URL string", () => {
+    it("should return a success result with URL string", () => {
       const expectedUrl = "https://accounts.google.com/o/oauth2/v2/auth?test=1";
       mockGenerateAuthUrl.mockReturnValue(expectedUrl);
 
-      const url = getAuthUrl();
+      const result = getAuthUrl();
 
-      expect(url).toBe(expectedUrl);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(expectedUrl);
+      }
       expect(mockGenerateAuthUrl).toHaveBeenCalledWith({
         access_type: "offline",
         scope: [
           "https://www.googleapis.com/auth/gmail.readonly",
           "https://www.googleapis.com/auth/gmail.send",
           "https://www.googleapis.com/auth/gmail.modify",
-          "https://www.googleapis.com/auth/calendar",
-          "https://www.googleapis.com/auth/youtube.upload",
-          "https://www.googleapis.com/auth/youtube",
         ],
         prompt: "consent",
       });
@@ -99,20 +105,30 @@ describe("gmail auth", () => {
   });
 
   describe("createOAuth2Client", () => {
-    it("should throw if GMAIL_CLIENT_ID is not set", () => {
+    it("should return error if GMAIL_CLIENT_ID is not set", () => {
       vi.stubEnv("GMAIL_CLIENT_ID", "");
 
-      expect(() => createOAuth2Client()).toThrow(
-        "GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set",
-      );
+      const result = createOAuth2Client();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe(
+          "GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set",
+        );
+      }
     });
 
-    it("should throw if GMAIL_CLIENT_SECRET is not set", () => {
+    it("should return error if GMAIL_CLIENT_SECRET is not set", () => {
       vi.stubEnv("GMAIL_CLIENT_SECRET", "");
 
-      expect(() => createOAuth2Client()).toThrow(
-        "GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set",
-      );
+      const result = createOAuth2Client();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe(
+          "GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set",
+        );
+      }
     });
   });
 
@@ -125,20 +141,23 @@ describe("gmail auth", () => {
           expiry_date: Date.now() + 3600 * 1000,
         },
       });
-      // saveTokens: select -> empty -> insert
-      mockLimit.mockResolvedValue([]);
-      mockValues.mockResolvedValue(undefined);
+      // saveTokens: upsert (insert + onConflictDoUpdate)
+      mockOnConflictDoUpdate.mockResolvedValueOnce(undefined);
 
       const result = await handleCallback("auth-code-123");
 
       expect(mockGetToken).toHaveBeenCalledWith("auth-code-123");
-      expect(result.accessToken).toBe("new-access-token");
-      expect(result.refreshToken).toBe("new-refresh-token");
-      expect(result.expiry).toBeInstanceOf(Date);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.accessToken).toBe("new-access-token");
+        expect(result.data.refreshToken).toBe("new-refresh-token");
+        expect(result.data.expiry).toBeInstanceOf(Date);
+      }
       expect(mockValues).toHaveBeenCalled();
+      expect(mockOnConflictDoUpdate).toHaveBeenCalled();
     });
 
-    it("should throw if tokens are incomplete", async () => {
+    it("should return error if tokens are incomplete", async () => {
       mockGetToken.mockResolvedValue({
         tokens: {
           access_token: "token",
@@ -146,9 +165,12 @@ describe("gmail auth", () => {
         },
       });
 
-      await expect(handleCallback("bad-code")).rejects.toThrow(
-        "Failed to obtain tokens from Google",
-      );
+      const result = await handleCallback("bad-code");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to obtain tokens from Google");
+      }
     });
   });
 
@@ -163,9 +185,12 @@ describe("gmail auth", () => {
         },
       ]);
 
-      const token = await refreshTokenIfNeeded();
+      const result = await refreshTokenIfNeeded();
 
-      expect(token).toBe("valid-access-token");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe("valid-access-token");
+      }
       expect(mockRefreshAccessToken).not.toHaveBeenCalled();
     });
 
@@ -187,25 +212,32 @@ describe("gmail auth", () => {
         },
       });
 
-      // saveTokens: select (既存チェック) -> existing -> update
-      mockLimit.mockResolvedValueOnce([{ email: "test@gmail.com" }]);
-      mockWhere.mockResolvedValueOnce(undefined);
+      // saveTokens: upsert (insert + onConflictDoUpdate)
+      mockOnConflictDoUpdate.mockResolvedValueOnce(undefined);
 
-      const token = await refreshTokenIfNeeded();
+      const result = await refreshTokenIfNeeded();
 
-      expect(token).toBe("refreshed-access-token");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe("refreshed-access-token");
+      }
       expect(mockRefreshAccessToken).toHaveBeenCalled();
       expect(mockSetCredentials).toHaveBeenCalledWith({
         refresh_token: "stored-refresh-token",
       });
     });
 
-    it("should throw if no tokens stored", async () => {
+    it("should return error if no tokens stored", async () => {
       mockLimit.mockResolvedValue([]);
 
-      await expect(refreshTokenIfNeeded()).rejects.toThrow(
-        "No Gmail tokens found. Please authenticate first.",
-      );
+      const result = await refreshTokenIfNeeded();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe(
+          "No Gmail tokens found. Please authenticate first.",
+        );
+      }
     });
   });
 

@@ -36,11 +36,11 @@ describe("R2 Storage Client", () => {
     process.env.R2_PUBLIC_URL = "https://media.example.com";
   });
 
-  describe("uploadVideo", () => {
+  describe("uploadFile", () => {
     it("should upload a file and return the public URL", async () => {
-      const { uploadVideo } = await import("./client.js");
+      const { uploadFile } = await import("./client.js");
 
-      const url = await uploadVideo("/path/to/video.mp4");
+      const url = await uploadFile("/path/to/video.mp4");
 
       // Verify S3Client was called with correct config
       expect(sendMock).toHaveBeenCalledTimes(1);
@@ -57,9 +57,12 @@ describe("R2 Storage Client", () => {
     });
 
     it("should use a custom key when provided", async () => {
-      const { uploadVideo } = await import("./client.js");
+      const { uploadFile } = await import("./client.js");
 
-      const url = await uploadVideo("/path/to/video.mp4", "custom/path/video.mp4");
+      const url = await uploadFile(
+        "/path/to/video.mp4",
+        "custom/path/video.mp4",
+      );
 
       expect(sendMock).toHaveBeenCalledTimes(1);
       const sentCommand = sendMock.mock.calls[0][0];
@@ -78,9 +81,9 @@ describe("R2 Storage Client", () => {
       delete process.env.R2_SECRET_ACCESS_KEY;
       delete process.env.R2_PUBLIC_URL;
 
-      const { uploadVideo } = await import("./client.js");
+      const { uploadFile } = await import("./client.js");
 
-      await expect(uploadVideo("/path/to/video.mp4")).rejects.toThrow(
+      await expect(uploadFile("/path/to/video.mp4")).rejects.toThrow(
         "[R2Storage] Missing required environment variables",
       );
     });

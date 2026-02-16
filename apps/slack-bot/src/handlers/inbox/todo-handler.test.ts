@@ -200,13 +200,19 @@ describe("findMatchingTodo", () => {
   });
 });
 
+/** buildTodoCheckBlocks が返す object[] の構造を表す型 */
+interface TodoBlock {
+  type: string;
+  text: { type: string; text: string; emoji?: boolean };
+}
+
 describe("buildTodoCheckBlocks", () => {
   it("空の ToDo リストの場合、ヘッダーと空メッセージを返す", () => {
     const blocks = buildTodoCheckBlocks([]);
     expect(blocks).toHaveLength(2);
-    expect((blocks[0] as any).type).toBe("header");
-    expect((blocks[0] as any).text.text).toContain("0件");
-    expect((blocks[1] as any).text.text).toContain("ありません");
+    expect((blocks[0] as TodoBlock).type).toBe("header");
+    expect((blocks[0] as TodoBlock).text.text).toContain("0件");
+    expect((blocks[1] as TodoBlock).text.text).toContain("ありません");
   });
 
   it("カテゴリ別にグループ化する", () => {
@@ -220,16 +226,16 @@ describe("buildTodoCheckBlocks", () => {
 
     // ヘッダー + 2カテゴリ = 3ブロック
     expect(blocks).toHaveLength(3);
-    expect((blocks[0] as any).text.text).toContain("3件");
+    expect((blocks[0] as TodoBlock).text.text).toContain("3件");
 
     // 仕事セクション
-    const workSection = blocks[1] as any;
+    const workSection = blocks[1] as TodoBlock;
     expect(workSection.text.text).toContain("仕事");
     expect(workSection.text.text).toContain("企画書を書く");
     expect(workSection.text.text).toContain("会議の準備");
 
     // 買い物セクション
-    const shoppingSection = blocks[2] as any;
+    const shoppingSection = blocks[2] as TodoBlock;
     expect(shoppingSection.text.text).toContain("買い物");
     expect(shoppingSection.text.text).toContain("牛乳を買う");
   });
@@ -243,19 +249,17 @@ describe("buildTodoCheckBlocks", () => {
     const blocks = buildTodoCheckBlocks(pendingTodos);
 
     expect(blocks).toHaveLength(2); // ヘッダー + その他
-    const otherSection = blocks[1] as any;
+    const otherSection = blocks[1] as TodoBlock;
     expect(otherSection.text.text).toContain("その他");
     expect(otherSection.text.text).toContain("なんかやる");
     expect(otherSection.text.text).toContain("あれをする");
   });
 
   it("各アイテムに未完了マーク（☐）がつく", () => {
-    const pendingTodos = [
-      { id: "1", content: "テスト", category: "仕事" },
-    ];
+    const pendingTodos = [{ id: "1", content: "テスト", category: "仕事" }];
 
     const blocks = buildTodoCheckBlocks(pendingTodos);
-    const section = blocks[1] as any;
+    const section = blocks[1] as TodoBlock;
     expect(section.text.text).toContain("\u2610 テスト");
   });
 });

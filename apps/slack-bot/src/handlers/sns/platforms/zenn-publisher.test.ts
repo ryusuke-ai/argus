@@ -8,6 +8,7 @@ vi.mock("node:fs", () => ({
 
 vi.mock("node:child_process", () => ({
   execSync: vi.fn(),
+  execFileSync: vi.fn(),
 }));
 
 describe("ZennPublisher", () => {
@@ -72,7 +73,7 @@ describe("ZennPublisher", () => {
 
   it("should write correct frontmatter and body", async () => {
     const { writeFileSync } = await import("node:fs");
-    const { execSync } = await import("node:child_process");
+    const { execFileSync } = await import("node:child_process");
 
     const result = await publishToZenn({
       slug: "my-first-article",
@@ -86,11 +87,13 @@ describe("ZennPublisher", () => {
 
     expect(result.success).toBe(true);
     expect(result.slug).toBe("my-first-article");
-    expect(result.url).toBe("https://zenn.dev/testuser/articles/my-first-article");
+    expect(result.url).toBe(
+      "https://zenn.dev/testuser/articles/my-first-article",
+    );
 
     // writeFileSync の呼び出しを検証
     expect(writeFileSync).toHaveBeenCalledTimes(1);
-    const [filePath, content] = (writeFileSync as any).mock.calls[0];
+    const [filePath, content] = vi.mocked(writeFileSync).mock.calls[0];
     expect(filePath).toContain("articles/my-first-article.md");
 
     // フロントマター形式を検証
@@ -102,12 +105,15 @@ describe("ZennPublisher", () => {
     expect(content).toContain("published: true");
     expect(content).toContain("# Introduction");
 
-    // git コマンドの検証
-    expect(execSync).toHaveBeenCalledTimes(3);
-    const calls = (execSync as any).mock.calls;
-    expect(calls[0][0]).toContain("git add");
-    expect(calls[1][0]).toContain("git commit");
-    expect(calls[2][0]).toBe("git push");
+    // git コマンドの検証 (execFileSync is used)
+    expect(execFileSync).toHaveBeenCalledTimes(3);
+    const calls = vi.mocked(execFileSync).mock.calls;
+    expect(calls[0][0]).toBe("git");
+    expect(calls[0][1]).toContain("add");
+    expect(calls[1][0]).toBe("git");
+    expect(calls[1][1]).toContain("commit");
+    expect(calls[2][0]).toBe("git");
+    expect(calls[2][1]).toEqual(["push"]);
   });
 
   it("should limit topics to 5", async () => {
@@ -122,7 +128,7 @@ describe("ZennPublisher", () => {
       body: "Content here.",
     });
 
-    const [, content] = (writeFileSync as any).mock.calls[0];
+    const [, content] = vi.mocked(writeFileSync).mock.calls[0];
     expect(content).toContain('topics: ["a", "b", "c", "d", "e"]');
     expect(content).not.toContain('"f"');
   });
@@ -139,15 +145,15 @@ describe("ZennPublisher", () => {
       body: "Draft content.",
     });
 
-    const [, content] = (writeFileSync as any).mock.calls[0];
+    const [, content] = vi.mocked(writeFileSync).mock.calls[0];
     expect(content).toContain("published: false");
   });
 
   it("should handle git push failure gracefully", async () => {
-    const { execSync } = await import("node:child_process");
-    (execSync as any)
-      .mockImplementationOnce(() => {}) // git add
-      .mockImplementationOnce(() => {}) // git commit
+    const { execFileSync } = await import("node:child_process");
+    vi.mocked(execFileSync)
+      .mockImplementationOnce(() => "") // git add
+      .mockImplementationOnce(() => "") // git commit
       .mockImplementationOnce(() => {
         throw new Error("remote: Permission denied");
       }); // git push
@@ -168,7 +174,7 @@ describe("ZennPublisher", () => {
 
   it("should create articles directory if it does not exist", async () => {
     const { existsSync, mkdirSync } = await import("node:fs");
-    (existsSync as any).mockReturnValue(false);
+    vi.mocked(existsSync).mockReturnValue(false);
 
     await publishToZenn({
       slug: "mkdir-test-slug",

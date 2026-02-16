@@ -28,16 +28,37 @@ vi.mock("@argus/db", () => ({
     update: () => mockUpdateFn(),
   },
   gmailMessages: { id: "id", status: "status", repliedAt: "repliedAt" },
-  gmailOutgoing: { id: "id", status: "status", toAddress: "to_address", subject: "subject", body: "body", sentAt: "sent_at" },
+  gmailOutgoing: {
+    id: "id",
+    status: "status",
+    toAddress: "to_address",
+    subject: "subject",
+    body: "body",
+    sentAt: "sent_at",
+  },
 }));
 
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((col, val) => ({ col, val })),
 }));
 
+/** Slack Block Kit ブロックの構造を表す型 */
+interface ModalBlock {
+  type: string;
+  element?: { initial_value?: string };
+}
+
+/** Slack Bolt ハンドラーの引数型 */
+interface HandlerArgs {
+  ack: () => void;
+  body?: Record<string, unknown>;
+  view?: Record<string, unknown>;
+  client: Record<string, unknown>;
+}
+
 describe("Gmail Action Handlers", () => {
-  let actionHandlers: Record<string, (args: any) => Promise<void>>;
-  let viewHandlers: Record<string, (args: any) => Promise<void>>;
+  let actionHandlers: Record<string, (args: HandlerArgs) => Promise<void>>;
+  let viewHandlers: Record<string, (args: HandlerArgs) => Promise<void>>;
   let app: { action: Mock; view: Mock };
 
   const mockRecord = {
@@ -68,12 +89,16 @@ describe("Gmail Action Handlers", () => {
     app = appModule.app as unknown as { action: Mock; view: Mock };
 
     // Capture handlers when registered
-    (app.action as Mock).mockImplementation((actionId: string, handler: any) => {
-      actionHandlers[actionId] = handler;
-    });
-    (app.view as Mock).mockImplementation((viewId: string, handler: any) => {
-      viewHandlers[viewId] = handler;
-    });
+    (app.action as Mock).mockImplementation(
+      (actionId: string, handler: (args: HandlerArgs) => Promise<void>) => {
+        actionHandlers[actionId] = handler;
+      },
+    );
+    (app.view as Mock).mockImplementation(
+      (viewId: string, handler: (args: HandlerArgs) => Promise<void>) => {
+        viewHandlers[viewId] = handler;
+      },
+    );
 
     // Reset DB mocks
     mockLimit.mockReset();
@@ -94,20 +119,38 @@ describe("Gmail Action Handlers", () => {
   it("should register 7 handlers (6 actions + 2 views)", () => {
     expect(app.action).toHaveBeenCalledTimes(6);
     expect(app.view).toHaveBeenCalledTimes(2);
-    expect(app.action).toHaveBeenCalledWith("gmail_reply", expect.any(Function));
+    expect(app.action).toHaveBeenCalledWith(
+      "gmail_reply",
+      expect.any(Function),
+    );
     expect(app.action).toHaveBeenCalledWith("gmail_edit", expect.any(Function));
     expect(app.action).toHaveBeenCalledWith("gmail_skip", expect.any(Function));
-    expect(app.view).toHaveBeenCalledWith("gmail_edit_submit", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("gmail_send_new", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("gmail_edit_new", expect.any(Function));
-    expect(app.action).toHaveBeenCalledWith("gmail_cancel_new", expect.any(Function));
-    expect(app.view).toHaveBeenCalledWith("gmail_edit_new_submit", expect.any(Function));
+    expect(app.view).toHaveBeenCalledWith(
+      "gmail_edit_submit",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "gmail_send_new",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "gmail_edit_new",
+      expect.any(Function),
+    );
+    expect(app.action).toHaveBeenCalledWith(
+      "gmail_cancel_new",
+      expect.any(Function),
+    );
+    expect(app.view).toHaveBeenCalledWith(
+      "gmail_edit_new_submit",
+      expect.any(Function),
+    );
   });
 
   describe("gmail_reply action", () => {
     it("should send reply, update DB, and update Slack message", async () => {
       const { sendReply } = await import("@argus/gmail");
-      (sendReply as Mock).mockResolvedValue(undefined);
+      (sendReply as Mock).mockResolvedValue({ success: true, data: "sent-id" });
 
       const mockAck = vi.fn();
       const mockClient = {
@@ -205,9 +248,14 @@ describe("Gmail Action Handlers", () => {
 
     it("should post error message when sendReply fails", async () => {
       const { sendReply } = await import("@argus/gmail");
-      (sendReply as Mock).mockRejectedValue(new Error("Gmail API error"));
+      (sendReply as Mock).mockResolvedValue({
+        success: false,
+        error: "Gmail API error",
+      });
 
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       const mockAck = vi.fn();
       const mockClient = {
         chat: {
@@ -228,7 +276,7 @@ describe("Gmail Action Handlers", () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "[Gmail Action] Reply failed:",
-        expect.any(Error),
+        "Gmail API error",
       );
       expect(mockClient.chat.postMessage).toHaveBeenCalledWith({
         channel: "C123",
@@ -273,9 +321,11 @@ describe("Gmail Action Handlers", () => {
       // Verify the modal contains the draft reply as initial value
       const viewArg = mockClient.views.open.mock.calls[0][0];
       const inputBlock = viewArg.view.blocks.find(
-        (b: any) => b.type === "input",
+        (b: ModalBlock) => b.type === "input",
       );
-      expect(inputBlock.element.initial_value).toBe("Thank you for your email.");
+      expect(inputBlock.element.initial_value).toBe(
+        "Thank you for your email.",
+      );
     });
 
     it("should do nothing if no action value", async () => {
@@ -334,7 +384,7 @@ describe("Gmail Action Handlers", () => {
   describe("gmail_edit_submit view", () => {
     it("should send edited reply, update DB, and update Slack message", async () => {
       const { sendReply } = await import("@argus/gmail");
-      (sendReply as Mock).mockResolvedValue(undefined);
+      (sendReply as Mock).mockResolvedValue({ success: true, data: "sent-id" });
 
       const mockAck = vi.fn();
       const mockClient = {
@@ -431,9 +481,14 @@ describe("Gmail Action Handlers", () => {
 
     it("should log error when sendReply fails in edit submit", async () => {
       const { sendReply } = await import("@argus/gmail");
-      (sendReply as Mock).mockRejectedValue(new Error("Gmail API error"));
+      (sendReply as Mock).mockResolvedValue({
+        success: false,
+        error: "Gmail API error",
+      });
 
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn() } };
 
@@ -458,7 +513,7 @@ describe("Gmail Action Handlers", () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "[Gmail Action] Edit reply failed:",
-        expect.any(Error),
+        "Gmail API error",
       );
 
       consoleErrorSpy.mockRestore();

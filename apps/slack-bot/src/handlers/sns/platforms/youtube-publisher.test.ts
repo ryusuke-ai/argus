@@ -41,7 +41,10 @@ describe("YouTubePublisher", () => {
     // Default: file exists
     mockExistsSync.mockReturnValue(true);
     mockCreateReadStream.mockReturnValue("mock-stream");
-    mockGetAuthenticatedClient.mockResolvedValue({ credentials: {} });
+    mockGetAuthenticatedClient.mockResolvedValue({
+      success: true,
+      data: { credentials: {} },
+    });
   });
 
   it("should upload a video successfully", async () => {
@@ -68,9 +71,10 @@ describe("YouTubePublisher", () => {
   });
 
   it("should return error when OAuth client is not available", async () => {
-    mockGetAuthenticatedClient.mockRejectedValueOnce(
-      new Error("No Gmail tokens found"),
-    );
+    mockGetAuthenticatedClient.mockResolvedValueOnce({
+      success: false,
+      error: "No Gmail tokens found",
+    });
 
     const { uploadToYouTube } = await import("./youtube-publisher.js");
     const result = await uploadToYouTube(defaultInput);

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import QueryForm from "./QueryForm";
 
@@ -11,7 +12,9 @@ describe("QueryForm", () => {
     render(<QueryForm />);
 
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Enter your message...")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Enter your message..."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
   });
 
@@ -122,7 +125,9 @@ describe("QueryForm", () => {
   });
 
   it("should display network error on fetch failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Connection refused"));
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new Error("Connection refused"),
+    );
 
     render(<QueryForm />);
 

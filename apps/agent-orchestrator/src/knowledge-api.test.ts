@@ -3,16 +3,26 @@ import express from "express";
 import type { Express } from "express";
 
 // Define the KnowledgeService interface locally to avoid importing from the package
+interface Result<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 interface KnowledgeService {
   list(): Promise<Knowledge[]>;
   getById(id: string): Promise<Knowledge | null>;
   search(query: string): Promise<Knowledge[]>;
-  add(name: string, content: string, description?: string): Promise<Knowledge>;
+  add(
+    name: string,
+    content: string,
+    description?: string,
+  ): Promise<Result<Knowledge>>;
   update(
     id: string,
     updates: Partial<Pick<Knowledge, "name" | "description" | "content">>,
-  ): Promise<Knowledge>;
-  archive(id: string): Promise<void>;
+  ): Promise<Result<Knowledge>>;
+  archive(id: string): Promise<Result<void>>;
 }
 
 interface Knowledge {
@@ -52,9 +62,9 @@ describe("Knowledge API", () => {
       list: vi.fn().mockResolvedValue([]),
       getById: vi.fn().mockResolvedValue(null),
       search: vi.fn().mockResolvedValue([]),
-      add: vi.fn().mockResolvedValue(mockKnowledge),
-      update: vi.fn().mockResolvedValue(mockKnowledge),
-      archive: vi.fn().mockResolvedValue(undefined),
+      add: vi.fn().mockResolvedValue({ success: true, data: mockKnowledge }),
+      update: vi.fn().mockResolvedValue({ success: true, data: mockKnowledge }),
+      archive: vi.fn().mockResolvedValue({ success: true, data: undefined }),
     };
 
     // Setup express app with the router, injecting mock service
@@ -110,9 +120,12 @@ describe("Knowledge API", () => {
       };
 
       (mockService.add as ReturnType<typeof vi.fn>).mockResolvedValue({
-        id: "new-id",
-        ...newKnowledge,
-        updatedAt: new Date(),
+        success: true,
+        data: {
+          id: "new-id",
+          ...newKnowledge,
+          updatedAt: new Date(),
+        },
       });
 
       const response = await makeRequest(
@@ -220,9 +233,10 @@ describe("Knowledge API", () => {
         name: "Updated Name",
       };
 
-      (mockService.update as ReturnType<typeof vi.fn>).mockResolvedValue(
-        updatedKnowledge,
-      );
+      (mockService.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: updatedKnowledge,
+      });
 
       const response = await makeRequest(
         app,
@@ -236,9 +250,10 @@ describe("Knowledge API", () => {
     });
 
     it("should return 404 when knowledge not found", async () => {
-      (mockService.update as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Knowledge with id nonexistent not found"),
-      );
+      (mockService.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: false,
+        error: "Knowledge with id nonexistent not found",
+      });
 
       const response = await makeRequest(
         app,
@@ -258,8 +273,11 @@ describe("Knowledge API", () => {
           updates: { name?: string; content?: string; description?: string },
         ) => {
           return {
-            ...mockKnowledge,
-            ...updates,
+            success: true,
+            data: {
+              ...mockKnowledge,
+              ...updates,
+            },
           };
         },
       );
@@ -299,9 +317,10 @@ describe("Knowledge API", () => {
 
   describe("DELETE /api/knowledge/:id", () => {
     it("should delete knowledge when found", async () => {
-      (mockService.archive as ReturnType<typeof vi.fn>).mockResolvedValue(
-        undefined,
-      );
+      (mockService.archive as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
 
       const response = await makeRequest(
         app,
@@ -313,9 +332,10 @@ describe("Knowledge API", () => {
     });
 
     it("should return 404 when knowledge not found", async () => {
-      (mockService.archive as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Knowledge with id nonexistent not found"),
-      );
+      (mockService.archive as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: false,
+        error: "Knowledge with id nonexistent not found",
+      });
 
       const response = await makeRequest(
         app,

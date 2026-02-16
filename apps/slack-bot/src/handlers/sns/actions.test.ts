@@ -87,6 +87,15 @@ vi.mock("./generation/script-generator.js", () => ({
 vi.mock("./ui/validator.js", () => ({
   validateXPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
   validateThread: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateThreadsPost: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateInstagramPost: vi.fn(() => ({
+    valid: true,
+    warnings: [],
+    errors: [],
+  })),
+  validateTikTokMeta: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateYouTubeMeta: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
+  validateGitHubRepo: vi.fn(() => ({ valid: true, warnings: [], errors: [] })),
 }));
 
 vi.mock("./scheduling/optimal-time.js", () => ({
@@ -120,6 +129,49 @@ vi.mock("./platforms/github-publisher.js", () => ({
 
 vi.mock("./platforms/instagram-publisher.js", () => ({
   publishToInstagram: vi.fn(),
+}));
+
+vi.mock("../../utils/reactions.js", () => ({
+  addReaction: vi.fn(),
+  swapReaction: vi.fn(),
+}));
+
+vi.mock("../../canvas/sns-canvas.js", () => ({
+  updateSnsCanvas: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("./generation/artifact-extractors.js", () => ({
+  normalizeMediaPath: vi.fn((p: string) => p),
+  extractVideoPath: vi.fn((result: any) => {
+    // ツール結果から .mp4 パスを探す
+    for (const call of result.toolCalls || []) {
+      if (call.name === "Bash" && call.status === "success" && call.result) {
+        const m = String(call.result).match(
+          /(\/[^\s"']*agent-output\/[^\s"']*\.mp4)/,
+        );
+        if (m) return m[1];
+      }
+    }
+    // テキスト応答からパスを探す
+    const text = (result.message?.content || [])
+      .filter((b: any) => b.type === "text")
+      .map((b: any) => b.text || "")
+      .join("\n");
+    const match = text.match(/(\/[^\s`"']*\.mp4)/);
+    return match ? match[1] : "";
+  }),
+  extractImagePath: vi.fn(() => ""),
+}));
+
+vi.mock("./content-schemas.js", () => ({
+  parseXPostContent: vi.fn((raw: unknown) => raw),
+  parseYouTubeContent: vi.fn((raw: unknown) => raw),
+  parseInstagramContent: vi.fn((raw: unknown) => raw),
+  parseArticleContent: vi.fn((raw: unknown) => raw),
+  parseThreadsContent: vi.fn((raw: unknown) => raw),
+  parseTikTokContent: vi.fn((raw: unknown) => raw),
+  parseGitHubContent: vi.fn((raw: unknown) => raw),
+  parsePodcastContent: vi.fn((raw: unknown) => raw),
 }));
 
 describe("SNS Action Handlers", () => {
@@ -233,7 +285,7 @@ describe("SNS Action Handlers", () => {
       });
 
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_publish"]({
         ack: mockAck,
@@ -274,7 +326,7 @@ describe("SNS Action Handlers", () => {
       });
 
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_publish"]({
         ack: mockAck,
@@ -299,7 +351,7 @@ describe("SNS Action Handlers", () => {
 
     it("should do nothing if no action value", async () => {
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_publish"]({
         ack: mockAck,
@@ -316,7 +368,7 @@ describe("SNS Action Handlers", () => {
 
       const { publishToX } = await import("./platforms/x-publisher.js");
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_publish"]({
         ack: mockAck,
@@ -336,7 +388,7 @@ describe("SNS Action Handlers", () => {
   describe("sns_edit action", () => {
     it("should open modal with current post text", async () => {
       const mockAck = vi.fn();
-      const mockClient = { views: { open: vi.fn() } };
+      const mockClient = { views: { open: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_edit"]({
         ack: mockAck,
@@ -370,7 +422,7 @@ describe("SNS Action Handlers", () => {
 
     it("should do nothing if no action value", async () => {
       const mockAck = vi.fn();
-      const mockClient = { views: { open: vi.fn() } };
+      const mockClient = { views: { open: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_edit"]({
         ack: mockAck,
@@ -386,7 +438,7 @@ describe("SNS Action Handlers", () => {
       mockLimit.mockResolvedValue([]);
 
       const mockAck = vi.fn();
-      const mockClient = { views: { open: vi.fn() } };
+      const mockClient = { views: { open: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_edit"]({
         ack: mockAck,
@@ -406,7 +458,7 @@ describe("SNS Action Handlers", () => {
     it("should update DB to skipped and update Slack message", async () => {
       const { buildSkippedBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_skip"]({
         ack: mockAck,
@@ -433,7 +485,7 @@ describe("SNS Action Handlers", () => {
 
     it("should do nothing if no action value", async () => {
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_skip"]({
         ack: mockAck,
@@ -450,7 +502,7 @@ describe("SNS Action Handlers", () => {
     it("should update content in DB and re-render Slack message", async () => {
       const { buildXPostBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await viewHandlers["sns_edit_submit"]({
         ack: mockAck,
@@ -491,7 +543,7 @@ describe("SNS Action Handlers", () => {
     it("should detect thread format from --- separator", async () => {
       const { buildXPostBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await viewHandlers["sns_edit_submit"]({
         ack: mockAck,
@@ -526,7 +578,7 @@ describe("SNS Action Handlers", () => {
 
     it("should do nothing if no text provided", async () => {
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await viewHandlers["sns_edit_submit"]({
         ack: mockAck,
@@ -553,7 +605,7 @@ describe("SNS Action Handlers", () => {
 
     it("should do nothing if no postId in metadata", async () => {
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await viewHandlers["sns_edit_submit"]({
         ack: mockAck,
@@ -600,7 +652,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_publish"]({
@@ -646,7 +701,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_publish"]({
@@ -698,7 +756,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_publish"]({
@@ -752,7 +813,10 @@ describe("SNS Action Handlers", () => {
       const { buildPublishedBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_publish"]({
@@ -803,7 +867,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_publish"]({
@@ -832,7 +899,7 @@ describe("SNS Action Handlers", () => {
     it("should post modification prompt to thread", async () => {
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { postMessage: vi.fn() },
+        chat: { postMessage: vi.fn().mockResolvedValue({}) },
       };
 
       await actionHandlers["sns_edit_thread"]({
@@ -858,7 +925,7 @@ describe("SNS Action Handlers", () => {
     it("should do nothing if no action value", async () => {
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { postMessage: vi.fn() },
+        chat: { postMessage: vi.fn().mockResolvedValue({}) },
       };
 
       await actionHandlers["sns_edit_thread"]({
@@ -894,7 +961,7 @@ describe("SNS Action Handlers", () => {
 
       const longEditText = "a".repeat(210);
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await viewHandlers["sns_edit_submit"]({
         ack: mockAck,
@@ -931,7 +998,7 @@ describe("SNS Action Handlers", () => {
       const { buildScheduledBlocks } = await import("./ui/reporter.js");
 
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
@@ -975,7 +1042,7 @@ describe("SNS Action Handlers", () => {
       mockLimit.mockResolvedValue([postWithSuggested]);
 
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
@@ -1003,7 +1070,7 @@ describe("SNS Action Handlers", () => {
 
     it("should do nothing if no action value", async () => {
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
@@ -1021,7 +1088,7 @@ describe("SNS Action Handlers", () => {
       const { getNextOptimalTime } =
         await import("./scheduling/optimal-time.js");
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
@@ -1065,7 +1132,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_approve_ig_content"]({
@@ -1127,7 +1197,10 @@ describe("SNS Action Handlers", () => {
       const { buildPublishedBlocks } = await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_publish"]({
@@ -1186,7 +1259,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_approve_script"]({
@@ -1233,7 +1309,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_approve_script"]({
@@ -1286,7 +1365,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_approve_script"]({
@@ -1309,7 +1391,7 @@ describe("SNS Action Handlers", () => {
       );
     });
 
-    it("should set status to render_failed when query throws", async () => {
+    it("should set status to failed when query throws", async () => {
       mockLimit.mockResolvedValue([scriptPost]);
 
       const { query: mockQuery } = await import("@argus/agent-core");
@@ -1317,7 +1399,10 @@ describe("SNS Action Handlers", () => {
 
       const mockAck = vi.fn();
       const mockClient = {
-        chat: { update: vi.fn(), postMessage: vi.fn() },
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
       };
 
       await actionHandlers["sns_approve_script"]({
@@ -1334,7 +1419,7 @@ describe("SNS Action Handlers", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(mockUpdateSet).toHaveBeenCalledWith(
-        expect.objectContaining({ status: "render_failed" }),
+        expect.objectContaining({ status: "failed" }),
       );
       expect(mockClient.chat.postMessage).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -30,11 +30,13 @@ describe("PersonalMcpServer", () => {
 
   const createMockService = (): PersonalService => ({
     search: vi.fn().mockResolvedValue([mockSearchResult]),
-    read: vi.fn().mockResolvedValue(mockNote),
+    read: vi.fn().mockResolvedValue({ success: true, data: mockNote }),
     list: vi.fn().mockResolvedValue([mockListEntry]),
-    getPersonalityContext: vi.fn().mockResolvedValue("personality summary"),
-    add: vi.fn().mockResolvedValue(mockNote),
-    update: vi.fn().mockResolvedValue(mockNote),
+    getPersonalityContext: vi
+      .fn()
+      .mockResolvedValue({ success: true, data: "personality summary" }),
+    add: vi.fn().mockResolvedValue({ success: true, data: mockNote }),
+    update: vi.fn().mockResolvedValue({ success: true, data: mockNote }),
   });
 
   describe("Tool registration", () => {
@@ -77,7 +79,10 @@ describe("PersonalMcpServer", () => {
       });
 
       expect(mockService.search).toHaveBeenCalledWith("test");
-      expect(result).toEqual([mockSearchResult]);
+      expect(result).toEqual({
+        success: true,
+        data: [mockSearchResult],
+      });
     });
 
     it("should execute personal_read tool", async () => {
@@ -86,7 +91,7 @@ describe("PersonalMcpServer", () => {
       });
 
       expect(mockService.read).toHaveBeenCalledWith("self/values.md");
-      expect(result).toEqual(mockNote);
+      expect(result).toEqual({ success: true, data: mockNote });
     });
 
     it("should execute personal_list tool", async () => {
@@ -95,14 +100,20 @@ describe("PersonalMcpServer", () => {
       });
 
       expect(mockService.list).toHaveBeenCalledWith("self");
-      expect(result).toEqual([mockListEntry]);
+      expect(result).toEqual({
+        success: true,
+        data: [mockListEntry],
+      });
     });
 
     it("should execute personal_list without category", async () => {
       const result = await server.handleToolCall("personal_list", {});
 
       expect(mockService.list).toHaveBeenCalledWith(undefined);
-      expect(result).toEqual([mockListEntry]);
+      expect(result).toEqual({
+        success: true,
+        data: [mockListEntry],
+      });
     });
 
     it("should execute personal_context tool", async () => {
@@ -111,14 +122,20 @@ describe("PersonalMcpServer", () => {
       });
 
       expect(mockService.getPersonalityContext).toHaveBeenCalledWith("values");
-      expect(result).toBe("personality summary");
+      expect(result).toEqual({
+        success: true,
+        data: "personality summary",
+      });
     });
 
     it("should execute personal_context without section", async () => {
       const result = await server.handleToolCall("personal_context", {});
 
       expect(mockService.getPersonalityContext).toHaveBeenCalledWith(undefined);
-      expect(result).toBe("personality summary");
+      expect(result).toEqual({
+        success: true,
+        data: "personality summary",
+      });
     });
 
     it("should execute personal_add tool", async () => {
@@ -133,7 +150,7 @@ describe("PersonalMcpServer", () => {
         "new-note",
         "# New Note\n\nContent here",
       );
-      expect(result).toEqual(mockNote);
+      expect(result).toEqual({ success: true, data: mockNote });
     });
 
     it("should execute personal_update tool", async () => {
@@ -148,13 +165,16 @@ describe("PersonalMcpServer", () => {
         "Updated content",
         "append",
       );
-      expect(result).toEqual(mockNote);
+      expect(result).toEqual({ success: true, data: mockNote });
     });
 
-    it("should throw error for unknown tool", async () => {
-      await expect(server.handleToolCall("unknown_tool", {})).rejects.toThrow(
-        "Unknown tool: unknown_tool",
-      );
+    it("should return error for unknown tool", async () => {
+      const result = await server.handleToolCall("unknown_tool", {});
+
+      expect(result).toEqual({
+        success: false,
+        error: "Unknown tool: unknown_tool",
+      });
     });
   });
 });

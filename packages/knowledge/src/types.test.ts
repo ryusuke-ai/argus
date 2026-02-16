@@ -17,20 +17,28 @@ describe("Types", () => {
       getById: async () => null,
       search: async () => [],
       add: async () => ({
-        id: "test-id",
-        name: "test",
-        description: null,
-        content: "test content",
-        updatedAt: new Date(),
+        success: true,
+        data: {
+          id: "test-id",
+          name: "test",
+          description: null,
+          content: "test content",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       }),
       update: async () => ({
-        id: "test-id",
-        name: "updated",
-        description: null,
-        content: "updated content",
-        updatedAt: new Date(),
+        success: true,
+        data: {
+          id: "test-id",
+          name: "updated",
+          description: null,
+          content: "updated content",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       }),
-      archive: async () => {},
+      archive: async () => ({ success: true, data: undefined }),
     };
 
     expect(mockService).toBeDefined();

@@ -5,6 +5,7 @@ const mockWriteFileSync = vi.fn();
 const mockMkdirSync = vi.fn();
 const mockCopyFileSync = vi.fn();
 const mockExecSync = vi.fn();
+const mockExecFileSync = vi.fn();
 const mockReadFileSync = vi.fn(() => Buffer.from("fake-audio-data"));
 
 vi.mock("node:fs", () => ({
@@ -17,6 +18,7 @@ vi.mock("node:fs", () => ({
 
 vi.mock("node:child_process", () => ({
   execSync: (...args: unknown[]) => mockExecSync(...args),
+  execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
 }));
 
 // Mock @supabase/supabase-js
@@ -80,7 +82,7 @@ describe("PodcastPublisher", () => {
       expect(mockMkdirSync).toHaveBeenCalledWith("/tmp/audio-output", {
         recursive: true,
       });
-      expect(mockExecSync).toHaveBeenCalledTimes(1);
+      expect(mockExecFileSync).toHaveBeenCalledTimes(1);
     });
 
     it("should return error when video file does not exist", async () => {
@@ -95,11 +97,11 @@ describe("PodcastPublisher", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("not found");
-      expect(mockExecSync).not.toHaveBeenCalled();
+      expect(mockExecFileSync).not.toHaveBeenCalled();
     });
 
     it("should handle ffmpeg errors gracefully", async () => {
-      mockExecSync.mockImplementation(() => {
+      mockExecFileSync.mockImplementation(() => {
         throw new Error("ffmpeg: command not found");
       });
 

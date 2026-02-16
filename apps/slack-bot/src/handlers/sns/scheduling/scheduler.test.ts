@@ -361,7 +361,7 @@ describe("publishPost for YouTube", () => {
   it("should call uploadToYouTube for youtube platform", async () => {
     const { uploadToYouTube } =
       await import("../platforms/youtube-publisher.js");
-    (uploadToYouTube as any).mockResolvedValue({
+    vi.mocked(uploadToYouTube).mockResolvedValue({
       success: true,
       videoId: "vid-123",
       url: "https://youtube.com/watch?v=vid-123",
@@ -394,7 +394,7 @@ describe("publishPost for YouTube", () => {
   it("should handle YouTube upload failure", async () => {
     const { uploadToYouTube } =
       await import("../platforms/youtube-publisher.js");
-    (uploadToYouTube as any).mockResolvedValue({
+    vi.mocked(uploadToYouTube).mockResolvedValue({
       success: false,
       error: "Auth failed",
     });
@@ -424,7 +424,7 @@ describe("publishPost for Threads", () => {
   it("should call publishToThreads for threads platform", async () => {
     const { publishToThreads } =
       await import("../platforms/threads-publisher.js");
-    (publishToThreads as any).mockResolvedValue({
+    vi.mocked(publishToThreads).mockResolvedValue({
       success: true,
       threadId: "thread-123",
       url: "https://threads.net/@user/post/thread-123",
@@ -453,7 +453,7 @@ describe("publishPost for TikTok", () => {
   it("should call publishToTikTok for tiktok platform", async () => {
     const { publishToTikTok } =
       await import("../platforms/tiktok-publisher.js");
-    (publishToTikTok as any).mockResolvedValue({
+    vi.mocked(publishToTikTok).mockResolvedValue({
       success: true,
       publishId: "pub-123",
     });
@@ -481,7 +481,7 @@ describe("publishPost for GitHub", () => {
   it("should call publishToGitHub for github platform", async () => {
     const { publishToGitHub } =
       await import("../platforms/github-publisher.js");
-    (publishToGitHub as any).mockResolvedValue({
+    vi.mocked(publishToGitHub).mockResolvedValue({
       success: true,
       url: "https://github.com/user/repo",
       fullName: "user/repo",
@@ -519,7 +519,7 @@ describe("publishPost for Podcast", () => {
   it("should return error when audio path is not provided", async () => {
     const { publishPodcast } =
       await import("../platforms/podcast-publisher.js");
-    (publishPodcast as any).mockResolvedValue({
+    vi.mocked(publishPodcast).mockResolvedValue({
       success: false,
       error: "No audio path provided",
     });
@@ -543,7 +543,7 @@ describe("publishPost for Podcast", () => {
   it("should return success with url when podcast is published", async () => {
     const { publishPodcast } =
       await import("../platforms/podcast-publisher.js");
-    (publishPodcast as any).mockResolvedValue({
+    vi.mocked(publishPodcast).mockResolvedValue({
       success: true,
       url: "http://localhost:3150/api/files/podcast/episodes/20260211-test.mp3",
     });
@@ -586,21 +586,21 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
   it("should use PhasedGenerator with threadsConfig for Threads suggestions", async () => {
     // Setup: X, articles, youtube all succeed, Threads uses PhasedGenerator
     const { generateXPost } = await import("../generation/generator.js");
-    (generateXPost as any).mockResolvedValue({
+    vi.mocked(generateXPost).mockResolvedValue({
       success: true,
       content: { format: "single", posts: [{ text: "テストX投稿" }] },
     });
 
     const { generateArticle } =
       await import("../generation/article-generator.js");
-    (generateArticle as any).mockResolvedValue({
+    vi.mocked(generateArticle).mockResolvedValue({
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
 
     const { generateYouTubeMetadata } =
       await import("../generation/youtube-metadata-generator.js");
-    (generateYouTubeMetadata as any).mockResolvedValue({
+    vi.mocked(generateYouTubeMetadata).mockResolvedValue({
       success: true,
       content: {
         title: "テスト動画",
@@ -616,11 +616,11 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-threads-1" }]),
       }),
-    });
+    } as any);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -643,19 +643,19 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     (optimalTime as any).POSTS_PER_DAY.github = 1;
 
     const { generateXPost } = await import("../generation/generator.js");
-    (generateXPost as any).mockResolvedValue({
+    vi.mocked(generateXPost).mockResolvedValue({
       success: true,
       content: { format: "single", posts: [{ text: "テスト" }] },
     });
     const { generateArticle } =
       await import("../generation/article-generator.js");
-    (generateArticle as any).mockResolvedValue({
+    vi.mocked(generateArticle).mockResolvedValue({
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
     const { generateYouTubeMetadata } =
       await import("../generation/youtube-metadata-generator.js");
-    (generateYouTubeMetadata as any).mockResolvedValue({
+    vi.mocked(generateYouTubeMetadata).mockResolvedValue({
       success: true,
       content: {
         title: "テスト動画",
@@ -676,11 +676,11 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-github-1" }]),
       }),
-    });
+    } as any);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -708,19 +708,19 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     (optimalTime as any).POSTS_PER_DAY.podcast = 1;
 
     const { generateXPost } = await import("../generation/generator.js");
-    (generateXPost as any).mockResolvedValue({
+    vi.mocked(generateXPost).mockResolvedValue({
       success: true,
       content: { format: "single", posts: [{ text: "テスト" }] },
     });
     const { generateArticle } =
       await import("../generation/article-generator.js");
-    (generateArticle as any).mockResolvedValue({
+    vi.mocked(generateArticle).mockResolvedValue({
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
     const { generateYouTubeMetadata } =
       await import("../generation/youtube-metadata-generator.js");
-    (generateYouTubeMetadata as any).mockResolvedValue({
+    vi.mocked(generateYouTubeMetadata).mockResolvedValue({
       success: true,
       content: {
         title: "テスト動画",
@@ -740,11 +740,11 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-podcast-1" }]),
       }),
-    });
+    } as any);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -768,19 +768,19 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
 
   it("should handle PhasedGenerator failure for Threads gracefully", async () => {
     const { generateXPost } = await import("../generation/generator.js");
-    (generateXPost as any).mockResolvedValue({
+    vi.mocked(generateXPost).mockResolvedValue({
       success: true,
       content: { format: "single", posts: [{ text: "テスト" }] },
     });
     const { generateArticle } =
       await import("../generation/article-generator.js");
-    (generateArticle as any).mockResolvedValue({
+    vi.mocked(generateArticle).mockResolvedValue({
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
     const { generateYouTubeMetadata } =
       await import("../generation/youtube-metadata-generator.js");
-    (generateYouTubeMetadata as any).mockResolvedValue({
+    vi.mocked(generateYouTubeMetadata).mockResolvedValue({
       success: true,
       content: {
         title: "テスト動画",
@@ -796,11 +796,11 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-1" }]),
       }),
-    });
+    } as any);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -872,19 +872,19 @@ describe("catchUpIfNeeded", () => {
 
     // Mock all generators for generateAllPlatformSuggestions
     const { generateXPost } = await import("../generation/generator.js");
-    (generateXPost as any).mockResolvedValue({
+    vi.mocked(generateXPost).mockResolvedValue({
       success: true,
       content: { format: "single", posts: [{ text: "テスト" }] },
     });
     const { generateArticle } =
       await import("../generation/article-generator.js");
-    (generateArticle as any).mockResolvedValue({
+    vi.mocked(generateArticle).mockResolvedValue({
       success: true,
       content: { title: "テスト記事", body: "本文", tags: ["test"] },
     });
     const { generateYouTubeMetadata } =
       await import("../generation/youtube-metadata-generator.js");
-    (generateYouTubeMetadata as any).mockResolvedValue({
+    vi.mocked(generateYouTubeMetadata).mockResolvedValue({
       success: true,
       content: {
         title: "テスト動画",
@@ -899,11 +899,11 @@ describe("catchUpIfNeeded", () => {
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-catchup-1" }]),
       }),
-    });
+    } as any);
 
     const { catchUpIfNeeded } = await import("./scheduler.js");
     const mockClient = {
@@ -932,24 +932,24 @@ describe("generateAllPlatformSuggestions — CLI health check", () => {
 
   it("should proceed with generation when health check returns transient", async () => {
     const { checkCliHealth } = await import("@argus/agent-core");
-    (checkCliHealth as any).mockResolvedValue("transient");
+    vi.mocked(checkCliHealth).mockResolvedValue("transient");
 
     const { generateXPost } = await import("../generation/generator.js");
-    (generateXPost as any).mockResolvedValue({
+    vi.mocked(generateXPost).mockResolvedValue({
       success: true,
       content: { format: "single", posts: [{ text: "テスト" }] },
     });
 
     const { generateArticle } =
       await import("../generation/article-generator.js");
-    (generateArticle as any).mockResolvedValue({
+    vi.mocked(generateArticle).mockResolvedValue({
       success: true,
       content: { title: "テスト", body: "本文", tags: ["test"] },
     });
 
     const { generateYouTubeMetadata } =
       await import("../generation/youtube-metadata-generator.js");
-    (generateYouTubeMetadata as any).mockResolvedValue({
+    vi.mocked(generateYouTubeMetadata).mockResolvedValue({
       success: true,
       content: {
         title: "動画",
@@ -965,11 +965,11 @@ describe("generateAllPlatformSuggestions — CLI health check", () => {
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-test" }]),
       }),
-    });
+    } as any);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -984,7 +984,7 @@ describe("generateAllPlatformSuggestions — CLI health check", () => {
 
   it("should skip generation when health check returns not_logged_in", async () => {
     const { checkCliHealth } = await import("@argus/agent-core");
-    (checkCliHealth as any).mockResolvedValue("not_logged_in");
+    vi.mocked(checkCliHealth).mockResolvedValue("not_logged_in");
 
     const { generateXPost } = await import("../generation/generator.js");
 
@@ -1007,7 +1007,7 @@ describe("generateAllPlatformSuggestions — CLI health check", () => {
 
   it("should skip generation when health check returns rate_limit", async () => {
     const { checkCliHealth } = await import("@argus/agent-core");
-    (checkCliHealth as any).mockResolvedValue("rate_limit");
+    vi.mocked(checkCliHealth).mockResolvedValue("rate_limit");
 
     const { generateXPost } = await import("../generation/generator.js");
 

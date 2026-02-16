@@ -16,6 +16,7 @@ vi.mock("@argus/db", () => ({
     content: "content",
     updatedAt: "updated_at",
   },
+  escapeIlike: (value: string) => value.replace(/[%_\\]/g, "\\$&"),
 }));
 
 // Mock drizzle-orm operators (they just return marker objects)
@@ -174,7 +175,7 @@ describe("PersonalServiceImpl", () => {
     expect(items[0].category).toBe("self");
   });
 
-  // 3. read() returns note content
+  // 3. read() returns note content as Result
   it("read() returns note content", async () => {
     const row = makeRow("self/values.md", "self", "values", valuesContent);
     vi.mocked(db.select).mockReturnValue({
@@ -183,24 +184,29 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    const entry = await service.read("self/values.md");
-    expect(entry.path).toBe("self/values.md");
-    expect(entry.name).toBe("values");
-    expect(entry.category).toBe("self");
-    expect(entry.content).toContain("# 価値観");
+    const result = await service.read("self/values.md");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.path).toBe("self/values.md");
+      expect(result.data.name).toBe("values");
+      expect(result.data.category).toBe("self");
+      expect(result.data.content).toContain("# 価値観");
+    }
   });
 
-  // 4. read() throws for missing note
-  it("read() throws for missing note", async () => {
+  // 4. read() returns error for missing note
+  it("read() returns error for missing note", async () => {
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
       }),
     } as any);
 
-    await expect(service.read("nonexistent/file.md")).rejects.toThrow(
-      "Note not found: nonexistent/file.md",
-    );
+    const result = await service.read("nonexistent/file.md");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Note not found: nonexistent/file.md");
+    }
   });
 
   // 5. search() finds matching lines with context
@@ -263,7 +269,7 @@ describe("PersonalServiceImpl", () => {
     expect(match!.matches[0].text).toContain("[ファイル名マッチ]");
   });
 
-  // 8. getPersonalityContext("values") returns values section
+  // 8. getPersonalityContext("values") returns values section as Result
   it('getPersonalityContext("values") returns values section', async () => {
     const row = makeRow("self/values.md", "self", "values", valuesContent);
     vi.mocked(db.select).mockReturnValue({
@@ -272,9 +278,12 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    const content = await service.getPersonalityContext("values");
-    expect(content).toContain("価値観");
-    expect(content).toContain("品質＝信頼");
+    const result = await service.getPersonalityContext("values");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toContain("価値観");
+      expect(result.data).toContain("品質＝信頼");
+    }
   });
 
   // 9. getPersonalityContext("routines") reads routines file
@@ -291,12 +300,15 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    const content = await service.getPersonalityContext("routines");
-    expect(content).toContain("朝のルーティン");
-    expect(content).toContain("まずメールチェックから始める");
+    const result = await service.getPersonalityContext("routines");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toContain("朝のルーティン");
+      expect(result.data).toContain("まずメールチェックから始める");
+    }
   });
 
-  // 10. getPersonalityContext() returns summary
+  // 10. getPersonalityContext() returns summary as Result
   it("getPersonalityContext() returns summary", async () => {
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
@@ -306,18 +318,21 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    const content = await service.getPersonalityContext();
-    // Should contain summaries from each file
-    expect(content).toContain("identity");
-    expect(content).toContain("values");
-    expect(content).toContain("strengths");
-    expect(content).toContain("thinking");
-    expect(content).toContain("preferences");
-    expect(content).toContain("routines");
+    const result = await service.getPersonalityContext();
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Should contain summaries from each file
+      expect(result.data).toContain("identity");
+      expect(result.data).toContain("values");
+      expect(result.data).toContain("strengths");
+      expect(result.data).toContain("thinking");
+      expect(result.data).toContain("preferences");
+      expect(result.data).toContain("routines");
+    }
   });
 
-  // 11. getPersonalityContext() throws when no notes found
-  it("getPersonalityContext() throws when no self notes found", async () => {
+  // 11. getPersonalityContext() returns error when no notes found
+  it("getPersonalityContext() returns error when no self notes found", async () => {
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -326,46 +341,53 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    await expect(service.getPersonalityContext()).rejects.toThrow(
-      "No personal notes found in self/ category",
-    );
+    const result = await service.getPersonalityContext();
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("No personal notes found in self/ category");
+    }
   });
 
-  // 12. getPersonalityContext("identity") throws when section not found
-  it('getPersonalityContext("identity") throws when section not found', async () => {
+  // 12. getPersonalityContext("identity") returns error when section not found
+  it('getPersonalityContext("identity") returns error when section not found', async () => {
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
       }),
     } as any);
 
-    await expect(service.getPersonalityContext("identity")).rejects.toThrow(
-      "Personal note not found: self/identity.md",
-    );
+    const result = await service.getPersonalityContext("identity");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Personal note not found: self/identity.md");
+    }
   });
 
-  // 13. add() creates new note
+  // 13. add() creates new note as Result
   it("add() creates new note", async () => {
     vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockResolvedValue(undefined),
     } as any);
 
-    const entry = await service.add(
+    const result = await service.add(
       "self",
       "test-note",
       "# Test Note\n\nContent here.",
     );
-    expect(entry.path).toBe("self/test-note.md");
-    expect(entry.name).toBe("test-note");
-    expect(entry.category).toBe("self");
-    expect(entry.content).toBe("# Test Note\n\nContent here.");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.path).toBe("self/test-note.md");
+      expect(result.data.name).toBe("test-note");
+      expect(result.data.category).toBe("self");
+      expect(result.data.content).toBe("# Test Note\n\nContent here.");
+    }
 
     // Verify insert was called
     expect(db.insert).toHaveBeenCalled();
   });
 
-  // 14. add() throws if note exists (unique constraint)
-  it("add() throws if note exists", async () => {
+  // 14. add() returns error if note exists (unique constraint)
+  it("add() returns error if note exists", async () => {
     const pgError = new Error("duplicate key value violates unique constraint");
     (pgError as any).code = "23505";
 
@@ -373,12 +395,14 @@ describe("PersonalServiceImpl", () => {
       values: vi.fn().mockRejectedValue(pgError),
     } as any);
 
-    await expect(
-      service.add("self", "values", "duplicate content"),
-    ).rejects.toThrow("Note already exists: self/values.md");
+    const result = await service.add("self", "values", "duplicate content");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Note already exists: self/values.md");
+    }
   });
 
-  // 15. update("append") appends to note
+  // 15. update("append") appends to note as Result
   it('update("append") appends to note', async () => {
     const existingRow = makeRow(
       "self/routines.md",
@@ -413,17 +437,20 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    const entry = await service.update(
+    const result = await service.update(
       "self/routines.md",
       "- 散歩する",
       "append",
     );
-    expect(entry.content).toContain("メールチェック");
-    expect(entry.content).toContain("散歩する");
-    expect(entry.path).toBe("self/routines.md");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.content).toContain("メールチェック");
+      expect(result.data.content).toContain("散歩する");
+      expect(result.data.path).toBe("self/routines.md");
+    }
   });
 
-  // 16. update("replace") replaces note content
+  // 16. update("replace") replaces note content as Result
   it('update("replace") replaces note content', async () => {
     const replacedContent = "# 新しいルーティン\n\n- 朝ランニング";
 
@@ -442,17 +469,20 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    const entry = await service.update(
+    const result = await service.update(
       "self/routines.md",
       "# 新しいルーティン\n\n- 朝ランニング",
       "replace",
     );
-    expect(entry.content).toBe("# 新しいルーティン\n\n- 朝ランニング");
-    expect(entry.content).not.toContain("メールチェック");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.content).toBe("# 新しいルーティン\n\n- 朝ランニング");
+      expect(result.data.content).not.toContain("メールチェック");
+    }
   });
 
-  // 17. update() throws for missing note
-  it("update() throws for missing note", async () => {
+  // 17. update() returns error for missing note
+  it("update() returns error for missing note", async () => {
     // For append mode, it reads first — no rows found
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
@@ -460,8 +490,14 @@ describe("PersonalServiceImpl", () => {
       }),
     } as any);
 
-    await expect(
-      service.update("nonexistent/file.md", "content", "append"),
-    ).rejects.toThrow("Note not found: nonexistent/file.md");
+    const result = await service.update(
+      "nonexistent/file.md",
+      "content",
+      "append",
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Note not found: nonexistent/file.md");
+    }
   });
 });

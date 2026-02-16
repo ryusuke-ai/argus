@@ -20,7 +20,8 @@ vi.mock("googleapis", () => {
 // Mock @argus/gmail auth
 vi.mock("@argus/gmail", () => ({
   getAuthenticatedClient: vi.fn().mockResolvedValue({
-    credentials: { access_token: "mock-token" },
+    success: true,
+    data: { credentials: { access_token: "mock-token" } },
   }),
 }));
 
@@ -78,16 +79,19 @@ describe("calendar-client", () => {
         attendees: ["alice@example.com", "bob@example.com"],
       });
 
-      expect(result).toEqual({
-        id: "evt-1",
-        title: "Meeting",
-        start: "2026-03-01T10:00:00+09:00",
-        end: "2026-03-01T11:00:00+09:00",
-        description: "Team sync",
-        location: "Room A",
-        attendees: ["alice@example.com", "bob@example.com"],
-        htmlLink: "https://calendar.google.com/event?eid=evt-1",
-      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({
+          id: "evt-1",
+          title: "Meeting",
+          start: "2026-03-01T10:00:00+09:00",
+          end: "2026-03-01T11:00:00+09:00",
+          description: "Team sync",
+          location: "Room A",
+          attendees: ["alice@example.com", "bob@example.com"],
+          htmlLink: "https://calendar.google.com/event?eid=evt-1",
+        });
+      }
 
       expect(calendarMock.events.insert).toHaveBeenCalledWith({
         calendarId: "primary",
@@ -120,16 +124,19 @@ describe("calendar-client", () => {
         start: "2026-03-15",
       });
 
-      expect(result).toEqual({
-        id: "evt-2",
-        title: "Holiday",
-        start: "2026-03-15",
-        end: "2026-03-15",
-        description: undefined,
-        location: undefined,
-        attendees: undefined,
-        htmlLink: undefined,
-      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({
+          id: "evt-2",
+          title: "Holiday",
+          start: "2026-03-15",
+          end: "2026-03-15",
+          description: undefined,
+          location: undefined,
+          attendees: undefined,
+          htmlLink: undefined,
+        });
+      }
 
       expect(calendarMock.events.insert).toHaveBeenCalledWith({
         calendarId: "primary",
@@ -194,8 +201,10 @@ describe("calendar-client", () => {
         timeMax: "2026-03-01T23:59:59+09:00",
       });
 
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0]).toEqual({
         id: "evt-a",
         title: "Morning standup",
         start: "2026-03-01T09:00:00+09:00",
@@ -205,7 +214,7 @@ describe("calendar-client", () => {
         attendees: undefined,
         htmlLink: undefined,
       });
-      expect(result[1].id).toBe("evt-b");
+      expect(result.data[1].id).toBe("evt-b");
 
       expect(calendarMock.events.list).toHaveBeenCalledWith({
         calendarId: "primary",
@@ -227,7 +236,10 @@ describe("calendar-client", () => {
         timeMax: "2026-03-01T23:59:59Z",
       });
 
-      expect(result).toEqual([]);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual([]);
+      }
     });
 
     it("should return empty array when items is null/undefined", async () => {
@@ -240,7 +252,10 @@ describe("calendar-client", () => {
         timeMax: "2026-03-01T23:59:59Z",
       });
 
-      expect(result).toEqual([]);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual([]);
+      }
     });
   });
 
@@ -264,16 +279,19 @@ describe("calendar-client", () => {
         location: "Room B",
       });
 
-      expect(result).toEqual({
-        id: "evt-1",
-        title: "Updated Meeting",
-        start: "2026-03-01T10:00:00+09:00",
-        end: "2026-03-01T11:00:00+09:00",
-        description: "New description",
-        location: "Room B",
-        attendees: undefined,
-        htmlLink: undefined,
-      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({
+          id: "evt-1",
+          title: "Updated Meeting",
+          start: "2026-03-01T10:00:00+09:00",
+          end: "2026-03-01T11:00:00+09:00",
+          description: "New description",
+          location: "Room B",
+          attendees: undefined,
+          htmlLink: undefined,
+        });
+      }
 
       expect(calendarMock.events.patch).toHaveBeenCalledWith({
         calendarId: "primary",
@@ -291,8 +309,9 @@ describe("calendar-client", () => {
     it("should call delete with correct params", async () => {
       calendarMock.events.delete.mockResolvedValue({ data: {} });
 
-      await deleteEvent("evt-99");
+      const result = await deleteEvent("evt-99");
 
+      expect(result.success).toBe(true);
       expect(calendarMock.events.delete).toHaveBeenCalledWith({
         calendarId: "primary",
         eventId: "evt-99",

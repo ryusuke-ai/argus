@@ -76,6 +76,9 @@ vi.mock("@argus/agent-core", () => ({
   scanOutputDir: vi.fn(() => []),
   findNewArtifacts: vi.fn(() => []),
   uploadArtifactsToSlack: vi.fn(),
+  fireAndForget: (promise: Promise<unknown>) => {
+    promise.catch(() => {});
+  },
 }));
 
 // executor モック
@@ -159,9 +162,17 @@ describe("handleThreadReply", () => {
       durationMs: 3000,
     });
 
-    await handleThreadReply(client, "thread-ts", "フォローアップ質問", "reply-ts");
+    await handleThreadReply(
+      client,
+      "thread-ts",
+      "フォローアップ質問",
+      "reply-ts",
+    );
 
-    expect(mockResumeTask).toHaveBeenCalledWith("session-abc", "フォローアップ質問");
+    expect(mockResumeTask).toHaveBeenCalledWith(
+      "session-abc",
+      "フォローアップ質問",
+    );
     expect(client.chat.postMessage).toHaveBeenCalledTimes(2); // typing + result
   });
 
@@ -228,7 +239,12 @@ describe("handleThreadReply", () => {
     // pending=なし, running=なし, completed=なし
     setupDbChain([[], [], []]);
 
-    await handleThreadReply(client, "thread-ts", "ここにメッセージ", "reply-ts");
+    await handleThreadReply(
+      client,
+      "thread-ts",
+      "ここにメッセージ",
+      "reply-ts",
+    );
 
     expect(client.chat.postMessage).not.toHaveBeenCalled();
     expect(mockResumeTask).not.toHaveBeenCalled();
@@ -247,7 +263,9 @@ describe("メッセージリスナーのファイル添付処理", () => {
       text.trim().length > 0
         ? text
         : hasFiles
-          ? files.map((f) => `[添付ファイル: ${f.name || "ファイル"}]`).join("\n")
+          ? files
+              .map((f) => `[添付ファイル: ${f.name || "ファイル"}]`)
+              .join("\n")
           : "";
 
     expect(effectiveText).toBe("[添付ファイル: IMG_4187.jpg]");
@@ -262,7 +280,9 @@ describe("メッセージリスナーのファイル添付処理", () => {
       text.trim().length > 0
         ? text
         : hasFiles
-          ? files.map((f) => `[添付ファイル: ${f.name || "ファイル"}]`).join("\n")
+          ? files
+              .map((f) => `[添付ファイル: ${f.name || "ファイル"}]`)
+              .join("\n")
           : "";
 
     expect(effectiveText).toBe("この画像を見て");
@@ -277,7 +297,9 @@ describe("メッセージリスナーのファイル添付処理", () => {
       text.trim().length > 0
         ? text
         : hasFiles
-          ? files.map((f) => `[添付ファイル: ${f.name || "ファイル"}]`).join("\n")
+          ? files
+              .map((f) => `[添付ファイル: ${f.name || "ファイル"}]`)
+              .join("\n")
           : "";
 
     expect(effectiveText).toBe("");
@@ -295,10 +317,14 @@ describe("メッセージリスナーのファイル添付処理", () => {
       text.trim().length > 0
         ? text
         : hasFiles
-          ? files.map((f) => `[添付ファイル: ${f.name || "ファイル"}]`).join("\n")
+          ? files
+              .map((f) => `[添付ファイル: ${f.name || "ファイル"}]`)
+              .join("\n")
           : "";
 
-    expect(effectiveText).toBe("[添付ファイル: IMG_001.jpg]\n[添付ファイル: document.pdf]");
+    expect(effectiveText).toBe(
+      "[添付ファイル: IMG_001.jpg]\n[添付ファイル: document.pdf]",
+    );
   });
 
   it("ファイル名がない場合 → 'ファイル' がフォールバック", () => {
@@ -310,7 +336,9 @@ describe("メッセージリスナーのファイル添付処理", () => {
       text.trim().length > 0
         ? text
         : hasFiles
-          ? files.map((f) => `[添付ファイル: ${f.name || "ファイル"}]`).join("\n")
+          ? files
+              .map((f) => `[添付ファイル: ${f.name || "ファイル"}]`)
+              .join("\n")
           : "";
 
     expect(effectiveText).toBe("[添付ファイル: ファイル]");
