@@ -28,16 +28,24 @@ export default tseslint.config(
       "@typescript-eslint/no-require-imports": "off",
     },
   },
-  // CJS files (postcss, tailwind, ecosystem configs)
+  // Node.js standalone scripts and CJS files
   {
-    files: ["**/*.cjs"],
+    files: [".claude/skills/**/*.js", "**/scripts/**/*.{js,mjs}", "**/*.cjs"],
     languageOptions: {
       globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        fetch: "readonly",
+        URL: "readonly",
+        setTimeout: "readonly",
+        setInterval: "readonly",
+        clearTimeout: "readonly",
+        clearInterval: "readonly",
         module: "readonly",
         require: "readonly",
         __dirname: "readonly",
         __filename: "readonly",
-        process: "readonly",
         exports: "readonly",
       },
     },
