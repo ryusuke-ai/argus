@@ -14,19 +14,34 @@ export interface TiktokUploadResult {
 }
 
 export interface TiktokPublishStatusResult {
-  status: "processing" | "publish_complete" | "failed";
+  status: string;
   publishId: string;
+  failReason?: string;
+  publicPostId?: number[];
   error?: string;
 }
 
 export interface TiktokCreatorInfo {
   creatorAvatarUrl: string;
+  creatorUsername: string;
   creatorNickname: string;
   privacyLevelOptions: string[];
   commentDisabled: boolean;
   duetDisabled: boolean;
   stitchDisabled: boolean;
   maxVideoPostDurationSec: number;
+}
+
+export interface DirectPostInput {
+  videoUrl: string;
+  title?: string;
+  privacyLevel: string;
+  disableComment?: boolean;
+  disableDuet?: boolean;
+  disableStitch?: boolean;
+  brandContentToggle?: boolean;
+  brandOrganicToggle?: boolean;
+  isAigc?: boolean;
 }
 
 export interface PublishVideoByUrlInput {
