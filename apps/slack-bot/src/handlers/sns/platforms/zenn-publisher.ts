@@ -1,5 +1,5 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
 interface ZennPublishInput {
@@ -61,7 +61,8 @@ export async function publishToZenn(
   if (!config) {
     return {
       success: false,
-      error: "Zenn configuration not set (ZENN_REPO_PATH and ZENN_USERNAME required)",
+      error:
+        "Zenn configuration not set (ZENN_REPO_PATH and ZENN_USERNAME required)",
     };
   }
 
@@ -87,18 +88,18 @@ export async function publishToZenn(
     writeFileSync(filePath, content, "utf-8");
 
     // git add, commit, push
-    execSync(`git add articles/${input.slug}.md`, {
+    execFileSync("git", ["add", `articles/${input.slug}.md`], {
       cwd: config.repoPath,
       stdio: "pipe",
     });
 
     const commitMessage = `Add article: ${input.title}`;
-    execSync(`git commit -m "${commitMessage}"`, {
+    execFileSync("git", ["commit", "-m", commitMessage], {
       cwd: config.repoPath,
       stdio: "pipe",
     });
 
-    execSync("git push", {
+    execFileSync("git", ["push"], {
       cwd: config.repoPath,
       stdio: "pipe",
     });

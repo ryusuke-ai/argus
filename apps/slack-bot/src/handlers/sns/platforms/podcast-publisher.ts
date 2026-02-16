@@ -5,7 +5,7 @@ import {
   copyFileSync,
   readFileSync,
 } from "node:fs";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { db, snsPosts } from "@argus/db";
@@ -147,9 +147,19 @@ export async function extractAudioFromVideo(input: {
     const slug = slugify(input.title);
     const audioPath = join(input.outputDir, `${slug}.mp3`);
 
-    execSync(
-      `ffmpeg -i "${input.videoPath}" -vn -acodec libmp3lame -ab 192k -ar 44100 "${audioPath}" -y`,
-    );
+    execFileSync("ffmpeg", [
+      "-i",
+      input.videoPath,
+      "-vn",
+      "-acodec",
+      "libmp3lame",
+      "-ab",
+      "192k",
+      "-ar",
+      "44100",
+      audioPath,
+      "-y",
+    ]);
 
     return { success: true, audioPath };
   } catch (error) {

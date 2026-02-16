@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { open, readFile, stat } from "node:fs/promises";
+import { open, readFile, realpath, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
 
 const OUTPUT_DIR = join(process.cwd(), "../../.claude/agent-output");
@@ -35,8 +35,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const { path } = await params;
   const filePath = join(OUTPUT_DIR, ...path);
 
-  // セキュリティ: OUTPUT_DIR外へのアクセスを防止
-  if (!filePath.startsWith(OUTPUT_DIR)) {
+  // セキュリティ: OUTPUT_DIR外へのアクセスを防止（symlink解決含む）
+  let resolvedPath: string;
+  try {
+    resolvedPath = await realpath(filePath);
+  } catch {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!resolvedPath.startsWith(await realpath(OUTPUT_DIR))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
