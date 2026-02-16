@@ -13,6 +13,21 @@ interface CreatorInfo {
   maxVideoPostDurationSec: number;
 }
 
+function formatPrivacyLabel(level: string): string {
+  switch (level) {
+    case "PUBLIC_TO_EVERYONE":
+      return "Public";
+    case "MUTUAL_FOLLOW_FRIENDS":
+      return "Friends";
+    case "FOLLOWER_OF_CREATOR":
+      return "Followers";
+    case "SELF_ONLY":
+      return "Only me";
+    default:
+      return level;
+  }
+}
+
 export default function TikTokPostForm() {
   const [creatorInfo, setCreatorInfo] = useState<CreatorInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +35,10 @@ export default function TikTokPostForm() {
 
   const [videoUrl, setVideoUrl] = useState("");
   const [caption, setCaption] = useState("");
+  const [privacyLevel, setPrivacyLevel] = useState("");
+  const [allowComment, setAllowComment] = useState(false);
+  const [allowDuet, setAllowDuet] = useState(false);
+  const [allowStitch, setAllowStitch] = useState(false);
   const MAX_CAPTION_LENGTH = 2200;
 
   useEffect(() => {
@@ -139,7 +158,104 @@ export default function TikTokPostForm() {
         </div>
       </div>
 
-      {/* More sections will be added in Tasks 7-9 */}
+      {/* Privacy Level */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-slate-800">Privacy</h3>
+        <div>
+          <label
+            htmlFor="privacy-level"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            Who can view this video
+          </label>
+          <select
+            id="privacy-level"
+            value={privacyLevel}
+            onChange={(e) => setPrivacyLevel(e.target.value)}
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="" disabled>
+              Select privacy level...
+            </option>
+            {creatorInfo?.privacyLevelOptions.map((option) => (
+              <option key={option} value={option}>
+                {formatPrivacyLabel(option)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Interaction Settings */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+        <h3 className="text-lg font-semibold text-slate-800">Interactions</h3>
+        <div className="space-y-3">
+          {/* Allow Comment */}
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={allowComment}
+              onChange={(e) => setAllowComment(e.target.checked)}
+              disabled={creatorInfo?.commentDisabled}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <span
+              className={`text-sm ${creatorInfo?.commentDisabled ? "text-slate-400" : "text-slate-700"}`}
+            >
+              Allow comments
+              {creatorInfo?.commentDisabled && (
+                <span className="ml-1 text-xs text-slate-400">
+                  (Disabled by creator)
+                </span>
+              )}
+            </span>
+          </label>
+
+          {/* Allow Duet */}
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={allowDuet}
+              onChange={(e) => setAllowDuet(e.target.checked)}
+              disabled={creatorInfo?.duetDisabled}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <span
+              className={`text-sm ${creatorInfo?.duetDisabled ? "text-slate-400" : "text-slate-700"}`}
+            >
+              Allow duets
+              {creatorInfo?.duetDisabled && (
+                <span className="ml-1 text-xs text-slate-400">
+                  (Disabled by creator)
+                </span>
+              )}
+            </span>
+          </label>
+
+          {/* Allow Stitch */}
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={allowStitch}
+              onChange={(e) => setAllowStitch(e.target.checked)}
+              disabled={creatorInfo?.stitchDisabled}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <span
+              className={`text-sm ${creatorInfo?.stitchDisabled ? "text-slate-400" : "text-slate-700"}`}
+            >
+              Allow stitches
+              {creatorInfo?.stitchDisabled && (
+                <span className="ml-1 text-xs text-slate-400">
+                  (Disabled by creator)
+                </span>
+              )}
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {/* More sections will be added in Tasks 8-9 */}
     </div>
   );
 }
