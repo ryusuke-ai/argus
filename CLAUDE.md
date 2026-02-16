@@ -25,9 +25,12 @@ pnpm monorepo (`@argus/` スコープ):
 | Knowledge   | `packages/knowledge-personal`            | Personal Knowledge MCP Server                       |
 | Integration | `packages/gmail`                         | Google API（OAuth2 + Gmail）                        |
 | Integration | `packages/google-calendar`               | Google Calendar MCP Server                          |
+| Integration | `packages/r2-storage`                    | Cloudflare R2 ストレージクライアント                |
+| Integration | `packages/slack-canvas`                  | Slack Canvas API クライアント                       |
+| Integration | `packages/tiktok`                        | TikTok API + PKCE 認証                              |
 | Config      | `.claude/`                               | ルール / skills / permissions                       |
 
-依存: `slack-bot` → `agent-core`, `db`, `gmail`, `google-calendar` / `dashboard` → `agent-core`, `db` / `orchestrator` → `agent-core`, `db`, `knowledge`, `gmail`, `google-calendar` / `knowledge` → `db` / `google-calendar` → `gmail`
+依存: `slack-bot` → `agent-core`, `db`, `gmail`, `google-calendar`, `knowledge-personal`, `r2-storage`, `slack-canvas`, `tiktok` / `dashboard` → `agent-core`, `db` / `orchestrator` → `agent-core`, `db`, `knowledge`, `gmail`, `google-calendar`, `slack-canvas` / `knowledge` → `db` / `knowledge-personal` → `db` / `google-calendar` → `gmail` / `slack-canvas` → `db` / `tiktok` → `db`, `gmail` / `gmail` → `db`
 
 セッション設計・実行ループ・観測・Memory中心設計・権限分離の詳細は .claude/rules/architecture.md を参照
 
@@ -61,6 +64,7 @@ pnpm monorepo (`@argus/` スコープ):
 - **エラーハンドリング**: `success: boolean` フラグで返す（throwしない）
 - **テスト**: ソースと同ディレクトリにコロケーション (`foo.ts` + `foo.test.ts`)
 - **環境変数**: ルート `.env` に一本化
+- **マイグレーション**: `drizzle-kit generate --custom` で意味のある名前を付ける（例: `add-session-indexes`）
 
 ## メディア配信
 

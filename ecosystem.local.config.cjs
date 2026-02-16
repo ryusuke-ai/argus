@@ -47,7 +47,7 @@ const dotenv = loadEnv(path.join(ROOT, ".env"));
 
 const commonEnv = {
   ...dotenv,
-  NODE_ENV: "production",
+  NODE_ENV: "development",
   PATH: `/opt/homebrew/bin:${process.env.PATH}`,
 };
 

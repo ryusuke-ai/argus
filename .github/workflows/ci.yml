@@ -28,5 +28,15 @@ jobs:
         env:
           DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
       - name: Run tests
         run: pnpm test
+
+      - name: Security audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true

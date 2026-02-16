@@ -4,7 +4,7 @@
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ARGUS_DIR="$(dirname "$SCRIPT_DIR")"
+ARGUS_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 get_slack_config() {
   local token

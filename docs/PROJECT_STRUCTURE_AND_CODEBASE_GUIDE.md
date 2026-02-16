@@ -430,6 +430,8 @@ await this.server.connect(new StdioServerTransport());
 // 5. handleToolCall() は public（テスト・外部からの直接呼び出しが可能）
 ```
 
+**`handleToolCall()` を public にする理由**: MCP プロトコル経由（`ListToolsRequestSchema` → `CallToolRequestSchema`）でツールを呼ぶと、トランスポート層（Stdio 接続）のセットアップが必要になりテストが複雑化する。`handleToolCall()` を public にすれば、トランスポート層をバイパスして直接ツールのロジックをテストでき、テストの速度と信頼性が向上する。また、orchestrator の `knowledge-api.ts` のように MCP プロトコルを経由せず HTTP API から直接ナレッジ操作を呼びたい場面でも活用できる。
+
 ### 権限分離: knowledge パッケージ
 
 ```
@@ -870,6 +872,8 @@ if (!process.env.DAILY_PLAN_CHANNEL) {
 }
 ```
 
+**なぜこのパターンが必要か**: Argus は 1 つのコードベースを開発環境・CI・本番など複数の環境で動かす。全ての環境で全機能を有効にする必要はなく、例えば CI では Gmail チェックや Daily Planner は不要。環境変数の有無で機能の有効/無効を切り替えることで、**同一コードを全環境にデプロイしつつ、各環境に必要な機能だけを動かせる**。throw でエラーにするのではなくログを出してスキップすることで、他のスケジュールジョブに影響を与えない。
+
 ### 特徴的コード: Promise.all の多用
 
 ```typescript
@@ -911,7 +915,7 @@ const results = await Promise.all([
 
 - Next.js 16 App Router の Server Component（サーバー側で実行される React コンポーネント。DB に直接アクセスできる）/ Client Component（ブラウザ側で実行されユーザー操作を扱うコンポーネント）使い分け
 - Server Component での直接 DB クエリ
-- Range Request（ファイルの一部分だけを取得する HTTP の仕組み。動画のシーク再生に必要）対応のメディア配信
+- Range Request 対応のメディア配信（動画のシーク再生に必須）
 
 ### ファイル構成
 
@@ -977,6 +981,8 @@ export default async function SessionDetailPage({ params }: PageProps) {
 ```
 
 ### 特徴的コード: Range Request 対応
+
+**Range Request とは**: HTTP の仕組みで、ファイル全体ではなく一部分だけを取得するリクエスト。動画のシーク再生（「2 分 30 秒のところから再生」）には、その位置のバイト範囲だけをサーバーから取得する必要がある。Range Request に対応していないと、ユーザーがシークバーをクリックするたびに動画全体をダウンロードし直すことになり、再生開始が遅くなる。特に数百 MB の動画ファイルでは実用に耐えない。Argus では SNS 投稿用の動画プレビューや、Dashboard でのエージェント生成動画の確認に使われる。
 
 ```typescript
 // api/files/[...path]/route.ts — 動画シーク対応
@@ -1111,6 +1117,8 @@ steps:
 └── code-reviewer.md  # コードレビュー（正確性 > セキュリティ > パフォーマンス > 保守性）
 ```
 
+**Collector / Executor を分離する設計意図**: AI エージェントは自律的に動作するため、意図しないデータ書き換えのリスクがある。Executor（ユーザーからの依頼を実行するエージェント）には Knowledge の読み取り権限のみを与え、書き込みを構造的に禁止する。これにより、Executor が「ナレッジを更新して」と指示されても実行できない。一方、Collector（情報収集専用エージェント）には書き込み権限を付与し、Gmail やカレンダーから収集した情報を Knowledge に蓄積できるようにする。この分離は **最小権限の原則**（必要最小限の権限だけを与える）に基づいており、万が一プロンプトインジェクション等で Executor が不正な指示を受けても、ナレッジの改ざんを防げる。
+
 ### 権限設定（deny-first）
 
 ```json
@@ -1183,6 +1191,17 @@ function riskyOperation(): Result {
   return { success: false, error: "Something went wrong" };
 }
 ```
+
+**例外ベースとの比較**:
+
+| 観点                   | 例外ベース（throw）                                                                                                          | success フラグ（Argus 規約）                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **エラーの伝播**       | 呼び出し元に暗黙的に伝播する。try-catch を忘れると未捕捉例外でプロセスが停止する                                             | 戻り値として明示的に返されるため、呼び出し側が `if (!result.success)` で必ず処理する必要がある         |
+| **型安全性**           | TypeScript では throw する型を宣言できない（catch の型は `unknown`）。どの関数がどんなエラーを投げるか型レベルで把握できない | 戻り値の型に `success: false` のケースが含まれるため、TypeScript が処理漏れを検出できる                |
+| **Slack Bot への影響** | Socket Mode のメッセージハンドラ内で未捕捉例外が発生すると、WebSocket 接続が切れてボット全体が停止する                       | エラーは値として返されるだけなので、ボットの接続には影響しない                                         |
+| **適切な場面**         | 回復不能なシステムエラー（メモリ不足等）、開発時のバグ検出（assert）                                                         | 正常なエラーケース（API 失敗、バリデーションエラー等）、呼び出し側がエラーを判断して処理を続行する場面 |
+
+Go 言語の `(result, error)` パターンに近い思想。Argus では「1 つの処理の失敗がシステム全体を停止させない」ことを最優先とするため、全公開関数でこのパターンを統一している。
 
 **適用箇所**: agent-core の `query()`、slack-canvas の `upsertCanvas()`、tiktok の `exchangeCodeForTokens()`、slack-notifier の `notifySlack()` 等、プロジェクト全体で統一。
 

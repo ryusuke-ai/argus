@@ -39,6 +39,16 @@ coverage
 # Docs
 .docs
 
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/coverage
+
+# Documentation
+docs/
+README.md
+LICENSE
+
 # Claude Code work directories (keep skills/rules/agents for runtime)
 .claude/agent-workspace
 .claude/agent-output

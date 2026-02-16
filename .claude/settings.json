@@ -16,7 +16,7 @@
     "allow": [
       "Read(packages/**)",
       "Read(apps/**)",
-      "Read(.docs/**)",
+      "Read(docs/**)",
       "Read(.claude/**)",
       "Read(data/**)",
       "Write(data/**)",

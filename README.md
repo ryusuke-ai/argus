@@ -1,6 +1,6 @@
 # Argus
 
-[![Tests](https://img.shields.io/badge/tests-1%2C192_passing-brightgreen?style=flat-square)](https://github.com/ryusuke-ai/argus)
+[![Tests](https://github.com/ryusuke-ai/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/ryusuke-ai/argus/actions/workflows/ci.yml)
 [![Packages](https://img.shields.io/badge/packages-12-blue?style=flat-square)](https://github.com/ryusuke-ai/argus)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://github.com/ryusuke-ai/argus)
 [![Claude Agent SDK](https://img.shields.io/badge/Claude_Agent_SDK-v0.2.34-black?style=flat-square&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)
@@ -188,16 +188,16 @@ pnpm test
 pnpm dev
 ```
 
-| Command                 | Description                              |
-| ----------------------- | ---------------------------------------- |
-| `pnpm dev`              | Build + start all 3 apps in parallel     |
-| `pnpm build`            | Build all packages                       |
-| `pnpm test`             | Run all tests (1,192 across 12 packages) |
-| `pnpm dev:slack`        | Start Slack bot only                     |
-| `pnpm dev:dashboard`    | Start Dashboard only                     |
-| `pnpm dev:orchestrator` | Start Orchestrator only                  |
-| `pnpm db:push`          | Push schema changes to database          |
-| `pnpm lint`             | Run ESLint                               |
+| Command                 | Description                          |
+| ----------------------- | ------------------------------------ |
+| `pnpm dev`              | Build + start all 3 apps in parallel |
+| `pnpm build`            | Build all packages                   |
+| `pnpm test`             | Run all tests across 12 packages     |
+| `pnpm dev:slack`        | Start Slack bot only                 |
+| `pnpm dev:dashboard`    | Start Dashboard only                 |
+| `pnpm dev:orchestrator` | Start Orchestrator only              |
+| `pnpm db:push`          | Push schema changes to database      |
+| `pnpm lint`             | Run ESLint                           |
 
 ## Design Decisions
 
@@ -228,7 +228,7 @@ See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the complete deployment guide.
 pnpm test
 ```
 
-The test suite includes **1,192 tests** across 12 packages, covering:
+The test suite covers 12 packages, including:
 
 - Agent core execution and hook injection
 - Database service layers with Drizzle ORM mocks

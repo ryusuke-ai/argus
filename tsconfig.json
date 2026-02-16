@@ -10,7 +10,8 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "noFallthroughCasesInSwitch": true
   },
   "files": [],
   "references": [
@@ -20,6 +21,7 @@
     { "path": "./packages/knowledge-personal" },
     { "path": "./packages/gmail" },
     { "path": "./packages/google-calendar" },
+    { "path": "./packages/r2-storage" },
     { "path": "./packages/slack-canvas" },
     { "path": "./packages/tiktok" },
     { "path": "./apps/slack-bot" },
