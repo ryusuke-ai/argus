@@ -9,19 +9,19 @@ description: SNS・メディア投稿を生成。「Xに投稿」「ツイート
 
 ## プラットフォーム判定
 
-| キーワード | プラットフォーム | 参照先 |
-|-----------|---------------|--------|
-| X、ツイート、Twitter | X (Twitter) | `../sns-x-poster/` |
-| Threads、スレッズ | Threads (Meta) | `../sns-threads-poster/` |
-| Instagram、IG画像 | Instagram | `../sns-instagram-image/` |
-| TikTok動画、TikTok台本 | TikTok | `../sns-tiktok-creator/` |
-| YouTube投稿、動画メタ | YouTube Creator | `../sns-youtube-creator/` |
-| YouTube動画レンダリング | YouTube Renderer | `../sns-youtube-renderer/` |
-| ポッドキャスト構成 | Podcast | `../sns-podcast-creator/` |
-| note記事 | note | `../sns-note-writer/` |
-| Qiita記事 | Qiita | `../sns-qiita-writer/` |
-| Zenn記事 | Zenn | `../sns-zenn-writer/` |
-| GitHub公開、リポジトリ | GitHub | `../sns-github-publisher/` |
+| キーワード              | プラットフォーム | 参照先                            |
+| ----------------------- | ---------------- | --------------------------------- |
+| X、ツイート、Twitter    | X (Twitter)      | @../sns-x-poster/SKILL.md         |
+| Threads、スレッズ       | Threads (Meta)   | @../sns-threads-poster/SKILL.md   |
+| Instagram、IG画像       | Instagram        | @../sns-instagram-image/SKILL.md  |
+| TikTok動画、TikTok台本  | TikTok           | @../sns-tiktok-creator/SKILL.md   |
+| YouTube投稿、動画メタ   | YouTube Creator  | @../sns-youtube-creator/SKILL.md  |
+| YouTube動画レンダリング | YouTube Renderer | `../sns-youtube-renderer/`        |
+| ポッドキャスト構成      | Podcast          | @../sns-podcast-creator/SKILL.md  |
+| note記事                | note             | @../sns-note-writer/SKILL.md      |
+| Qiita記事               | Qiita            | @../sns-qiita-writer/SKILL.md     |
+| Zenn記事                | Zenn             | @../sns-zenn-writer/SKILL.md      |
+| GitHub公開、リポジトリ  | GitHub           | @../sns-github-publisher/SKILL.md |
 
 ## 共通ワークフロー（4フェーズ）
 
@@ -33,7 +33,6 @@ description: SNS・メディア投稿を生成。「Xに投稿」「ツイート
 ## 使い方
 
 1. ユーザーのリクエストからプラットフォームを判定
-2. 該当プラットフォームの参照先ディレクトリを読み込む
-3. `phases/` の各フェーズに沿って実行
-4. `prompts/` のプロンプトを使用してコンテンツ生成
-5. `schemas/` で JSON バリデーション
+2. 該当プラットフォームの **SKILL.md** を読み込む
+3. SKILL.md の Phase テーブルに沿ってワークフローを実行
+4. 各 Phase の @参照ファイルで詳細手順を確認
