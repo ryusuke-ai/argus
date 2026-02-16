@@ -109,9 +109,9 @@ packages/google-calendar ──→ gmail（OAuth 認証を共有）
 
 ### 理解度チェック
 
-1. `apps/` と `packages/` の違いを説明できるか？
-2. `slack-bot` が依存しているパッケージを 3 つ挙げられるか？
-3. なぜ `google-calendar` は `gmail` に依存しているか？
+1. `apps/` と `packages/` の違いを説明できるか？（ヒント: `apps/` は実行されるプログラム、`packages/` は共有ライブラリ。レゴの「完成品」と「ブロック」の関係）
+2. `slack-bot` が依存しているパッケージを 3 つ挙げられるか？（ヒント: 依存関係の図を参照。agent-core, db, gmail 等）
+3. なぜ `google-calendar` は `gmail` に依存しているか？（ヒント: Gmail パッケージが OAuth2 認証を一元管理し、Calendar もその認証を再利用するため）
 
 ---
 
@@ -131,6 +131,9 @@ packages/agent-core/src/
 ├── session.ts            # SessionStore インターフェース定義（実装なし）
 ├── hooks.ts              # ArgusHooks → SDK HookCallbackMatcher への変換
 ├── observation-hooks.ts  # ツール実行の DB 記録（PreToolUse / PostToolUse）
+├── mcp-base-server.ts    # MCP サーバー共通基底クラス（全 MCP サーバーが継承）
+├── mcp-config.ts         # MCP サーバー設定の共通定義（各 app で共有）
+├── fire-and-forget.ts    # fireAndForget() — Promise を待たないユーティリティ
 ├── text-utils.ts         # テキスト処理（splitText, summarizeJa）
 ├── lessons.ts            # 教訓（Lesson）のプロンプト注入用フォーマッタ
 ├── artifact-uploader.ts  # Before/After スナップショットで成果物検出
@@ -168,9 +171,25 @@ export async function query(
 
 **学ぶべきポイント**:
 
-- `AbortController`（実行中の処理を途中でキャンセルするための Web 標準 API）によるタイムアウト制御
-- SDK の `query()` は `AsyncGenerator<SDKMessage>` を返す
-- エラー時は **throw ではなく `errorResult()` で `success: false` を返す**（プロジェクト規約）
+**1. `AbortController` によるタイムアウト制御**
+
+`AbortController` は、実行中の処理を途中でキャンセルするための Web 標準 API。AI 処理は数分〜数十分かかる場合がある。タイムアウトを設定しないと、AI が無限に処理を続けた場合に Slack Bot 全体が応答不能になる。
+
+- **なぜ必要か**: AI が 5 分かかるタスクを受けた場合、3 分のタイムアウトが設定されていれば 3 分で処理を中断し、「処理に時間がかかりすぎました」とユーザーに通知できる。設定がなければ、ユーザーは返答が来るかどうかすら分からないまま待ち続けることになる
+- **こうしなかった場合**: タイムアウトなしだと、1 人のユーザーの重い処理が CPU やメモリを占有し続け、他のユーザーの処理もブロックされてボット全体がフリーズする
+
+> **平たく言うと**: レストランで 30 分待っても料理が来なければ「もう結構です」と言える仕組み。注文が通っているのに永遠に待たされることを防ぐ。
+
+**2. SDK の `query()` は `AsyncGenerator<SDKMessage>` を返す**（次の `consumeSDKStream()` で詳述）
+
+**3. エラー時は throw ではなく `errorResult()` で `success: false` を返す**
+
+Slack Bot は **1 つのプロセスで全ユーザーにサービスを提供** している。throw でプロセスが落ちると、**全ユーザーが同時に切断される**。
+
+- **こうしなかった場合の具体的シナリオ**: ユーザー A のリクエストで API エラーが発生 → throw → 未キャッチ例外でプロセスクラッシュ → ユーザー B、C、D も同時に Slack Bot と切断される
+- **success: false の場合**: ユーザー A には「処理に失敗しました」とエラー表示 → ユーザー B、C、D は通常通り利用継続
+
+> **平たく言うと**: 1 つの電話が故障しても交換機全体は止まらない仕組み。問題のある回線だけを切断し、他の回線は正常に動き続ける。
 
 #### `consumeSDKStream()` — ストリーム消費パターン
 
@@ -189,7 +208,15 @@ async function consumeSDKStream(
 }
 ```
 
-> **平たく言うと**: AI からの回答はリアルタイムに少しずつ届く。それを全部集めて「最終結果」にまとめる処理。
+**AsyncGenerator（非同期ジェネレータ）とは**: データを一度に全部ではなく、少しずつ順番に生成・返却する仕組み。`for await...of` で 1 つずつ受け取りながら処理する。
+
+**なぜストリーム消費が重要か — 3 つのメリット**:
+
+1. **リアルタイム進捗表示**: AI の応答を少しずつ受け取れるため、「処理中...」の状態で長時間待たせずに、到着した部分から順次ユーザーに表示できる
+2. **途中エラーで即中断**: 3 番目のメッセージでエラーが起きた場合、残りの処理を待たずにすぐ中断できる。全部待ってからエラーに気づくのでは遅い
+3. **メモリ節約**: 全メッセージを一度にメモリに保持する必要がなく、1 つずつ処理して捨てていける
+
+> **平たく言うと**: YouTube 動画を「全部ダウンロードしてから再生」vs「ストリーミング再生」の違い。ストリーミングなら数秒で再生が始まるが、全ダウンロードだと動画が全部届くまで何も見えない。
 
 #### `isMaxPlanAvailable()` — 環境検出
 
@@ -214,7 +241,15 @@ export function isMaxPlanAvailable(): boolean {
 | `ObservationDB`  | observation-hooks.ts | 各 app が Drizzle インスタンスを渡す |
 | `ArgusHooks`     | hooks.ts             | 各 app がコールバックを実装          |
 
-**なぜこうするか**: `packages/db` への依存を避けることで、テストが容易になり、パッケージの再利用性が高まる。
+**なぜこうするか（DI: 依存性逆転）**:
+
+`agent-core` が `@argus/db` パッケージを直接 `import` すると、以下の問題が発生する:
+
+1. **循環依存のリスク**: `agent-core → db` という依存が固定されると、将来 `db` 側が `agent-core` の型を使いたくなった場合に循環依存（A→B→A）が発生し、ビルドが壊れる
+2. **テストの困難化**: テスト時に本物の PostgreSQL データベースを起動する必要があり、テストが遅く・不安定になる。インターフェース定義だけにしておけば、テスト時には「ダミーの DB（モック）」を注入でき、DB なしで高速にテストできる
+3. **再利用性の低下**: 将来、別プロジェクトで `agent-core` を使いたい場合、PostgreSQL + Drizzle ORM を強制されてしまう。インターフェースなら、MongoDB でも SQLite でも、そのインターフェースを満たす実装を渡せば動く
+
+> **平たく言うと**: 充電器の規格（USB-C）を決めておけば、どのメーカーの充電器でも使える。`agent-core` は「充電口の形」だけ定義し、実際の充電器（DB 実装）は使う側が持ってくる。
 
 ### 特徴的コード: 観測フック（Map による追跡）
 
@@ -258,11 +293,90 @@ export function createDBObservationHooks(obsDB, dbSessionId): ArgusHooks {
 - `PreToolUse` で INSERT → `PostToolUse` で UPDATE + duration 計算 → Map から delete
 - 各フック内で **try-catch** し、DB エラーでもエージェント実行は中断しない
 
+**なぜ Map で追跡するのか**: ツール実行の「開始」と「終了」は別々のタイミングで通知される。しかも複数のツールが並行して実行されることがある。Map を使うことで、各ツール実行の `toolUseId` をキーにして「どのツールがいつ開始され、DB のどのレコードに対応するか」を正確に追跡できる。
+
+**具体例**: 「メール検索ツール: 開始 14:00:00、DB レコード ID=abc」を Map に保存 → 3 秒後に PostToolUse が来る → Map から取り出して `duration: 3000ms` を計算 → DB を UPDATE → Map から削除。この仕組みにより、後から「どのツールが何秒かかったか」を完全に再構成できる。
+
+> **平たく言うと**: マラソンのチェックポイントで、各ランナーの通過時刻をゼッケン番号（toolUseId）で記録する仕組み。スタート地点で「ゼッケン 5 番、9:00 通過」と記録し、ゴール地点で「ゼッケン 5 番、9:30 通過 → タイム 30 分」と計算する。
+
+### 設計パターン: McpBaseServer — MCP サーバーの共通基底クラス
+
+`mcp-base-server.ts` は、全 MCP サーバーが共有する共通パターンを抽象クラスとして提供する。
+
+```typescript
+export abstract class McpBaseServer {
+  protected server: Server;
+
+  constructor(name: string, version: string) {
+    this.server = new Server(
+      { name, version },
+      { capabilities: { tools: {} } },
+    );
+    this.setupHandlers(); // ListTools / CallTool の共通ハンドラを自動登録
+  }
+
+  // サブクラスで実装する 3 メソッド
+  protected abstract getTools(): McpToolDefinition[]; // ツール一覧を返す
+  protected abstract handleToolCall( // ツール実行ロジック
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<unknown>;
+  protected formatResult(result: unknown): CallToolResult {
+    // レスポンス整形（オーバーライド可）
+    return {
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+    };
+  }
+
+  async start(): Promise<void> {
+    /* StdioServerTransport で起動 */
+  }
+}
+```
+
+**なぜ基底クラスを作るか**: Argus には 4 つの MCP サーバー（knowledge, knowledge-personal, gmail, google-calendar）があり、それぞれで `ListToolsRequestSchema` ハンドラの登録、`CallToolRequestSchema` ハンドラの登録、`StdioServerTransport` の接続というボイラープレート（定型コード）が必要。これを各サーバーにコピペすると:
+
+1. **修正が 4 箇所に波及**: MCP SDK のバージョンアップ等で共通処理を変更する際、全サーバーを個別に修正する必要がある
+2. **不整合が発生**: あるサーバーだけ修正漏れが起き、動作が微妙に異なるバグの原因になる
+3. **新規 MCP サーバー追加時のコスト**: 毎回同じセットアップコードを書き直す手間がかかる
+
+`McpBaseServer` を継承すれば、サブクラスは **`getTools()` と `handleToolCall()` の 2 メソッドだけ** 実装すれば MCP サーバーとして動作する。エラーレスポンスのフォーマットをカスタマイズしたい場合は `formatResult()` をオーバーライドする。
+
+**継承しているサーバー一覧**:
+
+| パッケージ         | クラス名                     | formatResult オーバーライド |
+| ------------------ | ---------------------------- | --------------------------- |
+| knowledge          | `KnowledgeMcpServer`         | あり（success/error 変換）  |
+| knowledge-personal | `KnowledgePersonalMcpServer` | あり（success/error 変換）  |
+| gmail              | `GmailMcpServer`             | あり（success/error 変換）  |
+| google-calendar    | `GoogleCalendarMcpServer`    | デフォルト使用              |
+
+> **平たく言うと**: マクドナルドのフランチャイズのように、「店舗の設計図（基底クラス）」を本部が用意し、各店舗（サーバー）はメニュー（ツール）と調理法（handleToolCall）だけを独自に実装する。店舗の基本構造（入口、レジ、キッチン配置）は全店共通。
+
+### ユーティリティ: `fireAndForget()` — 安全な非同期処理の握り潰し
+
+```typescript
+export function fireAndForget(
+  promise: Promise<unknown>,
+  context?: string,
+): void {
+  promise.catch((error) => {
+    console.error(`[FireAndForget]${context ? ` ${context}:` : ""}`, error);
+  });
+}
+```
+
+**なぜ専用ユーティリティを作るか**: 非同期処理を `await` せずに放置すると、エラー発生時に「Unhandled Promise Rejection」警告が出る（Node.js ではプロセスクラッシュの原因にもなる）。`.catch(() => {})` を毎回書くのは冗長で忘れがちなため、`fireAndForget()` に統一した。`context` パラメータでログに「どの処理が失敗したか」を記録できるため、デバッグ時にも有用。
+
+**使用箇所**: Canvas 更新、リアクション追加、SNS 投稿ステータス更新など、失敗しても主処理に影響しない非クリティカルな処理で利用。
+
 ### 理解度チェック
 
-1. `query()` が throw ではなく `errorResult()` を返す理由を説明できるか？
-2. `consumeSDKStream()` が処理する 3 種類のメッセージ型は何か？
-3. `ObservationDB` インターフェースがある理由（なぜ直接 `@argus/db` をインポートしないのか）を説明できるか？
+1. `query()` が throw ではなく `errorResult()` を返す理由を説明できるか？（ヒント: Slack Bot は 1 つのプロセスで全ユーザーにサービスを提供している）
+2. `consumeSDKStream()` が処理する 3 種類のメッセージ型は何か？（ヒント: `system`, `assistant`, `result`）
+3. `ObservationDB` インターフェースがある理由（なぜ直接 `@argus/db` をインポートしないのか）を説明できるか？（ヒント: DI の 3 つのメリット — 循環依存回避、テスト容易性、再利用性）
+4. `McpBaseServer` を使うことで、新規 MCP サーバーの追加が容易になる理由を説明できるか？
+5. `fireAndForget()` を使わずに Promise を放置すると何が起こるか？
 
 ---
 
@@ -385,9 +499,9 @@ import { db } from "@argus/db/client"; // DB接続だけ欲しい時
 
 ### 理解度チェック
 
-1. なぜ `db` が Proxy で実装されているのか、3 つの利点を挙げられるか？
-2. `$inferSelect` と `$inferInsert` の違いは何か？
-3. マイグレーション履歴から、機能追加の順序を説明できるか？
+1. なぜ `db` が Proxy で実装されているのか、3 つの利点を挙げられるか？（ヒント: 遅延初期化、シングルトン保証、環境変数チェックの遅延）
+2. `$inferSelect` と `$inferInsert` の違いは何か？（ヒント: SELECT 結果は全カラム必須、INSERT は `defaultRandom()` 等のカラムがオプショナル）
+3. マイグレーション履歴から、機能追加の順序を説明できるか？（ヒント: 初期は sessions/messages/tasks → Gmail/SNS → TikTok → Canvas/Personal Notes）
 
 ---
 
@@ -399,38 +513,56 @@ import { db } from "@argus/db/client"; // DB接続だけ欲しい時
 - ロールベース（「役割」に基づいて権限を振り分ける方式）の権限分離（Collector / Executor）
 - 2 つの Knowledge パッケージの設計上の違い
 
-### MCP サーバー共通パターン
+### MCP サーバー共通パターン: McpBaseServer の継承
 
-両パッケージで統一された 5 ステップの実装:
+セクション 3 で解説した `McpBaseServer` 抽象クラスを全 MCP サーバーが継承しており、ボイラープレート（定型コード）の記述が不要になっている。knowledge パッケージの実装例:
 
 ```typescript
-// 1. Server インスタンス生成
-this.server = new Server(
-  { name: "knowledge-server", version: "0.1.0" },
-  { capabilities: { tools: {} } },
-);
+// packages/knowledge/src/server.ts
+import { McpBaseServer, type McpToolDefinition } from "@argus/agent-core";
 
-// 2. ツール一覧ハンドラ
-this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: this.tools,
-}));
+export class KnowledgeMcpServer extends McpBaseServer {
+  constructor(
+    private service: KnowledgeService,
+    private role: KnowledgeRole,
+  ) {
+    super("knowledge-server", "0.1.0"); // ← 基底クラスが ListTools/CallTool ハンドラを自動登録
+    this.tools = this.initializeTools();
+  }
 
-// 3. ツール実行ハンドラ
-this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const result = await this.handleToolCall(
-    request.params.name,
-    request.params.arguments,
-  );
-  return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-});
+  // 1. ツール一覧を返す（ロールに応じてフィルタ）
+  protected getTools(): McpToolDefinition[] {
+    return this.tools;
+  }
 
-// 4. Stdio トランスポートで起動
-await this.server.connect(new StdioServerTransport());
+  // 2. ツール実行ロジック（switch 文で各ツールを振り分け）
+  protected handleToolCall(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<unknown> {
+    switch (name) {
+      case "knowledge_search":
+        return this.service.search(args.query);
+      case "knowledge_add":
+        return this.service.add(args);
+      // ... 省略
+    }
+  }
 
-// 5. handleToolCall() は public（テスト・外部からの直接呼び出しが可能）
+  // 3. formatResult をオーバーライドし、success/error パターンに変換
+  protected formatResult(result: unknown): CallToolResult {
+    // { success: true, data } → text content / { success: false, error } → isError: true
+  }
+}
 ```
 
-**`handleToolCall()` を public にする理由**: MCP プロトコル経由（`ListToolsRequestSchema` → `CallToolRequestSchema`）でツールを呼ぶと、トランスポート層（Stdio 接続）のセットアップが必要になりテストが複雑化する。`handleToolCall()` を public にすれば、トランスポート層をバイパスして直接ツールのロジックをテストでき、テストの速度と信頼性が向上する。また、orchestrator の `knowledge-api.ts` のように MCP プロトコルを経由せず HTTP API から直接ナレッジ操作を呼びたい場面でも活用できる。
+**以前の実装との違い**: 以前は各 MCP サーバーで Server インスタンス生成、ListTools ハンドラ登録、CallTool ハンドラ登録、StdioServerTransport 接続の 5 ステップを毎回コピペしていた。`McpBaseServer` 導入後は、サブクラスは `getTools()` と `handleToolCall()` の **2 メソッドだけ** 実装すれば MCP サーバーとして動作する。
+
+**継承している全 MCP サーバー**: knowledge, knowledge-personal, gmail, google-calendar の 4 サーバー全てが `McpBaseServer` を継承。
+
+**`handleToolCall()` が外部から呼べる理由**: MCP プロトコル経由（`ListToolsRequestSchema` → `CallToolRequestSchema`）でツールを呼ぶと、トランスポート層（Stdio 接続）のセットアップが必要になりテストが複雑化する。基底クラスの `handleToolCall()` は `protected` だが、各サブクラスで public メソッドとして公開することで、トランスポート層をバイパスして直接ツールのロジックをテストできる。orchestrator の `knowledge-api.ts` のように HTTP API から直接ナレッジ操作を呼ぶ場面でも活用される。
+
+> **平たく言うと**: MCP（Model Context Protocol: AI がツール（道具）を使うための通信規約）サーバーの「テンプレート」を用意し、各サーバーは「どんな道具を持っているか」と「道具をどう使うか」だけを定義すればよい仕組み。マクドナルドのフランチャイズで、店舗の基本設計は本部が提供し、各店舗はメニューだけ独自に決めるのと同じ。
 
 ### 権限分離: knowledge パッケージ
 
@@ -482,9 +614,10 @@ type PersonalitySection =
 
 ### 理解度チェック
 
-1. MCP サーバーの `handleToolCall()` がなぜ `public` なのか？
-2. 権限分離が「2 層」で行われている理由を説明できるか？
-3. knowledge と knowledge-personal の設計上の違いを 3 つ挙げられるか？
+1. MCP サーバーが `McpBaseServer` を継承するメリットを説明できるか？（ヒント: `getTools()` と `handleToolCall()` の 2 メソッドだけ実装すれば動作する）
+2. `handleToolCall()` が外部から呼べるようにする理由を 2 つ挙げられるか？（ヒント: テスト時のトランスポート層バイパス、HTTP API からの直接呼び出し）
+3. 権限分離が「2 層」で行われている理由を説明できるか？（ヒント: ツール公開層の設定ミスがあっても、ビジネスロジック層の `requireCollector()` が最終防衛線として機能する）
+4. knowledge と knowledge-personal の設計上の違いを 3 つ挙げられるか？（ヒント: ドメイン、権限モデル、データ構造の違い）
 
 ---
 
@@ -562,9 +695,9 @@ function decodeHeader(raw: string): string {
 
 ### 理解度チェック
 
-1. なぜ Gmail パッケージの SCOPES に Calendar のスコープが含まれているのか？
-2. `refreshTokenIfNeeded()` の「5 分バッファ」の目的は何か？
-3. UTF-8 文字化け修正で「最大 3 回ループ」する理由を説明できるか？
+1. なぜ Gmail パッケージの SCOPES に Calendar のスコープが含まれているのか？（ヒント: Gmail が OAuth2 認証を一元管理し、Calendar や YouTube もこの認証を再利用するため）
+2. `refreshTokenIfNeeded()` の「5 分バッファ」の目的は何か？（ヒント: トークン有効期限ギリギリで API リクエストを送ると、通信中にトークンが失効するリスクがある）
+3. UTF-8 文字化け修正で「最大 3 回ループ」する理由を説明できるか？（ヒント: メール中継サーバーを経由するたびに誤った再エンコードが発生し、最悪 3 重エンコードになることがある）
 
 ---
 
@@ -618,14 +751,47 @@ function generateCodeChallenge(verifier: string): string {
 
 **Inbox モード**: Direct Post ではなく `inbox/video/init/` を使用。理由: 「Direct Post requires app audit approval; Inbox works without audit」（コメントで明記）。
 
-**SNS 投稿ワークフロー**: tiktok パッケージは、Claude Code の `sns-publisher` スキルから呼び出される 10 媒体投稿ワークフローの一部。各媒体にはバリデーションルールと最適投稿時間の設定があり、`sns_posts` テーブルで投稿履歴を管理する。
+> **平たく言うと**: TikTok の API には「直接投稿」と「受信トレイ投稿」の 2 種類がある。「直接投稿」は TikTok の審査が必要だが、「受信トレイ投稿」は審査なしで使える。ユーザーの TikTok アプリの「受信トレイ」に動画が届き、そこから投稿を確定する仕組み。
+
+### tiktok — PULL_FROM_URL 方式（動画アップロード）
+
+TikTok パッケージは **PULL_FROM_URL** 方式で動画をアップロードする。これは以前の FILE_UPLOAD 方式（動画ファイルをチャンク分割してアップロード）から移行したもので、TikTok 側が指定された URL から動画を直接ダウンロードする方式。
+
+**`publishVideoByUrl()` の処理フロー（5 ステップ）**:
+
+```
+[1] videoUrl の検証 — HTTPS URL が必須（ローカルファイルパスは不可）
+    ↓
+[2] refreshTokenIfNeeded() — トークンの有効期限確認 + 必要なら自動リフレッシュ
+    ↓
+[3] queryCreatorInfo() — TikTok API でクリエイター情報を取得
+    → 利用可能なプライバシーレベル（PUBLIC / FOLLOWERS / SELF_ONLY 等）を取得
+    → 最も公開範囲の広いレベルを自動選択
+    ↓
+[4] POST /v2/post/publish/inbox/video/init/ — PULL_FROM_URL で動画アップロード開始
+    → TikTok サーバーが videoUrl から動画をダウンロード
+    → publishId が返却される
+    ↓
+[5] pollPublishStatus() — ポーリングでステータス確認（5秒間隔、最大36回=180秒）
+    → PROCESSING_UPLOAD → PROCESSING_DOWNLOAD → PUBLISH_COMPLETE
+    → 失敗時は { success: false, error } を返す
+```
+
+**PULL_FROM_URL 方式のメリット**: FILE_UPLOAD 方式では動画ファイルをチャンク（小さな断片）に分割して複数回 API を呼ぶ必要があった。PULL_FROM_URL ではファイルを Cloudflare R2 等の公開 URL に置き、TikTok に URL を伝えるだけで済むため、コードが大幅にシンプルになる。また、大容量動画でもクライアント側のメモリ消費が最小限に抑えられる。
+
+**ポーリングの仕組み**: TikTok API は動画処理を非同期で行うため、アップロード完了を即座に確認できない。5 秒おきに `/v2/post/publish/status/fetch/` を呼び出してステータスを確認する。最大 36 回（180 秒）で、タイムアウトした場合は `success: false` を返す。
+
+> **平たく言うと**: 「ここに動画があるので取りに来てください」と URL を教える方式。以前は「動画を小分けにして何度も送る」方式だったが、「URL を教えて取りに来てもらう」方が圧倒的に簡単。投稿が完了したかどうかは、5 秒おきに「もう終わった？」と聞きに行く。
+
+**SNS 投稿ワークフロー**: tiktok パッケージは、10 プラットフォーム（X, YouTube, TikTok, Threads, Instagram, note, Qiita, Zenn, GitHub, Podcast）に対応した SNS 投稿ワークフローの一部。各プラットフォームにはバリデーションルールと最適投稿時間の設定があり、`sns_posts` テーブルで投稿履歴を一元管理する。
 
 ### 理解度チェック
 
-1. slack-canvas が Slack SDK を使わない設計判断の理由を説明できるか？
-2. TikTok の PKCE 認証が Gmail の OAuth2 と異なる点は何か？
-3. r2-storage の `uploadVideo()` の関数名が実態と合わない理由は何か？
-4. SNS 投稿ワークフローにおける tiktok パッケージの役割と、`sns_posts` テーブルとの関係を説明できるか？
+1. slack-canvas が Slack SDK を使わない設計判断の理由を説明できるか？（ヒント: Canvas API は 2 つのエンドポイントしか使わない）
+2. TikTok の PKCE 認証が Gmail の OAuth2 と異なる点は何か？（ヒント: `client_secret` vs `code_verifier` / `code_challenge`）
+3. r2-storage の `uploadVideo()` の関数名が実態と合わない理由は何か？（ヒント: 歴史的経緯）
+4. TikTok の PULL_FROM_URL 方式が FILE_UPLOAD 方式より優れている点を 2 つ挙げられるか？（ヒント: コードのシンプルさ、メモリ消費）
+5. `publishVideoByUrl()` の 5 ステップの処理フローを順番に説明できるか？
 
 ---
 
@@ -659,13 +825,47 @@ apps/slack-bot/src/
 │   │   ├── reporter.ts    # Block Kit レポート生成
 │   │   └── todo-handler.ts # ToDo CRUD
 │   │
-│   └── sns/               # SNS 投稿管理
+│   └── sns/               # SNS 投稿管理（10プラットフォーム対応）
 │       ├── index.ts       # 正規表現トリガー検出
 │       ├── actions.ts     # 承認/編集/スキップ/スケジュール
-│       ├── generation/    # コンテンツ生成（8ファイル）
-│       ├── platforms/     # プラットフォーム別公開処理（10ファイル）
+│       ├── types.ts       # SNS 共通型定義
+│       ├── content-schemas.ts  # コンテンツスキーマ定義
+│       │
+│       ├── generation/    # コンテンツ生成（PhasedGenerator 基盤）
+│       │   ├── phased-generator.ts      # 段階的パイプライン実行エンジン（核心）
+│       │   ├── platform-configs.ts      # 各プラットフォームのフェーズ構成定義
+│       │   ├── content-generators.ts    # コンテンツ生成関数群
+│       │   ├── article-generator.ts     # 記事生成（Qiita/Zenn/note 共通）
+│       │   ├── script-generator.ts      # 動画スクリプト生成
+│       │   ├── tiktok-script-generator.ts  # TikTok 専用スクリプト生成
+│       │   ├── youtube-metadata-generator.ts # YouTube メタデータ生成
+│       │   ├── instagram-content-generator.ts # Instagram コンテンツ生成
+│       │   └── artifact-extractors.ts   # 生成物の JSON 抽出
+│       │
+│       ├── platforms/     # プラットフォーム別公開処理（10プラットフォーム）
+│       │   ├── publish-dispatcher.ts    # 投稿振り分け + スケジュール投稿ポーリング
+│       │   ├── publish-handlers.ts      # 投稿ハンドラ登録
+│       │   ├── x-publisher.ts           # X（旧Twitter）投稿
+│       │   ├── youtube-publisher.ts     # YouTube 動画アップロード
+│       │   ├── tiktok-publisher.ts      # TikTok 動画（PULL_FROM_URL）
+│       │   ├── threads-publisher.ts     # Threads 投稿
+│       │   ├── instagram-publisher.ts   # Instagram 投稿
+│       │   ├── note-publisher.ts        # note 記事投稿
+│       │   ├── qiita-publisher.ts       # Qiita 記事投稿
+│       │   ├── zenn-publisher.ts        # Zenn 記事投稿（GitHub PR方式）
+│       │   ├── github-publisher.ts      # GitHub リポジトリ公開
+│       │   └── podcast-publisher.ts     # Podcast エピソード配信
+│       │
 │       ├── scheduling/    # cron（指定した時刻に自動でプログラムを実行するスケジュール機能）+ 最適投稿時間
+│       │   ├── scheduler.ts             # 毎朝4:00 JST 全プラットフォーム提案 + 毎分ポーリング
+│       │   ├── optimal-time.ts          # プラットフォーム別最適投稿時間計算
+│       │   ├── scheduler-utils.ts       # カテゴリ・曜日ローテーション
+│       │   └── suggestion-generators.ts # 各プラットフォームの提案生成
+│       │
 │       └── ui/            # Block Kit ビルダー + バリデーション
+│           ├── reporter.ts              # Block Kit レポート生成
+│           ├── validator.ts             # コンテンツバリデーション
+│           └── phase-tracker.ts         # フェーズ進捗追跡
 │
 ├── canvas/
 │   └── sns-canvas.ts      # SNS 投稿管理ダッシュボード Canvas
@@ -726,6 +926,10 @@ const [claimed] = await db
 if (!claimed) continue; // 他のプロセスに取られた
 ```
 
+**なぜ楽観的ロックが必要か**: 同時実行制限が 3 のタスクキューでは、複数のワーカーが同時にキューからタスクを取り出す。普通に「取り出す → ステータスを running に変える」の 2 ステップで行うと、2 つのワーカーが同じタスクを取り出してしまう可能性がある。楽観的ロックでは「ステータスが queued のものだけを running に変える」を **1 つの SQL 文で** 実行するため、1 つのワーカーだけが成功し、他は `claimed` が空になって自動的にスキップする。
+
+> **平たく言うと**: コンビニのレジで「商品を手に取る」と「お会計する」を同時にやるイメージ。手に取った瞬間に「売約済み」の札が付くので、他のお客さんが同じ商品を取ることはできない。
+
 ### 特徴的コード: 動的 MCP サーバー追加
 
 ```typescript
@@ -745,6 +949,8 @@ const sdkOptions = needsPlaywright(messageText)
 
 ### 特徴的コード: CustomSocketModeReceiver
 
+**Socket Mode（ソケットモード）とは**: Slack Bot がメッセージを受信する方式の一つ。通常の HTTP Webhook 方式（Slack がサーバーの URL を呼び出す）とは異なり、Bot 側から Slack に WebSocket 接続を張り、メッセージをリアルタイムに受信する。サーバーに外部公開の URL が不要で、ファイアウォール内でも動作する利点がある。
+
 ```typescript
 // app.ts — Bolt のデフォルトは clientPingTimeout=5s で、クラウド環境では不足
 class CustomSocketModeReceiver implements Receiver {
@@ -757,6 +963,87 @@ class CustomSocketModeReceiver implements Receiver {
   }
 }
 ```
+
+**なぜカスタムが必要か**: Slack Bolt SDK のデフォルト設定では、WebSocket の ping タイムアウトが 5 秒に設定されている。クラウド環境（Railway 等）ではネットワーク遅延が大きく、5 秒以内に ping 応答が返らないことがあり、接続が頻繁に切断される。20 秒に拡大することで安定した接続を維持する。
+
+> **平たく言うと**: 電話で相手が「もしもし」と言った後 5 秒以内に返事しないと切れてしまう設定を、20 秒に変更して通信を安定させた。
+
+### SNS 投稿管理システム（10 プラットフォーム対応）
+
+SNS 機能は Argus の中でも最大規模のサブシステムで、**10 プラットフォーム**（X, YouTube, TikTok, Threads, Instagram, note, Qiita, Zenn, GitHub, Podcast）に対応している。
+
+#### 対応プラットフォーム一覧
+
+| プラットフォーム | タイプ   | 投稿頻度        | フェーズ数 | 特記事項                                        |
+| ---------------- | -------- | --------------- | ---------- | ----------------------------------------------- |
+| X                | 短文     | 1 日 3 投稿     | 2          | カテゴリローテーション                          |
+| Threads          | 短文     | 1 日 2 投稿     | 2          | X と似た構造                                    |
+| Instagram        | 短文     | 1 日 1 投稿     | 2          | TikTok 動画完成時に自動生成                     |
+| Qiita            | 長文記事 | 1 日 1 投稿     | 4          | 技術記事（research→structure→content→optimize） |
+| Zenn             | 長文記事 | 1 日 1 投稿     | 4          | GitHub PR 方式で投稿                            |
+| note             | 長文記事 | 1 日 1 投稿     | 4          | カジュアルな長文                                |
+| YouTube          | 動画     | 1 日 1 投稿     | 4          | メタデータ + スクリプト生成                     |
+| TikTok           | 動画     | 1 日 1 投稿     | 4          | PULL_FROM_URL 方式                              |
+| GitHub           | コード   | 平日のみ 1 投稿 | 4          | リポジトリ公開                                  |
+| Podcast          | 音声     | 毎日 1 投稿     | 4          | エピソード生成 + 配信                           |
+
+#### PhasedGenerator — 段階的パイプライン実行エンジン
+
+`phased-generator.ts` は SNS コンテンツ生成の**核心**。プラットフォームごとに異なるフェーズ構成を設定ファイル（`platform-configs.ts`）で定義し、各フェーズを順次実行して前のフェーズの JSON 出力を次のフェーズの入力として渡す。
+
+```
+PlatformConfig (例: Qiita 記事)
+    │
+    ├── Phase 1: research   ← Web検索で最新情報を調査
+    │   └── 出力: { topic, keywords, references, strategy }
+    │       ↓ JSON で次フェーズに渡す
+    ├── Phase 2: structure  ← 記事の構成を設計
+    │   └── 出力: { title, sections, outline }
+    │       ↓
+    ├── Phase 3: content    ← 本文を執筆
+    │   └── 出力: { title, body, tags }
+    │       ↓
+    └── Phase 4: optimize   ← SEO最適化・校正
+        └── 出力: { title, body, tags } （最終版）
+```
+
+**なぜ段階的に実行するか（一括生成 vs フェーズ分割）**:
+
+1. **品質の向上**: AI に「調査して、構成を考えて、本文を書いて、最適化して」と一括で依頼すると、各工程が雑になる。工程を分けることで、各フェーズで AI が 100% の集中力を発揮できる
+2. **途中失敗からの回復**: フェーズ 3 で失敗しても、フェーズ 1-2 の結果は保存されているため、フェーズ 3 からリトライできる（全部やり直す必要がない）
+3. **デバッグの容易さ**: 各フェーズの入出力が JSON で明確に記録されるため、「どのフェーズで問題が起きたか」を特定しやすい
+4. **プラットフォーム間の共通化**: 長文プラットフォーム（Qiita, Zenn, note 等）は全て 4 フェーズ構成を共有し、短文プラットフォーム（X, Threads）は 2 フェーズ構成を共有する
+
+> **平たく言うと**: 料理で「買い物→下ごしらえ→調理→盛り付け」を分けるのと同じ。一度に全部やろうとすると混乱するが、工程を分ければ各工程に集中でき、失敗しても「下ごしらえからやり直し」で済む。
+
+**リトライ機構**: 各フェーズには `maxRetries` を設定でき、JSON パースに失敗した場合は指数バックオフ（1 秒→2 秒→4 秒）で自動リトライする。リトライ時にはプロンプトに「前回は JSON パースに失敗しました」と補強情報を追加し、AI に正しい出力形式を促す。
+
+**CliUnavailableError**: Claude CLI のログイン切れやレート制限を検出した場合、個別フェーズではなくバッチ全体を中断する専用エラー。これにより、ログイン切れの状態で 10 プラットフォーム分の無駄な実行を防ぐ。
+
+#### SNS スケジューラ — 自動投稿提案 + 自動公開
+
+`scheduling/scheduler.ts` は 2 つの cron ジョブで構成される:
+
+| ジョブ                 | 実行タイミング | 内容                                                           |
+| ---------------------- | -------------- | -------------------------------------------------------------- |
+| 全プラットフォーム提案 | 毎朝 4:00 JST  | 各プラットフォームのコンテンツを AI で生成し、Slack に投稿     |
+| スケジュール投稿       | 毎分           | `scheduled` ステータスの投稿を確認し、投稿時刻が来たら自動公開 |
+
+**キャッチアップ機能**: Mac のスリープや再起動で 4:00 AM の cron を逃した場合、起動 30 秒後に今日の投稿が未生成かどうか DB で確認し、未生成なら即座に生成を開始する。深夜帯（4:00 JST 以前）の再起動では発動せず、cron が自然に発火するのを待つ。
+
+**最適投稿時間（`optimal-time.ts`）**: 各プラットフォームに対して、曜日制約付きの最適投稿時間をデータで定義している。例えば X は 7:30、12:15、18:00 の 3 スロット、YouTube は平日 18:00（週末は 10:00）など。30 分以上先の最も近い最適時間を自動計算してスケジュールに設定する。
+
+#### プラットフォーム別公開処理
+
+各 publisher は `publish-dispatcher.ts` から呼び出され、プラットフォーム固有の API を通じてコンテンツを公開する:
+
+- **X**: X API v2 で直接ツイート
+- **YouTube**: Google YouTube Data API v3 で動画アップロード
+- **TikTok**: `@argus/tiktok` パッケージの `publishVideoByUrl()` で PULL_FROM_URL 方式
+- **Qiita / Zenn / note**: 各プラットフォームの API で記事投稿（Zenn は GitHub PR 方式）
+- **Threads / Instagram**: Meta Graph API で投稿
+- **GitHub**: GitHub API でリポジトリ作成 + コードプッシュ
+- **Podcast**: 音声ファイル生成 + RSS フィード更新
 
 ### ユーティリティの設計
 
@@ -776,9 +1063,12 @@ class CustomSocketModeReceiver implements Receiver {
 
 ### 理解度チェック
 
-1. ハンドラの登録順序が重要な理由を説明できるか？
-2. Inbox のタスクキューで「アトミックなステータス更新」が必要な理由は？
-3. MCP サーバーを動的に追加する設計のメリットは何か？
+1. ハンドラの登録順序が重要な理由を説明できるか？（ヒント: 「専門窓口」と「総合窓口」の比喩）
+2. Inbox のタスクキューで「アトミックなステータス更新」が必要な理由は？（ヒント: `WHERE status = 'queued'` の条件で二重実行を防止）
+3. MCP サーバーを動的に追加する設計のメリットは何か？（ヒント: 約 7,000 トークンの節約）
+4. PhasedGenerator がコンテンツ生成を複数フェーズに分割する理由を 3 つ挙げられるか？（ヒント: 品質向上、途中リトライ、デバッグ容易性）
+5. SNS スケジューラの「キャッチアップ機能」が必要な理由と、その発動条件を説明できるか？
+6. Argus が対応している 10 の SNS プラットフォームを全て挙げられるか？
 
 ---
 
@@ -903,9 +1193,9 @@ const results = await Promise.all([
 
 ### 理解度チェック
 
-1. Code Patrol が検証失敗時にロールバックする手順を説明できるか？
-2. スケジューラの「環境変数ガードパターン」の目的は何か？
-3. Consistency Checker が Claude を使わない（完全に決定的な）理由を推測できるか？
+1. Code Patrol が検証失敗時にロールバックする手順を説明できるか？（ヒント: git stash → Claude 修正 → pnpm build && pnpm test → 失敗なら git checkout . → git stash pop）
+2. スケジューラの「環境変数ガードパターン」の目的は何か？（ヒント: 開発環境・CI・本番で同一コードを使い、環境変数の有無で機能の有効/無効を切り替える）
+3. Consistency Checker が Claude を使わない（完全に決定的な）理由を推測できるか？（ヒント: チェック内容の正解が一意に決まるため、AI の判断が不要。同じ入力なら常に同じ結果が保証される）
 
 ---
 
@@ -951,12 +1241,16 @@ apps/dashboard/src/
 
 ### Server / Client Component の使い分け
 
+**Server Component（サーバーコンポーネント）** はサーバー側で実行される React コンポーネント。データベースに直接アクセスできるが、ボタンクリック等のユーザー操作は扱えない。**Client Component（クライアントコンポーネント）** はブラウザ側で実行され、ユーザー操作やアニメーションを扱える。
+
 | 基準             | Server Component                  | Client Component             |
 | ---------------- | --------------------------------- | ---------------------------- |
 | DB クエリ        | 直接実行                          | 不可                         |
 | React hooks      | 使えない                          | `useState`, `usePathname` 等 |
 | インタラクション | なし                              | フォーム送信、クリック等     |
 | 例               | ページコンポーネント、SessionList | Navigation, QueryForm        |
+
+> **平たく言うと**: Server Component は「キッチン」で料理を作る部分（お客さんは見えない）。Client Component は「テーブル」でお客さんが操作する部分（メニューを選ぶ、注文ボタンを押す）。データの準備はキッチンで済ませて、お客さんが触る部分だけをテーブルに出す。
 
 **パターン**: ページ（Server）でデータをフェッチし、表示コンポーネントに props で渡す。インタラクティブ部分だけ `"use client"` にする。
 
@@ -1018,9 +1312,9 @@ if (rangeHeader) {
 
 ### 理解度チェック
 
-1. `export const dynamic = "force-dynamic"` が必要な理由を説明できるか？
-2. `Navigation.tsx` が Client Component でなければならない理由は何か？
-3. Range Request 対応が必要なユースケースを説明できるか？
+1. `export const dynamic = "force-dynamic"` が必要な理由を説明できるか？（ヒント: DB クエリを含むページはリクエストごとに最新データを取得する必要があるが、Next.js のデフォルトは静的生成（SSG））
+2. `Navigation.tsx` が Client Component でなければならない理由は何か？（ヒント: `usePathname()` はブラウザ側でしか動作しない React Hook）
+3. Range Request 対応が必要なユースケースを説明できるか？（ヒント: 動画のシーク再生で「2 分 30 秒のところから再生」するには、その位置のバイト範囲だけを取得する必要がある）
 
 ---
 
@@ -1085,17 +1379,19 @@ steps:
   - run: pnpm test
 ```
 
-**TypeScript Project References の目的**: Project References は TypeScript コンパイラにパッケージ間のビルド依存関係を認識させる機能。ルートの `tsconfig.json` に全パッケージへの `references` を定義することで、以下の 3 つの恩恵を得る:
+**TypeScript Project References（プロジェクト参照）の目的**: Project References は TypeScript コンパイラにパッケージ間のビルド依存関係を認識させる機能。ルートの `tsconfig.json` に全パッケージへの `references` を定義することで、以下の 3 つの恩恵を得る:
 
-1. **インクリメンタルビルド（変更があった部分だけを再ビルドする高速手法）**: 変更のあったパッケージだけを再ビルドできる（`tsc --build` で差分ビルド）
-2. **ビルド順序の自動解決**: パッケージ間の依存関係に基づき、正しい順序で自動的にビルドされる
+1. **インクリメンタルビルド（変更があった部分だけを再ビルドする高速手法）**: 変更のあったパッケージだけを再ビルドできる（`tsc --build` で差分ビルド）。Argus には 12 パッケージあるが、1 つのパッケージを修正した場合、その 1 つだけを再ビルドすれば済む
+2. **ビルド順序の自動解決**: パッケージ間の依存関係に基づき、正しい順序で自動的にビルドされる。例えば `agent-core` → `slack-bot` の順に自動でビルドされるため、手動で順番を管理する必要がない
 3. **独立した型チェック**: 各パッケージの型チェックが独立して高速に実行され、無関係なパッケージのエラーに影響されない
+
+> **平たく言うと**: 12 冊の本を翻訳する場合、全冊を最初からやり直す代わりに、修正があった章だけを翻訳し直す仕組み。しかも、「第 3 章は第 1 章の内容を参照している」といった順序も自動で管理してくれる。
 
 ### 理解度チェック
 
-1. `node-linker=hoisted` を使う理由を説明できるか？
-2. Dockerfile のビルド時にダミーの DATABASE_URL で問題ない理由は？
-3. TypeScript の Project References の目的を説明できるか？
+1. `node-linker=hoisted` を使う理由を説明できるか？（ヒント: pnpm のデフォルトのシンボリックリンク構造だと、一部のツール（Claude Agent SDK 等）が正常に動作しない。npm と同様のフラットな構造で互換性を確保する）
+2. Dockerfile のビルド時にダミーの DATABASE_URL で問題ない理由は？（ヒント: Proxy パターンによる遅延初期化。`db` をインポートしただけでは DB に接続しない）
+3. TypeScript の Project References の目的を説明できるか？（ヒント: インクリメンタルビルド、ビルド順序の自動解決、独立した型チェックの 3 つ）
 
 ---
 
@@ -1165,8 +1461,8 @@ steps:
 
 ### 理解度チェック
 
-1. deny-first の権限設計のメリットを説明できるか？
-2. Collector と Executor の権限分離の設計意図を説明できるか？
+1. deny-first の権限設計のメリットを説明できるか？（ヒント: 「まず全部禁止し、安全なものだけ許可する」方針。新しい操作がデフォルトで禁止されるため、許可漏れによるセキュリティリスクを防ぐ）
+2. Collector と Executor の権限分離の設計意図を説明できるか？（ヒント: 最小権限の原則。Executor がプロンプトインジェクション等で不正な指示を受けても、ナレッジの改ざんを構造的に防ぐ）
 
 ---
 
@@ -1203,7 +1499,30 @@ function riskyOperation(): Result {
 
 Go 言語の `(result, error)` パターンに近い思想。Argus では「1 つの処理の失敗がシステム全体を停止させない」ことを最優先とするため、全公開関数でこのパターンを統一している。
 
-**適用箇所**: agent-core の `query()`、slack-canvas の `upsertCanvas()`、tiktok の `exchangeCodeForTokens()`、slack-notifier の `notifySlack()` 等、プロジェクト全体で統一。
+**具体的な障害シナリオ — throw した場合**:
+
+```
+10:00 ユーザーA が「今日の予定を教えて」とメッセージ送信
+10:00 Google Calendar API が一時的にダウン
+10:00 calendar.getEvents() が throw → 未キャッチ例外
+10:00 Socket Mode のメッセージハンドラが停止
+10:00 WebSocket 接続が切断 → Slack Bot が全ユーザーに対して応答不能に
+10:00 ユーザーB, C, D も Slack Bot を使えなくなる
+```
+
+**success: false の場合**:
+
+```
+10:00 ユーザーA が「今日の予定を教えて」とメッセージ送信
+10:00 Google Calendar API が一時的にダウン
+10:00 calendar.getEvents() が { success: false, error: "API timeout" } を返す
+10:00 ユーザーA に「カレンダーの取得に失敗しました」と通知
+10:00 ユーザーB, C, D は問題なく Slack Bot を使い続ける
+```
+
+> **平たく言うと**: エラーが起きても「ビル全体が停電する」のではなく、「問題のある部屋だけ赤ランプが点く」仕組み。1 階のエアコンが壊れても、2 階の照明はそのまま使える。
+
+**適用箇所**: agent-core の `query()`、slack-canvas の `upsertCanvas()`、tiktok の `publishVideoByUrl()`、slack-notifier の `notifySlack()` 等、プロジェクト全体で統一。
 
 ### パターン 2: コロケーション（テストファイルの配置）
 
@@ -1223,6 +1542,12 @@ src/session-manager.test.ts
 2. **保守性の向上**: ファイルの移動・リネーム時にテストも一緒に移動でき、パスのずれが発生しない
 3. **インポートパスの簡潔さ**: `../../../tests/...` のような深いネストにならず、`./session-manager.js` のように短いパスで済む
 
+**テストが別ディレクトリだとどうなるか（こうしなかった場合の問題）**:
+
+- ファイルを `handlers/inbox/` から `handlers/task/` に移動した場合、テストも `tests/handlers/inbox/` から `tests/handlers/task/` に移動し、インポートパスも全て修正する必要がある。コロケーションなら、テストファイルはソースと一緒に自動的に移動される
+- 新しいファイルを追加したとき、`tests/` ディレクトリに対応するディレクトリ構造を手動で作る手間が発生し、テスト作成を後回しにしがち
+- Argus のモノレポには 9 パッケージ + 3 アプリがあり、別ディレクトリ方式だとテストファイルの場所を見つけるだけでも時間がかかる
+
 ### パターン 3: ESM 統一 + `.js` 拡張子
 
 ```typescript
@@ -1234,6 +1559,10 @@ export * from "./client.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 ```
+
+**なぜ `.ts` ではなく `.js` 拡張子なのか**: TypeScript のソースファイルは `.ts` だが、コンパイル後は `.js` になる。ESM（ECMAScript Modules）では実行時に実際に存在するファイルのパスを指定する必要があるため、インポート時には `.js` を指定する。TypeScript コンパイラはこの `.js` を見て、対応する `.ts` ファイルを自動的に見つけてくれる。
+
+**`node:` プレフィックスの理由**: Node.js の組み込みモジュール（`fs`, `path` 等）と、npm でインストールしたサードパーティのパッケージを明確に区別するため。`import { readFile } from "fs"` だと、`fs` という名前の npm パッケージなのか Node.js 組み込みなのか曖昧になる。
 
 ### パターン 4: vi.mock による DB モック
 
@@ -1284,19 +1613,33 @@ const [audit, secrets, typeErrors] = await Promise.all([
 
 ### パターン 8: Fire-and-forget（撃ちっぱなし: 処理を開始するが結果を待たず、失敗しても無視する方式）
 
-非クリティカルな処理は `.catch()` で握り潰す:
+非クリティカルな処理は `fireAndForget()` ユーティリティまたは `.catch()` で握り潰す:
 
 ```typescript
-updateExecutionCanvas().catch(() => {});
+// fireAndForget() — agent-core 提供の共通ユーティリティ（エラー時にログを残す）
+import { fireAndForget } from "@argus/agent-core";
+fireAndForget(updateExecutionCanvas(), "execution-canvas");
+
+// 旧方式（直接 .catch()）— 既存コードにも残っている
 updateSnsCanvas().catch((e) =>
   console.error("[sns-scheduler] Canvas error:", e),
 );
 ```
 
+**なぜデータ欠損を許容できるか（ビジネス判断の根拠）**:
+
+Fire-and-forget は「失敗しても問題ない」処理にだけ使う。Argus における具体的な判断基準:
+
+- **Canvas 更新の失敗**: Slack Canvas はダッシュボード的な表示であり、次回の更新で最新状態に復帰する。1 回更新が飛んでも、ユーザーが得られる情報に大きな影響はない
+- **リアクション追加の失敗**: 絵文字リアクションは「処理中」の視覚的フィードバック。なくても処理自体は正常に進む
+- **SNS Canvas の更新失敗**: 投稿ステータスの表示が一時的に古くなるだけで、実際の投稿処理には影響しない
+
 **判断基準**:
 
-- **適切なケース**: UI の付加的更新（Canvas 更新、リアクション追加等）など、失敗しても主処理に影響しないもの。ユーザー体験の向上が目的であり、失敗時は静かにスキップして問題ない処理
+- **適切なケース**: UI の付加的更新（Canvas 更新、リアクション追加等）など、失敗しても主処理に影響しないもの。ユーザー体験の向上が目的であり、失敗時は静かにスキップして問題ない処理。「次回の正常実行で自然に回復する」性質を持つもの
 - **不適切なケース**: データの一貫性に関わる処理（DB 書き込み等）、課金処理、ユーザーへの重要な通知など、失敗の検知やリトライが必要なもの。これらは `await` して結果を確認すべき
+
+> **平たく言うと**: レストランで「お冷やをお持ちしました」の声かけが失敗しても料理の提供には影響しない。しかし「注文の記録」が失敗したら料理が出てこないので、こちらは確実に成功させる必要がある。
 
 ### パターン 9: スロットリング
 
@@ -1327,9 +1670,11 @@ const textBlocks = content.filter(
 
 ### 理解度チェック
 
-1. `success: boolean` パターンと例外ベースのエラーハンドリングの比較を説明できるか？
-2. テストのコロケーション配置のメリットを 2 つ挙げられるか？
-3. Fire-and-forget パターンが適切なケースと不適切なケースの判断基準は？
+1. `success: boolean` パターンで throw しないことにより、Slack Bot で具体的にどんな障害を防げるか？（ヒント: Socket Mode の WebSocket 接続が切断されるシナリオ）
+2. テストのコロケーション配置のメリットを 3 つ挙げられるか？（ヒント: テスト漏れ防止、保守性、インポートパス）
+3. テストが別ディレクトリにあると、ファイル移動時にどんな問題が起きるか？
+4. Fire-and-forget パターンで Canvas 更新の失敗を許容できるビジネス上の理由は？（ヒント: 次回の更新で自然回復する）
+5. `fireAndForget()` ユーティリティを使わずに Promise を放置すると、Node.js で何が起こるか？（ヒント: Unhandled Promise Rejection）
 
 ---
 
@@ -1381,9 +1726,9 @@ const textBlocks = content.filter(
 
 **回答例**:
 
-> 全 MCP サーバーで 5 ステップの統一パターンを使っています。(1) Server インスタンス生成、(2) ListToolsRequestSchema ハンドラでツール一覧返却、(3) CallToolRequestSchema ハンドラでツール実行、(4) StdioServerTransport で起動、(5) handleToolCall を public にしてテスト・外部呼び出し可能に。knowledge パッケージでは Collector/Executor のロールベース権限分離を 2 層（ツール公開層 + ビジネスロジック層）で実装しています。
+> `McpBaseServer` という抽象基底クラスを `agent-core` パッケージに用意し、全 4 つの MCP サーバー（knowledge, knowledge-personal, gmail, google-calendar）がこれを継承しています。サブクラスは `getTools()`（ツール一覧）と `handleToolCall()`（ツール実行ロジック）の 2 メソッドだけ実装すれば MCP サーバーとして動作します。ListTools / CallTool ハンドラの登録と StdioServerTransport 接続は基底クラスで共通化されています。knowledge パッケージでは Collector/Executor のロールベース権限分離を 2 層（ツール公開層 + ビジネスロジック層）で実装しています。
 
-**噛み砕いた説明**: AI に「道具」を持たせるための統一テンプレート。全サーバーが同じ 5 ステップで作られているので、新しい道具を追加するときもテンプレートに沿うだけ。さらに「誰がどの道具を使えるか」を役割で制限している。
+**噛み砕いた説明**: AI に「道具」を持たせるための統一テンプレート（McpBaseServer）を用意し、各サーバーは「どんな道具があるか」と「道具の使い方」だけを定義すればよい。マクドナルドのフランチャイズで、店舗の基本設計は本部が提供し、各店舗はメニューだけ独自に決めるのと同じ。
 
 ### Q7: 「Code Patrol の仕組みを教えてください」
 
@@ -1393,7 +1738,23 @@ const textBlocks = content.filter(
 
 **噛み砕いた説明**: 毎週土曜の深夜に「夜間警備員」が自動でコードの健康診断を行う仕組み。問題を見つけたら AI に修正を依頼し、修正が正しいか検証してから適用する。失敗したら元に戻すので安全。結果は Slack に報告書として届く。
 
+### Q8: 「SNS 投稿管理システムの設計を教えてください」
+
+**回答例**:
+
+> 10 プラットフォーム（X, YouTube, TikTok, Threads, Instagram, note, Qiita, Zenn, GitHub, Podcast）に対応した自動投稿システムです。核心は `PhasedGenerator` という段階的パイプライン実行エンジンで、各プラットフォームのコンテンツ生成をフェーズ分割して順次実行します。長文コンテンツ（記事・動画スクリプト等）は 4 フェーズ（research → structure → content → optimize）、短文コンテンツ（X, Threads）は 2 フェーズ構成です。各フェーズの出力を JSON で次フェーズに渡し、途中失敗時はそのフェーズからリトライできます。スケジューラは毎朝 4:00 JST に全プラットフォームの投稿案を自動生成し、毎分ポーリングでスケジュール済み投稿を自動公開します。
+
+**噛み砕いた説明**: 毎朝 4 時に AI が 10 個の SNS の投稿案を自動で作成する仕組み。記事は「調査→構成→執筆→校正」の 4 工程に分けて品質を確保する。各プラットフォームに最適な投稿時間（X なら 7:30, 12:15, 18:00）に自動で投稿する。Mac のスリープで朝の自動生成を逃しても、起動時に自動で追いつく機能もある。
+
+### Q9: 「McpBaseServer を導入した理由を教えてください」
+
+**回答例**:
+
+> 4 つの MCP サーバー（knowledge, knowledge-personal, gmail, google-calendar）で共通のボイラープレートが重複していたため、`McpBaseServer` 抽象クラスに集約しました。Server インスタンス生成、ListTools / CallTool ハンドラ登録、StdioServerTransport 接続を基底クラスに共通化し、サブクラスは `getTools()` と `handleToolCall()` の 2 メソッドだけ実装すればよくなりました。MCP SDK のバージョンアップ時も 1 箇所の修正で全サーバーに反映でき、新規 MCP サーバー追加のコストも大幅に削減されます。
+
+**噛み砕いた説明**: 4 つのお店（MCP サーバー）で毎回「入口の作り方」「レジの配置」「キッチンの設計」を個別に考えていたのを、「店舗テンプレート」を作って共通化した。新しいお店を出す時も、テンプレートに「メニュー」と「調理法」を追加するだけで開店できる。
+
 ---
 
-> **このドキュメントの最終更新**: 2026-02-15
+> **このドキュメントの最終更新**: 2026-02-16
 > **対応バージョン**: Argus v0.1.0（12 パッケージ構成）
