@@ -142,6 +142,9 @@ importers:
       '@argus/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@argus/tiktok':
+        specifier: workspace:*
+        version: link:../../packages/tiktok
       next:
         specifier: ^16.0.0
         version: 16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
