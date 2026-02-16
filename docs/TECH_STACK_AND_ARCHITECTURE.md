@@ -1527,15 +1527,1267 @@ Socket Mode:
 
 ---
 
-## 8〜15: （後半は別途追記）
+## 8. Dashboard: なぜ Next.js か
 
-以下のセクションは別途追記予定:
+### ひとことまとめ
 
-- 8\. Dashboard: なぜ Next.js か
-- 9\. API サーバー: なぜ Express か
-- 10\. テスト: なぜ Vitest か
-- 11\. ホスティング: なぜ Railway + Supabase か
-- 12\. ストレージ: なぜ Cloudflare R2 か
-- 13\. 設計パターンと原則
-- 14\. 面接想定 Q&A
-- 15\. 用語集
+Next.js は **React ベースのフルスタック Web フレームワーク**。Server Components でサーバーサイドから DB に直接アクセスし、API レイヤーなしで完成したページをブラウザに送れるため、管理画面の構築に最適だった。
+
+### 身近なたとえ
+
+> **レストランのキッチン** に例えると、従来の SPA（Single Page Application）は「お客さんがテーブルで自分で料理を組み立てる」方式。食材（データ）をキッチン（サーバー）から運んでもらい、テーブル（ブラウザ）で盛り付ける。Next.js の Server Components は「キッチンで完成品を作ってそのまま運ぶ」方式。お客さんは出来上がった料理を受け取るだけなので、テーブルが小さくても（ブラウザの性能が低くても）問題ない。
+
+### 図で理解する
+
+#### SPA と Server Components の違い
+
+```
+■ SPA（Vite + React Router）:
+  ブラウザ ──API呼び出し──▶ サーバー ──SQL──▶ DB
+  ブラウザ ◀──JSONデータ── サーバー
+  ブラウザ: JSONを受け取って画面を組み立てる（重い）
+
+■ Server Components（Next.js）:  ★ Argus の選択
+  サーバー ──SQL──▶ DB
+  サーバー: データ取得 + 画面の組み立てを完了
+  ブラウザ ◀──完成したHTML── サーバー
+  ブラウザ: 表示するだけ（軽い）
+```
+
+#### フレームワーク選択の意思決定フロー
+
+```
+管理画面でサーバーサイドからDBに直接アクセスしたい？
+├── Yes → React エコシステムを活用したい？
+│   ├── Yes → Next.js  ★ Argus はここ
+│   └── No  → SvelteKit（Svelte エコシステム）
+└── No  → クライアントサイドで十分？
+    ├── Yes → Vite + React Router（SPA）
+    └── No  → Remix（loader/action パターン）
+```
+
+### もう少し詳しく
+
+> **このセクションで学ぶこと**:
+>
+> - SSR（Server-Side Rendering）/ SSG（Static Site Generation）/ SPA（Single Page Application）の違いと使い分け
+> - Server Components がなぜ管理画面に適しているか
+> - 他のフレームワークとの比較
+
+#### 背景（なぜ選ぶ必要があったか）
+
+Argus の Dashboard はセッション監視、ナレッジ管理、エージェント実行ログの閲覧を行う管理画面。サーバーサイドからデータベースに直接アクセスし、結果を表示するのが主な用途。
+
+### 選択肢の比較
+
+| 比較軸                 | Next.js 16                         | Vite + React Router                       | Remix                           | SvelteKit                         |
+| ---------------------- | ---------------------------------- | ----------------------------------------- | ------------------------------- | --------------------------------- |
+| **身近なたとえ**       | キッチンで完成品を作って運ぶ       | テーブルで食材を組み立てる                | キッチンとホールの連携プレー    | 別ジャンルのキッチン（Svelte製）  |
+| **データ取得**         | Server Components で DB 直アクセス | API エンドポイント + クライアントフェッチ | loader でサーバーサイドフェッチ | load 関数でサーバーサイドフェッチ |
+| **API エンドポイント** | 不要（Server Components 内で完結） | 別途構築が必要                            | action/loader で統合            | +server.ts で統合                 |
+| **Docker 最適化**      | `output: "standalone"`             | 自前で設定                                | 自前で設定                      | adapter-node                      |
+| **型安全ルーティング** | `typedRoutes: true`                | react-router v7 で対応                    | v7 で対応                       | 型安全                            |
+| **React エコシステム** | 完全互換                           | 完全互換                                  | 完全互換                        | Svelte 独自                       |
+| **学習コスト**         | 中程度（App Router の理解が必要）  | 低い                                      | 中程度                          | 高い（Svelte 学習が必要）         |
+| **SSR/SSG**            | 両方対応                           | SPA のみ（SSR は別途設定）                | SSR 対応                        | SSR/SSG 両対応                    |
+| **デプロイ**           | Vercel 最適化 / standalone         | 静的ファイル配信                          | どこでも                        | どこでも                          |
+
+#### 決定: Next.js 16
+
+**なぜ Next.js か**:
+
+- **App Router + Server Components** でデータフェッチが簡単 — Server Components でサーバーサイドから DB 直アクセスすれば、API エンドポイントを別途作る必要がない
+- `output: "standalone"` で Docker に最適化
+- `typedRoutes: true` でルーティングが型安全
+
+**なぜ Vite + React Router ではないか**:
+
+- SPA だと API エンドポイント + CORS（異なるドメイン間でのデータやり取りを許可する設定）設定 + クライアントサイドフェッチの実装が必要
+- Server Components で完結する方がコード量が少ない
+
+**なぜ SvelteKit ではないか**:
+
+- チームの React 経験を活かせる
+- React エコシステム（Testing Library, Tailwind 統合等）がそのまま使える
+
+<details>
+<summary>Server Components のコード例（DB 直アクセス）</summary>
+
+```typescript
+// apps/dashboard/app/sessions/page.tsx — Server Component
+import { db } from "@argus/db";
+import { sessions, messages } from "@argus/db/schema";
+import { desc, eq, sql } from "drizzle-orm";
+
+// サーバーサイドで直接 DB にアクセス（API 不要）
+export default async function SessionsPage() {
+  const recentSessions = await db
+    .select({
+      session: sessions,
+      messageCount: sql<number>`count(${messages.id})`,
+    })
+    .from(sessions)
+    .leftJoin(messages, eq(messages.sessionId, sessions.id))
+    .groupBy(sessions.id)
+    .orderBy(desc(sessions.createdAt))
+    .limit(20);
+
+  return (
+    <div>
+      {recentSessions.map(({ session, messageCount }) => (
+        <SessionCard key={session.id} session={session} count={messageCount} />
+      ))}
+    </div>
+  );
+}
+```
+
+SPA（Vite + React Router）の場合、同じことをするには:
+
+1. Express で `/api/sessions` エンドポイントを作成
+2. CORS 設定を追加
+3. クライアント側で `fetch("/api/sessions")` を呼ぶ
+4. ローディング状態・エラー状態を管理
+
+Server Components なら上記の全てが不要。
+
+</details>
+
+**SvelteKit が適しているケース**:
+
+- **パフォーマンス最重視の消費者向けアプリ** — Svelte はコンパイル時に最適化された vanilla JS を出力するため、ランタイムのオーバーヘッドが極めて小さい
+- **バンドルサイズを最小化したい** — React のランタイム（約 40KB gzip）が不要
+- **React エコシステムに依存しない新規プロジェクト** — 既存の React コンポーネントライブラリやテストツールを使わない場合
+
+#### この選定のメリット・デメリット
+
+**メリット**:
+
+- Server Components で API レイヤーが不要
+- Docker standalone モードでイメージサイズが最適化
+- React エコシステムの豊富なライブラリがそのまま使える
+
+**デメリット・トレードオフ**:
+
+- App Router の学習コストが高い（Server / Client Components の境界理解が必要）
+- Vercel 以外へのデプロイは standalone モードの設定が必要
+- バンドルサイズは Vite + React Router の SPA より大きくなりがち
+
+#### こうしなかったらどうなる？
+
+> もし Vite + React Router（SPA）を選んでいたら、管理画面のデータ表示のために **Express で API エンドポイントを別途構築** し、CORS 設定を管理し、クライアント側でフェッチ・ローディング・エラーハンドリングを全て実装する必要があった。Server Components なら DB から直接データを取得して HTML を返すだけで完結するため、このボイラープレートが丸ごと不要になる。
+
+### 理解度チェック
+
+- [ ] Q1: Server Components が管理画面に適している理由を説明できるか？
+- [ ] Q2: SPA（Vite + React Router）と比べた Next.js の利点を説明できるか？
+- [ ] Q3: どんなプロジェクトなら SvelteKit の方が適しているか？
+
+---
+
+## 9. API サーバー: なぜ Express か
+
+### ひとことまとめ
+
+Express は **最も広く使われている Node.js の Web フレームワーク**。Orchestrator は 4 つのエンドポイント + Cron スケジューラという薄い API サーバーであり、高機能なフレームワークより「シンプルさ」と「エコシステムの広さ」を重視して Express 5 を選んだ。
+
+### 身近なたとえ
+
+> **道具箱** に例えると、Express は「基本工具セット」。ドライバー、ペンチ、ハンマーという必要最低限が揃っている。NestJS は「電動工具フルセット」で大規模工事には強力だが、棚を 1 つ付けるだけなら重すぎる。Hono は「超軽量キャンプ用工具」で持ち運びやすいが、キャンプ場（Edge 環境）向き。Argus の Orchestrator は「棚を 4 つ付けるだけ」なので、基本工具セットで十分。
+
+### 図で理解する
+
+#### Express のリクエスト処理フロー
+
+```
+クライアント
+  │
+  │ HTTP POST /api/run-agent
+  ▼
+┌─────────────────────────────────────┐
+│ Express ミドルウェアチェーン         │
+│                                       │
+│  [認証] → [ログ] → [ルートハンドラ]  │
+│                         │             │
+│                    ビジネスロジック    │
+│                         │             │
+│                    JSON レスポンス    │
+└─────────────────────────────────────┘
+```
+
+#### API フレームワーク選択の意思決定フロー
+
+```
+エンドポイント数は多い（20+）？
+├── Yes → チームが大きい（5+人）？
+│   ├── Yes → NestJS（大規模エンタープライズ向け）
+│   └── No  → Fastify（高スループット）or Hono（型安全）
+└── No  → Edge / Cloudflare Workers で動かす？
+    ├── Yes → Hono（Edge 最適化）
+    └── No  → Express  ★ Argus はここ（4エンドポイント）
+```
+
+### もう少し詳しく
+
+> **このセクションで学ぶこと**:
+>
+> - API サーバーフレームワークの選定基準
+> - Express 5 の async/await 標準搭載
+> - 薄い API サーバーにおけるフレームワーク選択の考え方
+
+#### 背景（なぜ選ぶ必要があったか）
+
+Orchestrator は 4 つのエンドポイント + Cron スケジューラ（指定した時刻に自動でプログラムを実行する仕組み）という薄い API サーバー。フレームワークの高機能さよりも、シンプルさとエコシステムの広さが重要だった。
+
+### 選択肢の比較
+
+| 比較軸               | Express 5                                                                                  | Hono                       | Fastify                        | NestJS                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------ | -------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| **身近なたとえ**     | 基本工具セット                                                                             | 超軽量キャンプ工具         | 高速電動ドリル                 | 電動工具フルセット                                                               |
+| **async/await 対応** | ネイティブ（v5 で標準搭載）                                                                | ネイティブ（標準搭載）     | ネイティブ（標準搭載）         | ネイティブ（標準搭載）                                                           |
+| **パフォーマンス**   | 中程度                                                                                     | 高い（Edge 最適化）        | 高い（Express の 2-3 倍）      | 中程度（Express ベース）                                                         |
+| **エコシステム**     | 最大（ミドルウェア（リクエストとレスポンスの間で認証・ログ等の共通処理を行う部品）が豊富） | 成長中                     | 中程度                         | 大きい（エンタープライズ向け）                                                   |
+| **学習コスト**       | 最低（ほぼ全員が知っている）                                                               | 低い                       | 低い                           | 高い（DI（依存性注入）, デコレータ（@記号で機能を付加する記法））                |
+| **型安全性**         | 基本的（@types/express）                                                                   | 優秀（型付きルーティング） | 良い（スキーマバリデーション） | TypeScript ネイティブ（TypeScript で書かれているため型安全が最初から保証される） |
+| **最適環境**         | 汎用                                                                                       | Edge / Cloudflare Workers  | 高スループット API             | 大規模エンタープライズ                                                           |
+| **設定量**           | 最小                                                                                       | 最小                       | 中程度（プラグインシステム）   | 多い（モジュール構成）                                                           |
+| **バンドルサイズ**   | 小さい                                                                                     | 最小                       | 中程度                         | 大きい                                                                           |
+
+#### 決定: Express 5
+
+**Express 5 の主な変更点（Express 4 との違い）**:
+
+Express 5 は長年 beta だったが、2024 年に正式リリースされた。
+
+- **async/await のエラーハンドリングが標準搭載** — async ルートハンドラで throw されたエラーが自動的にエラーハンドリングミドルウェアに渡される。v4 では async 関数内のエラーを手動で `next(err)` に渡す必要があった
+- **`next(err)` パターンが不要** — `try { ... } catch (err) { next(err) }` というボイラープレートが不要に
+- **パスマッチングエンジンの改善** — `path-to-regexp` がアップグレードされ、パスパラメータの解析がより厳密に
+- **非推奨メソッドの削除** — `app.del()`、`req.param()`、`res.json(obj, status)` 等の非推奨 API が削除
+
+<details>
+<summary>Express 5 の async/await コード例</summary>
+
+```typescript
+// Express 4: try-catch + next(err) が必要
+app.post("/api/run-agent", async (req, res, next) => {
+  try {
+    const result = await runAgent(req.body);
+    res.json(result);
+  } catch (err) {
+    next(err); // ← これを忘れるとプロセスが落ちる
+  }
+});
+
+// Express 5: async/await がそのまま使える
+app.post("/api/run-agent", async (req, res) => {
+  const result = await runAgent(req.body);
+  res.json(result);
+  // throw されたら自動でエラーハンドラに渡される
+});
+```
+
+</details>
+
+**なぜ Hono ではないか**:
+
+- Hono は Edge / Cloudflare Workers に最適化されている
+- Argus の Orchestrator は Railway VPS の Docker 上で動くので、Edge 最適化は不要
+- Hono の型システムは優秀だが、4 エンドポイントではその恩恵が薄い
+
+**なぜ Fastify ではないか**:
+
+- Fastify の強みは高スループット（ベンチマーク上 Express の 2〜3 倍）
+- Orchestrator の負荷は低い（Cron + 管理 API）ため、パフォーマンス差が問題にならない
+
+**なぜ NestJS ではないか**:
+
+- NestJS はエンタープライズ向けの大規模フレームワーク
+- 4 エンドポイントに対してモジュール構成、DI コンテナ、デコレータは過剰
+
+#### この選定のメリット・デメリット
+
+**メリット**:
+
+- 最も広く知られたフレームワークで、新規メンバーの学習コストがゼロ
+- Express 5 で async/await が標準搭載され、エラーハンドリングが簡潔に
+- ミドルウェアのエコシステムが最も充実
+
+**デメリット・トレードオフ**:
+
+- Hono / Fastify と比べてパフォーマンスが劣る（ただし Orchestrator の負荷では問題にならない）
+- 型安全性は Hono に劣る（4 エンドポイントでは影響が小さい）
+- フレームワーク自体の革新性は低い
+
+#### こうしなかったらどうなる？
+
+> もし NestJS を選んでいたら、たった 4 つのエンドポイントのために **モジュール定義、DI コンテナ設定、デコレータベースのルーティング** という大量のボイラープレートを書くことになる。Hono を選んでいたら Edge 最適化の恩恵がなく、Express とほぼ同じコードになるが、ミドルウェアのエコシステムは Express より小さい。「棚を 4 つ付けるだけ」に電動工具フルセットは不要。
+
+### 理解度チェック
+
+- [ ] Q1: Express 5 と Express 4 の主な違いを説明できるか？
+- [ ] Q2: Hono が Express より適しているのはどんなケースか？
+- [ ] Q3: NestJS を選ぶべきプロジェクトの特徴を説明できるか？
+
+---
+
+## 10. テスト: なぜ Vitest か
+
+### ひとことまとめ
+
+Vitest は **ESM に標準対応した高速テストフレームワーク**。完全 ESM プロジェクトである Argus で、1,200 以上のテストを設定なしで即座に実行でき、Jest 互換の API で学習コストもゼロ。
+
+### 身近なたとえ
+
+> **テストフレームワーク** は「検品マシン」のようなもの。Jest は「旧規格（CJS）の検品マシン」で、新規格（ESM）の製品を検品するには改造（`--experimental-vm-modules`）が必要。Vitest は「新規格対応の検品マシン」で、ESM 製品をそのまま投入できる。検品の手順（API）は Jest と同じなので、操作を覚え直す必要もない。
+
+### 図で理解する
+
+#### ESM プロジェクトでの Jest vs Vitest
+
+```
+■ Jest + ESM プロジェクト:
+  ソースコード（ESM: import/export）
+       │
+       ▼
+  Jest ← 「ESMは標準では読めません！」
+       │
+       │ --experimental-vm-modules（不安定）
+       │ + babel-jest or ts-jest の設定
+       │ + transform 設定
+       ▼
+  やっとテスト実行... でも不安定
+
+■ Vitest + ESM プロジェクト:  ★ Argus の選択
+  ソースコード（ESM: import/export）
+       │
+       ▼
+  Vitest ← 「ESMそのまま読めます！」
+       │
+       │ 追加設定なし
+       ▼
+  すぐにテスト実行。安定動作。
+```
+
+#### テストフレームワーク選択の意思決定フロー
+
+```
+プロジェクトは ESM（import/export）で書いている？
+├── Yes → ブラウザ環境（jsdom）でのテストが必要？
+│   ├── Yes → Vitest（jsdom 1行設定）  ★ Argus はここ
+│   └── No  → 外部依存ゼロにしたい？
+│       ├── Yes → node:test（Node.js 組み込み）
+│       └── No  → Vitest（Jest互換 + 高速）
+└── No（CJS）→ Jest（CJS エコシステムが最も成熟）
+```
+
+### もう少し詳しく
+
+> **このセクションで学ぶこと**:
+>
+> - ESM 環境でのテストフレームワーク選択の課題
+> - Vitest と Jest の具体的な違い
+> - テストコロケーションの考え方
+
+#### 背景（なぜ選ぶ必要があったか）
+
+Argus は完全 ESM（ECMAScript Modules: `import/export` を使う現代的な JavaScript のモジュール方式）プロジェクト。テストフレームワークも ESM に標準対応（追加設定なしで ESM をそのまま扱える）している必要がある。1,200 以上のテストを高速に実行できることも重要な要件。
+
+### 選択肢の比較
+
+| 比較軸              | Vitest 4                                                                              | Jest                                         | Mocha                   | node:test              |
+| ------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------- | ----------------------- | ---------------------- |
+| **身近なたとえ**    | 新規格対応の検品マシン                                                                | 旧規格の検品マシン（改造が必要）             | 老舗の手動検品          | 工場備え付けの検品装置 |
+| **ESM 対応**        | 標準搭載（設定不要）                                                                  | `--experimental-vm-modules` が必要（不安定） | 対応だが設定が必要      | 標準搭載               |
+| **TypeScript 対応** | 設定不要（Vite 経由）                                                                 | ts-jest / babel-jest が必要                  | 別途設定                | tsx 等が必要           |
+| **API 互換性**      | Jest 互換（`describe`, `it`, `expect`）                                               | -                                            | `describe`, `it` + chai | 独自 API               |
+| **実行速度**        | 高速（Vite のモジュール解決）                                                         | 中程度                                       | 中程度                  | 高速                   |
+| **Watch モード**    | 高速（HMR（Hot Module Replacement: 変更したファイルだけ即座に反映する仕組み）ベース） | 中程度                                       | 対応                    | `--watch`              |
+| **モック**          | `vi.mock()` 組み込み                                                                  | `jest.mock()` 組み込み                       | sinon 等が必要          | 組み込み mock          |
+| **ブラウザテスト**  | `environment: "jsdom"` 1行                                                            | jest-environment-jsdom                       | jsdom 設定必要          | 非対応                 |
+| **エコシステム**    | 急成長中                                                                              | 最大                                         | 長い歴史                | Node.js 組み込み       |
+| **設定量**          | 最小                                                                                  | 中程度（ESM の場合は多い）                   | 中程度                  | 最小                   |
+
+#### 決定: Vitest 4
+
+**一言で**: ESM 標準対応 + 高速 + Jest 互換 API。
+
+<details>
+<summary>ESM 問題の具体例</summary>
+
+```bash
+# Jest で ESM プロジェクトをテストしようとすると:
+$ npx jest
+
+SyntaxError: Cannot use import statement outside a module
+# → --experimental-vm-modules フラグが必要
+# → 不安定で、テストが落ちることがある
+# → transform 設定（babel-jest, ts-jest）が複雑
+
+# Vitest なら:
+$ npx vitest
+# → そのまま動く（ESM 標準対応）
+```
+
+</details>
+
+<details>
+<summary>テストコロケーションの構成</summary>
+
+```
+packages/agent-core/src/
+  ├── agent.ts
+  ├── query.test.ts        ← テストが隣にある
+  ├── hooks.ts
+  ├── hooks.test.ts
+  ├── text-utils.ts
+  └── text-utils.test.ts
+```
+
+ファイルを開くと、すぐ隣にテストがある。`__tests__/` ディレクトリに分離するパターンより、関連ファイルを見つけやすい。
+
+</details>
+
+<details>
+<summary>Dashboard のテスト設定コード</summary>
+
+```typescript
+// apps/dashboard/vitest.config.ts
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    environment: "jsdom", // ブラウザ環境エミュレーション
+    globals: true, // describe, it, expect をグローバルに
+    setupFiles: ["./vitest.setup.ts"],
+  },
+});
+```
+
+React コンポーネントテストには `@testing-library/react` + `jsdom` を使用。Vitest は `environment: "jsdom"` の 1 行で設定完了。
+
+</details>
+
+#### この選定のメリット・デメリット
+
+**メリット**:
+
+- ESM に標準対応しており設定不要
+- Jest 互換 API で移行コストが低い
+- Vite ベースの高速な Watch モード
+
+**デメリット・トレードオフ**:
+
+- Jest と比べてエコシステム（プラグイン、情報量）がまだ小さい
+- node:test と比べて外部依存が増える
+- Vitest 固有のバグに遭遇する可能性がある（まだ比較的新しい）
+
+**node:test が適しているケース**:
+
+- **外部依存ゼロを目指す場合** — node:test は Node.js に組み込まれているため、`devDependencies` にテストフレームワークを追加する必要がない
+- **ライブラリ開発で依存を最小化したい** — npm パッケージとして公開するライブラリでは、依存が少ないほどインストールが軽い
+- **シンプルなユニットテストのみ** — ブラウザ環境エミュレーション（jsdom）やスナップショットテストが不要な場合
+- **Node.js 標準に準拠したい** — 将来のエコシステム変化に左右されにくくなる
+
+Argus では jsdom 環境でのコンポーネントテスト、Watch モード、Jest 互換 API が必要だったため、node:test では機能不足だった。
+
+#### こうしなかったらどうなる？
+
+> もし Jest を選んでいたら、ESM プロジェクトで **`--experimental-vm-modules` フラグの不安定さ** に悩まされる。`import` 文でテストが突然落ちたり、`ts-jest` の設定で `transform` マッピングを細かく調整したり、ESM/CJS の境界で謎のエラーと格闘する日々になる。Vitest なら「`npx vitest` で動く」の一言で済む。
+
+### 理解度チェック
+
+- [ ] Q1: ESM プロジェクトで Jest が問題になる理由を説明できるか？
+- [ ] Q2: テストコロケーションのメリットを説明できるか？
+- [ ] Q3: node:test を選んだ方がいいのはどんなケースか？
+
+---
+
+## 11. ホスティング: なぜ Railway + Supabase か
+
+### ひとことまとめ
+
+Railway は **Docker をそのまま動かせるクラウドサービス**。Argus の 3 つの常駐プロセス（Slack Bot, Orchestrator, Dashboard）を月額 $5 程度で 24 時間稼働させられ、`git push` だけで自動デプロイが完了する。
+
+### 身近なたとえ
+
+> **住居** に例えると、Vercel は「ホテル（必要な時だけ部屋を使う）」で常時滞在はできない。Railway は「月額制の賃貸マンション（常駐OK、Docker という家具も持ち込み自由）」。AWS EC2 は「注文住宅（何でもできるが設計・管理は全て自分）」。Argus は 24 時間住み込みの秘書（Slack Bot）がいるので、賃貸マンションが最適。
+
+### 図で理解する
+
+#### インフラ構成図
+
+```
+┌──────────────┐     ┌──────────────────┐
+│   Slack API   │────▶│  Railway VPS     │
+│  (WebSocket)  │     │  ┌────────────┐  │
+└──────────────┘     │  │  PM2       │  │
+                      │  │ ┌─────────┐│  │
+                      │  │ │slack-bot ││  │──▶ Supabase PostgreSQL
+                      │  │ ├─────────┤│  │
+                      │  │ │dashboard ││  │──▶ Cloudflare R2
+                      │  │ ├─────────┤│  │
+┌──────────────┐     │  │ │orchestr. ││  │──▶ Google API (Gmail, Calendar)
+│  Cloudflare   │────▶│  │ └─────────┘│  │
+│  Tunnel       │     │  └────────────┘  │
+└──────────────┘     └──────────────────┘
+```
+
+#### ホスティング選択の意思決定フロー
+
+```
+常駐プロセス（24時間稼働）が必要？
+├── No → サーバーレス（Vercel / AWS Lambda）でOK
+└── Yes → 運用をシンプルに保ちたい？
+    ├── Yes → Docker をそのまま動かせる？
+    │   ├── Yes → Railway  ★ Argus はここ
+    │   └── No  → Render / Fly.io
+    └── No  → 完全制御が必要？
+        ├── Yes → AWS EC2 + RDS
+        └── No  → Fly.io（リージョン制御あり）
+```
+
+### もう少し詳しく
+
+> **このセクションで学ぶこと**:
+>
+> - 常駐プロセスとサーバーレスの違い
+> - 個人/インハウスプロジェクトのコスト最適化戦略
+> - Docker + PM2 によるマルチプロセス管理
+
+#### 背景（なぜ選ぶ必要があったか）
+
+Argus は 3 つの常駐プロセス（Slack Bot, Orchestrator, Dashboard）を 24 時間動かす必要がある。**「個人/インハウスプロジェクトのコスト最適化」** が最優先。
+
+### 選択肢の比較
+
+| 比較軸               | Railway                               | Vercel                 | Fly.io          | Render            | AWS (EC2 + RDS) |
+| -------------------- | ------------------------------------- | ---------------------- | --------------- | ----------------- | --------------- |
+| **身近なたとえ**     | 月額制の賃貸マンション                | ホテル（短期滞在のみ） | 世界中に別荘    | コンパクトな賃貸  | 注文住宅        |
+| **常駐プロセス**     | Docker で自由                         | サーバーレス（不可）   | VM で可能       | 可能              | 完全自由        |
+| **Socket Mode**      | 問題なし                              | WebSocket 制限         | 可能            | 可能              | 問題なし        |
+| **PM2 (3プロセス)**  | Docker 内で自由                       | 不可                   | Procfile で可能 | 不可              | 自由            |
+| **料金**             | $5/月〜                               | Hobby 無料だが常駐不可 | $1.94/月〜      | $7/月〜           | $15/月〜        |
+| **Docker サポート**  | 標準搭載（Docker をそのまま動かせる） | なし                   | Dockerfile 対応 | Dockerfile 対応   | 完全対応        |
+| **デプロイ**         | `git push` で自動                     | `git push` で自動      | `fly deploy`    | `git push` で自動 | 手動 or CI/CD   |
+| **DB マネージド**    | なし（外部利用）                      | Postgres（Neon）       | Postgres 内蔵   | Postgres 内蔵     | RDS             |
+| **運用負荷**         | 低い                                  | 最低                   | 中程度          | 低い              | 高い            |
+| **スケーラビリティ** | 垂直スケール                          | 自動スケール           | 水平スケール    | 垂直スケール      | 完全自由        |
+
+#### 決定: Railway + Supabase
+
+**決め手**: Slack Bot (Socket Mode) + Orchestrator (Cron) + Dashboard (Next.js) の 3 つの常駐プロセスを 1 つの VPS で PM2 管理できる。Vercel は常駐プロセスが動かせないので不可。
+
+**なぜ Fly.io ではなく Railway か**:
+
+- **Docker デプロイの簡単さ** — Railway は Dockerfile を置いて `git push` するだけ。Fly.io は `fly.toml` の設定 + `fly deploy` コマンドが必要
+- **GitHub 連携の自動デプロイ** — Railway は GitHub リポジトリと連携するだけで push 時に自動ビルド・デプロイ。Fly.io は CI パイプラインの自前構築が必要
+- **PM2 との相性** — Railway の Docker 環境では PM2 がそのまま動作。Fly.io は Procfile ベースが推奨
+- **運用のシンプルさ** — Fly.io のリージョン管理やボリューム管理は個人プロジェクトにはオーバーヘッド
+
+<details>
+<summary>Docker 2 段階ビルドのコード（マルチステージビルド）</summary>
+
+> **身近なたとえ**: 「調理場で料理を作ってから、完成品だけをお客さんのテーブルに運ぶ」イメージ。調理場（Stage 1）には包丁や鍋（ビルドツール）が必要だが、テーブル（Stage 2）には完成した料理（ビルド成果物）だけがあればいい。
+
+```dockerfile
+# Stage 1: ビルド
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY . .
+RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
+RUN pnpm install --frozen-lockfile
+RUN pnpm build
+
+# Stage 2: 本番
+FROM node:22-alpine
+WORKDIR /app
+# PM2 + Claude Code CLI をインストール
+RUN npm install -g pm2
+# 本番依存のみコピー
+COPY --from=builder /app .
+RUN pnpm install --prod --frozen-lockfile
+CMD ["pm2-runtime", "ecosystem.config.cjs"]
+```
+
+**2 段階ビルドのメリット**:
+
+- **イメージサイズ削減** — Stage 1 のビルドツール（TypeScript コンパイラ、devDependencies）は最終イメージに含まれない
+- **攻撃対象面の縮小** — 最終イメージにコンパイラや開発ツールが含まれない
+- **ビルドキャッシュの効率化** — Docker はレイヤー単位でキャッシュするため、依存が変わらなければ再利用される
+
+**alpine を使う理由**: イメージサイズが ~50MB（debian ベースだと ~300MB）。Railway の料金はストレージにも依存するため、小さいほうがいい。
+
+</details>
+
+<details>
+<summary>Cloudflare Tunnel + Access の構成</summary>
+
+```
+ユーザー → Cloudflare Access（メール認証）→ Cloudflare Tunnel → Railway VPS
+```
+
+- **Tunnel**: VPS のポートを公開せずに HTTPS アクセスを提供
+- **Access**: メールアドレスベースのゼロトラスト認証（「社内ネットワークだから安全」と信用せず、毎回本人確認する方式。無料 50 ユーザーまで）
+- Dashboard にアクセスする前に Cloudflare のログイン画面が表示される
+
+</details>
+
+#### この選定のメリット・デメリット
+
+**メリット**:
+
+- 月額 $5 程度で 3 プロセスを常時稼働
+- `git push` で自動デプロイ
+- Docker で環境を完全に再現可能
+
+**デメリット・トレードオフ**:
+
+- 単一 VPS なので、サーバーダウン時に全サービスが停止する
+- Vercel のような自動スケールはない
+- Railway の無料枠は月 500 時間（常駐には足りないので有料プラン必須）
+
+#### こうしなかったらどうなる？
+
+> もし Vercel を選んでいたら、Slack Bot の Socket Mode（常時 WebSocket 接続）が **サーバーレスの実行時間制限に引っかかって動かない**。Orchestrator の Cron も常駐プロセスなので Vercel では不可能。AWS EC2 なら全て可能だが、VPC 設定、セキュリティグループ、RDS 管理、デプロイパイプラインの構築など、月額 $15 以上のコストと大量の運用作業が発生する。
+
+### 理解度チェック
+
+- [ ] Q1: 常駐プロセスが必要なアプリに Vercel が不向きな理由を説明できるか？
+- [ ] Q2: Docker 2 段階ビルドのメリットを説明できるか？
+- [ ] Q3: Fly.io ではなく Railway を選んだ理由を説明できるか？
+
+---
+
+## 12. ストレージ: なぜ Cloudflare R2 か
+
+### ひとことまとめ
+
+Cloudflare R2 は **データ転送料（エグレス）が無料** のオブジェクトストレージ。動画・画像を配信する Argus では、AWS S3 と比べて年間 $100 以上のコスト削減になり、S3 互換 API でコード変更なしに移行できる。
+
+### 身近なたとえ
+
+> **倉庫サービス** に例えると、AWS S3 は「保管料 + 荷物を出すたびに配送料がかかる倉庫」。Cloudflare R2 は「保管料だけで、配送は何回でも無料の倉庫」。動画のように大きなファイルを頻繁に配信する場合、配送料（エグレスコスト）が積み重なって高額になるため、配送無料は大きなメリット。さらに、S3 と同じ「伝票フォーマット」（S3 互換 API）を使うので、既存の発送手順をそのまま流用できる。
+
+### 図で理解する
+
+#### コスト比較（月間）
+
+```
+10GB ストレージ、100GB エグレスの場合:
+
+■ AWS S3:
+  保管料: 10GB × $0.023 = $0.23
+  配送料: 100GB × $0.09 = $9.00  ← ここが高い！
+  合計: $9.23/月
+
+■ Cloudflare R2:  ★ Argus の選択
+  保管料: 10GB × $0.015 = $0.15
+  配送料: 100GB × $0.00 = $0.00  ← 無料！
+  合計: $0.15/月
+
+差額: $9.08/月（年間 $108.96 の節約）
+```
+
+#### ストレージ選択の意思決定フロー
+
+```
+ファイルの配信（ダウンロード）が多い？
+├── Yes → エグレスコストを抑えたい？
+│   ├── Yes → S3互換APIが必要？
+│   │   ├── Yes → Cloudflare R2  ★ Argus はここ
+│   │   └── No  → Cloudflare R2 でも可
+│   └── No  → AWS S3（エコシステム最大）
+└── No  → AWS統合（Lambda, SQS等）が必要？
+    ├── Yes → AWS S3
+    └── No  → コスト重視なら R2、機能重視なら S3
+```
+
+### もう少し詳しく
+
+> **このセクションで学ぶこと**:
+>
+> - オブジェクトストレージの選択基準
+> - エグレスコスト（データ転送料）の重要性
+> - S3 互換 API の利点
+
+#### 背景（なぜ選ぶ必要があったか）
+
+Argus は動画・画像・音声ファイルを保存・配信する必要がある。特に動画配信ではデータ転送量が大きくなるため、エグレスコスト（サーバーからインターネットに出ていくデータの転送料）が重要な選定基準となる。
+
+### 選択肢の比較
+
+| 比較軸             | Cloudflare R2                    | AWS S3                 | Google Cloud Storage (GCS) | MinIO (自前)       |
+| ------------------ | -------------------------------- | ---------------------- | -------------------------- | ------------------ |
+| **身近なたとえ**   | 配送無料の倉庫                   | 配送料がかかる老舗倉庫 | 配送料がかかるGoogle倉庫   | 自前の倉庫         |
+| **ストレージ料金** | $0.015/GB/月                     | $0.023/GB/月           | $0.020/GB/月               | サーバー費用のみ   |
+| **エグレス料金**   | **無料**                         | $0.09/GB               | $0.12/GB                   | サーバー帯域に依存 |
+| **S3 互換 API**    | 完全互換                         | 本家（S3 API の元祖）  | 互換レイヤーあり           | 完全互換           |
+| **CDN 統合**       | Cloudflare CDN（組み込み）       | CloudFront（別料金）   | Cloud CDN（別料金）        | 自前で構築         |
+| **無料枠**         | 10GB ストレージ + 無制限エグレス | 5GB（12ヶ月）          | 5GB（12ヶ月）              | なし               |
+| **運用負荷**       | ゼロ                             | 低い                   | 低い                       | 高い（自前運用）   |
+| **リージョン**     | 自動分散                         | 選択制                 | 選択制                     | 自前サーバーの場所 |
+| **エコシステム**   | 成長中                           | 最大・最も成熟         | 大きい                     | コミュニティ       |
+
+#### 決定: Cloudflare R2
+
+動画や画像の配信が多い Argus では、エグレス無料は大きい。
+
+**S3 互換 API がなぜ重要か**: R2 は AWS S3 と同じ API を提供している。`@aws-sdk/client-s3` ライブラリが **そのまま R2 でも動く**。接続先の URL を変えるだけで移行が完了し、将来 S3 に戻したい場合も URL を戻すだけ。
+
+<details>
+<summary>S3 互換 API のコード例</summary>
+
+```typescript
+// packages/r2-storage/src/client.ts
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+// R2 への接続（S3 と同じ SDK を使用）
+const r2 = new S3Client({
+  region: "auto",
+  endpoint: process.env.R2_ENDPOINT, // ← ここを S3 の URL に変えるだけで移行完了
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+});
+
+// ファイルアップロード（S3 と完全に同じコード）
+await r2.send(
+  new PutObjectCommand({
+    Bucket: "argus-storage",
+    Key: "videos/output.mp4",
+    Body: videoBuffer,
+    ContentType: "video/mp4",
+  }),
+);
+```
+
+</details>
+
+**AWS S3 が適しているケース**:
+
+- **AWS エコシステム全体を活用するプロジェクト** — EC2, Lambda, RDS, SQS 等の AWS サービスと深く統合する場合
+- **S3 Select でサーバーサイドフィルタリングが必要** — 大量のログ分析やデータ処理パイプラインで有用
+- **Glacier で長期アーカイブが必要** — コンプライアンス要件や法的保持義務で数年〜数十年のデータ保持が必要な場合
+- **IAM / VPC との深い統合が必須** — バケットレベル・オブジェクトレベルの細かいアクセス制御が必要な場合
+
+Argus ではこれらの高度な AWS 統合機能は不要であり、エグレス無料の R2 の方がコスト面で有利だった。
+
+#### この選定のメリット・デメリット
+
+**メリット**:
+
+- エグレス無料で動画配信コストが大幅に削減
+- S3 互換 API で移行コストがゼロ
+- Cloudflare CDN との統合で配信が高速
+
+**デメリット・トレードオフ**:
+
+- S3 と比べて一部の高度な機能（S3 Select, Glacier（超低コスト長期アーカイブストレージ。取り出しに数時間かかる）等）が未対応
+- AWS エコシステムとの統合は S3 の方が深い
+- Cloudflare に依存するベンダーロックインのリスク
+
+#### こうしなかったらどうなる？
+
+> もし AWS S3 を選んでいたら、動画配信のたびに **エグレス料金 $0.09/GB** が発生する。月 100GB の配信で $9、年間 $108 の追加コストになる。個人/インハウスプロジェクトのコスト最適化方針に反し、「ファイルを配信するたびにお金がかかる」という心理的ブレーキが働いて、機能開発の判断にも影響する。
+
+### 理解度チェック
+
+- [ ] Q1: エグレスコストが重要な理由を説明できるか？
+- [ ] Q2: S3 互換 API がなぜ重要かを説明できるか？
+- [ ] Q3: どんなプロジェクトなら AWS S3 の方が適しているか？
+
+---
+
+## 13. 設計パターンと原則
+
+### ひとことまとめ
+
+Argus のコードベースで一貫して適用されている **4 つの設計パターン**（例外を投げない規約、依存性逆転、Lazy Proxy、フック耐障害性）。いずれも「1 つの障害がシステム全体を止めない」ことを目的としている。
+
+### 身近なたとえ
+
+> **建物の防災設計** に例えると、「1 部屋で火災が起きても建物全体が燃えない」ようにする仕組み。防火扉（例外を投げない）、コンセント規格の統一（DI）、電源の遅延起動（Lazy Proxy）、防犯カメラの独立運用（フック耐障害性）の 4 つの設計で、障害の影響を最小限に封じ込める。
+
+### 図で理解する
+
+#### 4 つの設計パターンの関係
+
+```
+┌─────────────────────────────────────────┐
+│  Argus の耐障害性設計                    │
+│                                           │
+│  ┌─────────────────┐  ┌──────────────┐  │
+│  │ 例外を投げない   │  │ 依存性逆転   │  │
+│  │ success: boolean │  │ DI パターン  │  │
+│  │ → 障害の封じ込め │  │ → 部品の交換性│  │
+│  └─────────────────┘  └──────────────┘  │
+│                                           │
+│  ┌─────────────────┐  ┌──────────────┐  │
+│  │ Lazy Proxy      │  │ フック耐障害性│  │
+│  │ → 遅延初期化    │  │ → 観測の独立性│  │
+│  └─────────────────┘  └──────────────┘  │
+│                                           │
+│  共通目標: 1つの障害がシステム全体を      │
+│            止めないようにする              │
+└─────────────────────────────────────────┘
+```
+
+### もう少し詳しく
+
+### 13.1 例外を投げない規約
+
+#### 身近なたとえ
+
+> 家電で言えば「ブレーカーが落ちて家中停電する」のではなく「その部屋だけ赤ランプが点く」方式。エラーを「報告」するだけで、システムは動き続ける。
+
+<details>
+<summary>コード例: throw vs success フラグ</summary>
+
+```typescript
+// NG: throw する
+async function query(prompt: string): Promise<AgentResult> {
+  const result = await sdkQuery({ prompt, options });
+  if (result.error) throw new Error(result.error); // ← これをしない
+  return result;
+}
+
+// OK: success フラグで返す
+async function query(prompt: string): Promise<AgentResult> {
+  try {
+    const stream = sdkQuery({ prompt, options });
+    return await consumeSDKStream(stream);
+  } catch (error) {
+    return {
+      message: {
+        type: "assistant",
+        content: [{ type: "text", text: error.message }],
+        total_cost_usd: 0,
+      },
+      toolCalls: [],
+      success: false, // ← フラグで通知
+    };
+  }
+}
+```
+
+</details>
+
+**理由**: Slack Bot のメッセージハンドラで未捕捉例外が発生すると、Socket Mode 接続が切れてボット全体が停止する。全ての関数が `{ success, data }` パターンで返せば、呼び出し側は必ず結果を処理できる。
+
+**throw した場合の具体的な障害シナリオ**:
+
+```
+■ throw 方式（危険）:
+  ユーザーAの質問でGmail APIがエラー
+  → throw new Error("Gmail API rate limited")
+  → 未捕捉例外でNode.jsプロセスがクラッシュ
+  → Socket Mode接続が切断
+  → ユーザーB, C, D も全員切断。ボット全体が停止。
+
+■ success: false 方式（Argusの実装）:
+  ユーザーAの質問でGmail APIがエラー
+  → return { success: false, message: "Gmail APIの制限に達しました" }
+  → ユーザーAにエラーメッセージを表示
+  → ユーザーB, C, D は何も影響なし。通常通り使い続けられる
+```
+
+Go 言語の (result, error) パターンに近い思想で、呼び出し側がエラー処理を「忘れにくい」設計。
+
+| 比較軸                     | `throw` 方式                                 | `success: boolean` 方式                        |
+| -------------------------- | -------------------------------------------- | ---------------------------------------------- |
+| **エラー発生時の影響範囲** | 未捕捉ならプロセス全体がクラッシュ           | エラーを返した関数の呼び出し元だけに限定       |
+| **エラー処理の強制力**     | try-catch を忘れてもコンパイルが通る（危険） | success を確認しないと型エラーにできる（安全） |
+| **Go 言語の類似パターン**  | panic（Go でも使用を推奨されない）           | (result, error) パターン（Go の標準）          |
+
+### 13.2 依存性逆転（DI）
+
+#### 身近なたとえ
+
+> **コンセント** のようなもの。「100V の電源なら何でも挿せる」仕様にしておけば、テスト時にはダミー電源を挿せるし、将来別の電源に変えても本体を改造する必要がない。
+
+<details>
+<summary>コード例: DI の実装</summary>
+
+```typescript
+// packages/agent-core/src/observation-hooks.ts
+// @argus/db に直接依存しない！
+
+export interface ObservationDB {
+  db: DrizzleInstance;      // 抽象インターフェース
+  tables: {
+    tasks: TaskTable;
+    lessons: LessonTable;
+  };
+}
+
+export function createDBObservationHooks(obsDB: ObservationDB): ArgusHooks {
+  return {
+    onPostToolUse: async ({ toolName, toolResult }) => {
+      await obsDB.db.insert(obsDB.tables.tasks).values({ ... });
+    },
+  };
+}
+
+// 消費側で注入
+// apps/slack-bot/src/...
+import { db, tasks, lessons } from "@argus/db";
+import { createDBObservationHooks } from "@argus/agent-core";
+
+const hooks = createDBObservationHooks({ db, tables: { tasks, lessons } });
+```
+
+</details>
+
+**利点**:
+
+- `agent-core` は `@argus/db` の具体的なスキーマ定義に依存しない
+- テスト時にモック DB を注入できる
+- 将来 DB を変更しても `agent-core` は修正不要
+
+**もし DI を採用しなかった場合の問題**:
+
+1. **循環依存のリスク** — `agent-core → db` という依存が固定され、将来 `db` が `agent-core` の型を参照したくなったら循環依存が発生
+2. **テストが困難** — 本物の DB 接続が必要になる。DI なら `const mockDB = { db: fakeDB, ... }` で済む
+3. **packages の独立性が失われる** — テーブル名を変更したら `agent-core` も修正が必要になる
+
+### 13.3 Lazy Proxy パターン（DB クライアント）
+
+#### 身近なたとえ
+
+> レストランで「お客さんが来てからコーヒーを淹れる」方式。開店準備（ビルド）の段階でコーヒーを淹れようとすると、まだ豆（DATABASE_URL）が届いていなくてエラーになる。Proxy（代理人）が間に立って、お客さんが来た時だけ豆を挽く。
+
+<details>
+<summary>コード例: Lazy Proxy の実装</summary>
+
+```typescript
+// packages/db/src/client.ts
+let _db: DrizzleDB | null = null;
+
+function getDB(): DrizzleDB {
+  if (!_db) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) throw new Error("DATABASE_URL is required");
+    const client = postgres(connectionString, {
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+    _db = drizzle(client);
+  }
+  return _db;
+}
+
+// Proxy で遅延初期化
+export const db = new Proxy({} as DrizzleDB, {
+  get(_, prop) {
+    return Reflect.get(getDB(), prop);
+  },
+});
+```
+
+</details>
+
+**なぜ Proxy か（`getDB()` 関数呼び出しではダメなのか）**:
+
+```
+■ getDB() 関数方式:
+  // 全ファイルで db.select(...) → getDB().select(...) に書き換え
+  // → 数十ファイル、数百箇所の修正が必要
+
+■ Proxy 方式（Argus の実装）:
+  // 今まで通り db.select(...) と書ける。変更不要！
+  // → Proxy が裏で getDB() を呼ぶが、消費側は気付かない
+  // → 0ファイル、0箇所の修正で済む
+```
+
+**Lazy Proxy のメリット 3 つ**:
+
+1. **ビルド時エラーの回避** — Next.js の `next build` 時に `DATABASE_URL` がなくてもビルドが成功する
+2. **既存コードの変更不要** — `db.select(...)` をそのまま使い続けられる
+3. **接続のライフサイクル管理** — 接続は最初の DB アクセス時に 1 回だけ作られ、再利用される
+
+### 13.4 フック耐障害性
+
+#### 身近なたとえ
+
+> 防犯カメラの録画が一時的に止まったからといって、お店を閉めたりはしない。防犯カメラ（観測）は大事だが、お客さんへのサービス（応答）を止める理由にはならない。
+
+<details>
+<summary>コード例: フック内の try-catch</summary>
+
+```typescript
+// Observation Hooks 内の全 DB 操作
+onPostToolUse: async (event) => {
+  try {
+    await db.insert(tasks).values({ ... });
+  } catch (error) {
+    console.error("[observation] Failed to record task:", error);
+    // ← throw しない。フックの失敗がメインの実行を止めない
+  }
+},
+```
+
+</details>
+
+**なぜ観測データの欠損を許容するのか**:
+
+```
+■ もしフック内で throw していたら:
+  ユーザー: 「明日の予定を教えて」
+  → AI: Calendar検索（成功）
+  → フック: DBに記録しようとする → タイムアウト → throw
+  → エージェント処理全体が中断
+  → 予定データは取得できていたのに、応答できない
+
+■ Argus の実装（throw しない）:
+  ユーザー: 「明日の予定を教えて」
+  → AI: Calendar検索（成功）
+  → フック: DBに記録しようとする → タイムアウト → console.error
+  → ユーザーには「明日は10時に会議があります」と正常応答
+  → 観測データは1件欠損するが、ユーザー体験には影響なし
+```
+
+**判断基準**: 「この処理が失敗したとき、ユーザーへの応答を止めるべきか？」。答えが No なら、try-catch で囲んで黙殺（ログ出力のみ）する。
+
+### 理解度チェック
+
+- [ ] Q1: `success: boolean` パターンと `throw` パターンの違いを 3 つ挙げられるか？（ヒント: 影響範囲、強制力、Go言語の類似パターン）
+- [ ] Q2: DI（依存性逆転）を使わなかった場合に発生する問題を 3 つ挙げられるか？（ヒント: 循環依存、テスト、独立性）
+- [ ] Q3: Lazy Proxy パターンのメリットを 3 つ挙げられるか？（ヒント: ビルド、既存コード、接続管理）
+- [ ] Q4: フック内で throw しない理由を説明できるか？（ヒント: 観測 vs 応答の優先度）
+
+---
+
+## 14. 面接想定 Q&A
+
+### ひとことまとめ
+
+Argus の技術選定を面接で説明する際の **想定質問と回答テンプレート**。各回答は「技術者向け」と「非エンジニア向けの噛み砕いた説明」の2パターンを用意。
+
+### 身近なたとえ
+
+> **面接での技術説明** は「相手に合わせた通訳」。技術者相手には「PostgreSQL の `FOR UPDATE SKIP LOCKED` で排他制御」、非エンジニア相手には「同じタスクを2人が取り合わないように行列を管理する仕組み」と言い換える。このセクションでは両方のパターンを用意している。
+
+### Q&A 一覧
+
+<details>
+<summary>Q1: 「なぜ MongoDB ではなく PostgreSQL を選んだのですか？」</summary>
+
+**回答例**:
+
+> データモデルがリレーショナルだったからです。セッション、メッセージ、ツール実行記録が外部キーで紐付いており、「あるセッションのメッセージとツール実行結果を一覧で取得」という JOIN が頻繁に発生します。また、Inbox Agent のタスクキューでは `FOR UPDATE SKIP LOCKED` を使った排他制御が必要で、PostgreSQL の ACID トランザクションが適していました。ホスティングは Supabase を使い、運用コストをほぼゼロに抑えています。
+
+**噛み砕いた説明**: データ同士が「親子関係」で繋がっているので、そういう関係を扱うのが得意な PostgreSQL を選んだ。MongoDB は「バラバラのメモを箱に入れる」のが得意だが、今回は「整理されたファイルキャビネット」が必要だった。
+
+</details>
+
+<details>
+<summary>Q2: 「Prisma ではなく Drizzle を選んだ理由は？」</summary>
+
+**回答例**:
+
+> 3つの理由があります。第一に、プロジェクトが完全 ESM で、Prisma は歴史的に CJS 前提のため ESM 環境でトラブルが起きやすかった。第二に、Docker の alpine イメージで Prisma の Rust バイナリの互換性問題を避けたかった。第三に、Drizzle は TypeScript の型推論をそのまま活用するので、`prisma generate` のようなコード生成ステップが不要です。SQL に近いクエリビルダーなので、Window 関数や CTE などの複雑なクエリも自然に書けます。
+
+**噛み砕いた説明**: どちらも「プログラムからデータベースを操作する翻訳ツール」だが、Drizzle は軽量で、プロジェクトの技術方針（ESM）との相性が良く、本番環境への配置も簡単だった。
+
+</details>
+
+<details>
+<summary>Q3: 「Claude Agent SDK と Anthropic SDK の違いは？使い分けは？」</summary>
+
+**回答例**:
+
+> Anthropic SDK は API 呼び出し 1 回分の低レベルクライアントです。Agent SDK は Claude Code のエンジンそのもので、エージェントループ全体を提供します。Argus では Agent SDK を採用し、`query()` の AsyncGenerator をストリーム消費する薄いラッパーを書いています。MCP サーバーの接続も `mcpServers` オプションに設定を渡すだけで完了します。
+
+**噛み砕いた説明**: Anthropic SDK は「1回質問して1回答えをもらう電話」。Agent SDK は「AI に目標を伝えると、自分でファイルを調べたりして結果を報告してくれる秘書」。Argus は秘書型を採用した。
+
+</details>
+
+<details>
+<summary>Q4: 「なぜ REST API ではなく MCP でツールを実装したのですか？」</summary>
+
+**回答例**:
+
+> Agent SDK が MCP を標準サポートしているためです。REST API だとエンドポイント定義、HTTP クライアント、エラーハンドリング、ツール定義の JSON Schema を全て自前で書く必要があります。MCP なら `server.tool()` で宣言するだけで、SDK が自動的にツールとして認識します。さらに MCP サーバーは Claude Desktop など他のクライアントからも再利用できます。
+
+**噛み砕いた説明**: USB のように「繋げば使える」標準規格を使った。従来の Web API は「工具を1つずつ手作り」するイメージだが、MCP は「規格化された工具セット」。
+
+</details>
+
+<details>
+<summary>Q5: 「Vercel ではなく Railway を選んだ理由は？」</summary>
+
+**回答例**:
+
+> Slack Bot の Socket Mode が常時 WebSocket 接続を維持する常駐プロセスで、Vercel のサーバーレスモデルでは動かせません。Railway は Docker をそのままデプロイでき、PM2 で 3 プロセスを 1 つの VPS で管理できます。月額 $5 程度で全てをカバーできます。
+
+**噛み砕いた説明**: Vercel は「使った瞬間だけ電源が入るマシン」なので、24 時間稼働が必要な Slack Bot には使えない。Railway は「常時稼働サーバー」を安く借りられるサービス。
+
+</details>
+
+<details>
+<summary>Q6: 「テストで Agent SDK をどうモックしていますか？」</summary>
+
+**回答例**:
+
+> SDK の `query()` は `AsyncGenerator<SDKMessage>` を返すので、`fakeStream()` というヘルパーで SDKMessage の配列を AsyncGenerator に変換してモックしています。system、assistant、result の 3 種類を適切な順序で yield するだけで、正常系・異常系を網羅できます。全メッセージの `session_id` を一致させることが重要です。
+
+**噛み砕いた説明**: テスト時に本物の AI を呼ぶとお金も時間もかかるので、「AI のフリをするダミー」（モック）を使う。ダミーは台本通りに応答するだけで、AI を呼ばずにプログラムの正しさを確認できる。
+
+</details>
+
+<details>
+<summary>Q7: 「このアーキテクチャのスケーラビリティの限界は？」</summary>
+
+**回答例**:
+
+> 現在の構成は単一 VPS + 単一 DB なので、同時接続数が数百を超えるとボトルネックになります。Socket Mode は複数インスタンスに接続するとラウンドロビン配信されるため、ステートレスであれば水平スケール可能です。ただし、現在の用途（個人/インハウス）では YAGNI の原則に従い、過剰な最適化はしていません。
+
+**噛み砕いた説明**: 今は「1台のサーバー」で動いている。数人で使う分には十分だが、数百人が同時に使うならサーバーを増やす必要がある。「今必要ないものは作らない」原則に従っている。
+
+</details>
+
+<details>
+<summary>Q8: 「例外を throw せず success フラグで返す設計の理由は？」</summary>
+
+**回答例**:
+
+> Slack Bot のメッセージハンドラで未捕捉例外が発生すると、Socket Mode の WebSocket 接続が切れてボット全体が停止します。全ての公開関数が `{ success: boolean, ... }` パターンで結果を返す規約にし、フック内部の DB 操作も try-catch で黙殺しています。Go 言語の `(result, error)` パターンに近い思想です。
+
+**噛み砕いた説明**: エラーが起きた時に「プログラム全体がクラッシュする」のではなく「エラーフラグを返す」方式。ブレーカーが落ちて家中停電するのではなく、その部屋だけ赤ランプが点く仕組み。
+
+</details>
+
+<details>
+<summary>Q9: 「pnpm の幽霊依存防止はどう役立っていますか？」</summary>
+
+**回答例**:
+
+> 12 パッケージのモノレポで、npm だとホイスティングにより `package.json` に書いていないパッケージも import できてしまう幽霊依存が発生します。pnpm はシンボリックリンクで厳密に分離するため、`package.json` にない依存は import 時にエラーになります。「ローカルでは動くが CI で壊れる」という問題を未然に防いでいます。
+
+**噛み砕いた説明**: 「隣の部屋の道具を勝手に借りて使っていた」状態を防ぐ仕組み。pnpm は「自分の持ち物リストにないものは使えない」ように厳密に管理する。
+
+</details>
+
+<details>
+<summary>Q10: 「Max Plan と API キーの自動切り替えはどう実装していますか？」</summary>
+
+**回答例**:
+
+> `isMaxPlanAvailable()` 関数で、macOS かつ Claude CLI のバイナリが既知パスに存在するかを `fs.existsSync()` でチェックしています。Max Plan 利用時は環境変数から `ANTHROPIC_API_KEY` を除外して、SDK がローカルの Claude Code 経由で動作するよう強制します。Linux サーバーでは API キーモードにフォールバックします。
+
+**噛み砕いた説明**: Mac では月額プラン（Max Plan）をそのまま使い、サーバーでは従量課金の API キーを使う。環境を自動判別し、最適な設定に切り替える。携帯電話が Wi-Fi と 4G を自動切り替えするのと同じ。
+
+</details>
+
+### 理解度チェック
+
+- [ ] Q1: 面接で「なぜその技術を選んだのか」を聞かれたとき、回答に含めるべき 3 要素は何か？（ヒント: 背景/課題、比較した選択肢、決め手）
+- [ ] Q2: 技術者と非エンジニアで説明を変える必要があるのはなぜか？
+- [ ] Q3: 上記の Q&A から、自分が最も答えに自信がない質問を 1 つ選び、該当セクションを復習できるか？
+
+---
+
+## 15. 用語集
+
+### ひとことまとめ
+
+本ドキュメントで使われる専門用語の **読み方・意味・日常的なたとえ** をまとめた辞書。初出のセクション番号付きで、「この用語はどこで使われたか」を辿れる。
+
+### 身近なたとえ
+
+> **辞書の巻末索引** のようなもの。本文を読んでいて「この言葉の意味は？」と思ったら、ここに戻って確認する。各用語にはカタカナの読み方と、技術者でない方にも伝わる平易な説明を付けている。
+
+### インフラ・デプロイ関連
+
+| 用語         | 読み方              | 説明                                                                                                                             |
+| ------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **VPS**      | ブイピーエス        | Virtual Private Server。クラウド上に借りる自分専用のサーバー（仮想的なパソコン）                                                 |
+| **Docker**   | ドッカー            | アプリケーションを「コンテナ」という箱に入れて、どの環境でも同じように動かせるようにする技術。引っ越し用のダンボール箱のイメージ |
+| **PM2**      | ピーエムツー        | Node.js のプロセスマネージャ。プログラムが落ちたら自動で再起動してくれる「見守り役」                                             |
+| **デプロイ** | --                  | プログラムを本番サーバーに配置して動かすこと。「お店をオープンする」に相当                                                       |
+| **CI/CD**    | シーアイ/シーディー | Continuous Integration / Continuous Delivery。コードを変更するたびに自動でテスト・配置する仕組み                                 |
+| **alpine**   | アルパイン          | Linux の超軽量版。Docker イメージを小さくするために使われる                                                                      |
+| **エグレス** | --                  | サーバーからインターネットに出ていくデータ転送。多くのクラウドサービスで課金対象                                                 |
+| **CDN**      | シーディーエヌ      | Content Delivery Network。世界中にコンテンツのコピーを配置して高速配信するネットワーク                                           |
+
+### データベース関連
+
+| 用語                 | 読み方                 | 説明                                                                                                                           |
+| -------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **PostgreSQL**       | ポストグレスキューエル | オープンソースのリレーショナルデータベース。Excel の表のようにデータを整理して管理する                                         |
+| **MongoDB**          | モンゴディービー       | ドキュメント型データベース。JSON をそのまま保存できる。自由度が高いが、テーブル間の関連付けは苦手                              |
+| **ORM**              | オーアールエム         | Object-Relational Mapping。プログラムの言葉でデータベースを操作できる翻訳レイヤー                                              |
+| **スキーマ**         | --                     | データの構造定義。「この表にはどんな列があるか」を定めたもの。設計図に相当                                                     |
+| **マイグレーション** | --                     | データベースの構造を変更する作業。「テーブルに列を追加する」など                                                               |
+| **JOIN**             | ジョイン               | 複数のテーブルのデータを結合して取得する SQL 操作                                                                              |
+| **トランザクション** | --                     | 複数のデータ操作を「全部成功するか、全部なかったことにするか」のどちらかにまとめる仕組み。銀行送金のイメージ                   |
+| **ACID**             | アシッド               | Atomicity（原子性）、Consistency（一貫性）、Isolation（分離性）、Durability（永続性）。トランザクションが満たすべき 4 つの性質 |
+| **接続プーリング**   | --                     | DB との接続を使い回す仕組み。毎回新しく接続を作るより効率的。「シェアオフィスの共用デスク」のイメージ                          |
+
+### プログラミング関連
+
+| 用語                  | 読み方                 | 説明                                                                                           |
+| --------------------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
+| **TypeScript**        | タイプスクリプト       | JavaScript に「型」（データの種類チェック）を追加した言語。書き間違いを実行前に検出できる      |
+| **ESM**               | イーエスエム           | ECMAScript Modules。JavaScript の現代的なモジュール方式。`import/export` で書く                |
+| **CJS**               | シージェーエス         | CommonJS。JavaScript の旧来のモジュール方式。`require()` で書く。ESM が後継                    |
+| **strict mode**       | ストリクトモード       | TypeScript の厳密チェックモード。型チェックをより厳しく行い、バグを未然に防ぐ                  |
+| **型推論**            | かたすいろん           | プログラマが型を明示的に書かなくても、コンパイラが自動的に型を推測してくれる機能               |
+| **AsyncGenerator**    | アシンクジェネレーター | データを「一度に全部」ではなく「少しずつ」返す非同期の仕組み。水道の蛇口から水が流れるイメージ |
+| **モック**            | --                     | テスト時に本物の代わりに使う「偽物」。本物の AI や DB を呼ばずにテストするために使う           |
+| **依存性注入（DI）**  | ディーアイ             | 部品の具体的な実装を外部から差し込む設計パターン。テストしやすく、部品の交換が容易になる       |
+| **例外（Exception）** | --                     | プログラムで予期しないエラーが発生した時に、通常の処理を中断して投げられるエラー信号           |
+
+### AI・エージェント関連
+
+| 用語               | 読み方         | 説明                                                                                                           |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------- |
+| **SDK**            | エスディーケー | Software Development Kit。特定の機能を簡単に使うための開発道具箱                                               |
+| **API**            | エーピーアイ   | Application Programming Interface。プログラム同士が通信するための「窓口」                                      |
+| **Agent SDK**      | --             | Claude に自律的な作業をさせるための SDK。「1問1答」ではなく、AI が自分で判断してツールを使いながら作業を進める |
+| **MCP**            | エムシーピー   | Model Context Protocol。AI に外部ツール（メール、カレンダー等）を使わせるための標準規格                        |
+| **セッション**     | --             | 一連の会話のまとまり。Argus では Slack の 1 スレッド = 1 セッション                                            |
+| **ストリーミング** | --             | データを一括ではなく、逐次的に送受信する方式。AI の応答がリアルタイムに流れてくるイメージ                      |
+| **フック（Hook）** | --             | 特定のタイミングで自動的に実行される処理。「ツール実行の前後に自動でログを取る」など                           |
+| **パーミッション** | --             | 権限。「ファイルの読み書きを許可するか」などの設定                                                             |
+| **Max Plan**       | マックスプラン | Claude の月額定額プラン。API 従量課金と異なり、月額料金内で使い放題                                            |
+
+### アーキテクチャ関連
+
+| 用語                 | 読み方             | 説明                                                                                                                                                                             |
+| -------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **モノレポ**         | --                 | Monorepo。複数のパッケージ・アプリを 1 つのリポジトリ（コード置き場）で管理する方式                                                                                              |
+| **マイクロサービス** | --                 | 機能ごとに独立したサービスに分割するアーキテクチャ。対義語はモノリス（一枚岩）                                                                                                   |
+| **サーバーレス**     | --                 | サーバーの管理が不要で、リクエストが来た時だけプログラムが動く方式。Vercel や AWS Lambda など                                                                                    |
+| **Socket Mode**      | ソケットモード     | Slack Bot の通信方式の一つ。サーバーから Slack に常時接続を張り、メッセージを受け取る                                                                                            |
+| **Webhook**          | ウェブフック       | イベント発生時に指定 URL に HTTP リクエストを送る仕組み。「何かあったら電話してね」方式                                                                                          |
+| **WebSocket**        | ウェブソケット     | ブラウザとサーバー間で双方向のリアルタイム通信を行うための技術                                                                                                                   |
+| **REST API**         | レストエーピーアイ | HTTP メソッド（GET, POST 等）でデータをやり取りする Web API の設計スタイル                                                                                                       |
+| **YAGNI**            | ヤグニ             | "You Ain't Gonna Need It"（「それ、いらないよ」）。今必要ないものは作らない原則                                                                                                  |
+| **ラッパー**         | --                 | 既存の機能を包み込んで、使いやすい別のインターフェースを提供するもの。「カバー」や「ケース」のイメージ                                                                           |
+| **ネイティブ対応**   | --                 | ある機能が最初から組み込まれていて、追加のライブラリや設定なしでそのまま使えること。「後付け対応」の反対。例: 「ESM にネイティブ対応」＝ 最初から ESM で作られているので設定不要 |
+| **ホイスティング**   | --                 | npm がライブラリを上の階層（ルートの node_modules）にまとめて配置する仕組み。これにより、本来使えないはずのライブラリが使えてしまう「幽霊依存」の原因になる                      |
+| **ラウンドロビン**   | --                 | 複数のサーバーにリクエストを順番に振り分ける方式。A→B→C→A→B→C... のように均等に分配する                                                                                          |
+| **ゼロトラスト**     | --                 | 「社内ネットワークだから安全」と信用せず、全てのアクセスに対して毎回本人確認する設計思想                                                                                         |
+| **ステートレス**     | --                 | サーバーが過去のリクエスト情報を保持しない設計。サーバーを増やしてもどのサーバーが処理しても同じ結果になる                                                                       |
+| **DSL**              | ディーエスエル     | Domain-Specific Language。特定の目的に特化した専用言語。Prisma の独自クエリ記法など                                                                                              |
+| **ミドルウェア**     | --                 | リクエストとレスポンスの間に挟まって、認証・ログ・エラー処理などの共通処理を行う部品                                                                                             |
+| **CORS**             | コルス             | Cross-Origin Resource Sharing。異なるドメイン間でデータをやり取りするための許可設定                                                                                              |
+| **SSR**              | エスエスアール     | Server-Side Rendering。サーバー側で HTML を生成してからブラウザに送る方式                                                                                                        |
+| **SSG**              | エスエスジー       | Static Site Generation。ビルド時にページの HTML を事前に生成しておく方式                                                                                                         |
+| **SPA**              | エスピーエー       | Single Page Application。1 つの HTML ページでページ遷移せずに動くアプリケーション                                                                                                |
+
+### ツール・サービス関連
+
+| 用語              | 読み方                      | 説明                                                                              |
+| ----------------- | --------------------------- | --------------------------------------------------------------------------------- |
+| **Supabase**      | スパベース                  | PostgreSQL のマネージド（運用おまかせ）サービス。無料枠が大きく、個人開発に人気   |
+| **Cloudflare R2** | クラウドフレア アールツー   | ファイルを保存するストレージサービス。AWS S3 互換だがデータ転送料が無料           |
+| **Railway**       | レイルウェイ                | Docker コンテナをそのままデプロイできるクラウドサービス。Git push で自動デプロイ  |
+| **Vitest**        | ヴィテスト                  | JavaScript/TypeScript のテストフレームワーク。高速で ESM に標準対応               |
+| **Drizzle**       | ドリズル                    | TypeScript 向けの軽量 ORM。SQL に近い書き方ができ、型推論が強力                   |
+| **Prisma**        | プリズマ                    | 人気の ORM だが、コード生成ステップが必要で、ESM 対応やバイナリサイズに課題がある |
+| **Next.js**       | ネクストジェーエス          | React ベースの Web フレームワーク。サーバーサイドレンダリングや API Routes を提供 |
+| **Tailwind CSS**  | テイルウィンド シーエスエス | HTML に直接スタイルを書けるユーティリティファーストの CSS フレームワーク          |
