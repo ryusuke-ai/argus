@@ -147,7 +147,7 @@ async function executeAndReport(
       })
       .where(eq(inboxTasks.id, task.id));
 
-    // リアクションで状態を示す: 🛑(中止) / 🔔(入力待ち) / ✅(完了) / ❌(失敗)
+    // リアクションで状態を示す: 🚫(中止) / 🔔(入力待ち) / ✅(完了) / ❌(失敗)
     await removeReaction(
       client,
       task.slackChannel,
@@ -155,7 +155,7 @@ async function executeAndReport(
       "eyes",
     );
     const reactionName = result.aborted
-      ? "octagonal_sign"
+      ? "no_entry_sign"
       : result.needsInput
         ? "bell"
         : result.success
@@ -202,7 +202,7 @@ async function executeAndReport(
           });
 
       const text = result.aborted
-        ? `🛑 中止: ${task.summary}`
+        ? `🚫 中止: ${task.summary}`
         : result.needsInput
           ? `🔔 回答待ち: ${task.summary}`
           : result.success

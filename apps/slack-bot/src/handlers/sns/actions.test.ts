@@ -1087,13 +1087,18 @@ describe("SNS Action Handlers", () => {
       expect(mockSelect).not.toHaveBeenCalled();
     });
 
-    it("should do nothing if post not found", async () => {
+    it("should notify if post not found", async () => {
       mockLimit.mockResolvedValue([]);
 
       const { getNextOptimalTime } =
         await import("./scheduling/optimal-time.js");
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
+      const mockClient = {
+        chat: {
+          update: vi.fn().mockResolvedValue({}),
+          postMessage: vi.fn().mockResolvedValue({}),
+        },
+      };
 
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
@@ -1107,6 +1112,12 @@ describe("SNS Action Handlers", () => {
 
       expect(mockAck).toHaveBeenCalled();
       expect(getNextOptimalTime).not.toHaveBeenCalled();
+      expect(mockClient.chat.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel: "C123",
+          thread_ts: "1234567890.123456",
+        }),
+      );
     });
   });
 

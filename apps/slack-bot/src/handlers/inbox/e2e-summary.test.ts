@@ -17,7 +17,22 @@
 //     (A) ユニット E2E: classifyMessage → buildClassificationBlocks の統合テスト
 //     (B) Slack API E2E: 実際に Slack に投稿して Bot の応答を確認（要 User Token）
 
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, vi } from "vitest";
+
+// Max Plan (CLI 起動) がテスト中に実行されないようにモック
+vi.mock("@argus/agent-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@argus/agent-core")>();
+  return {
+    ...actual,
+    isMaxPlanAvailable: () => false,
+    query: vi.fn().mockResolvedValue({
+      success: false,
+      message: { content: [] },
+      toolCalls: [],
+    }),
+  };
+});
+
 import { classifyMessage, summarizeText } from "./classifier.js";
 import { buildClassificationBlocks } from "./reporter.js";
 

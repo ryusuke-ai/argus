@@ -435,19 +435,19 @@ function buildNeedsReplyBlocks() {
         text: { type: "plain_text", text: "この内容で返信" },
         style: "primary",
         action_id: "gmail_reply",
-        value: "test-record-id-001",
+        value: "00000000-0000-0000-0000-00000000aa01",
       },
       {
         type: "button",
         text: { type: "plain_text", text: "編集" },
         action_id: "gmail_edit",
-        value: "test-record-id-001",
+        value: "00000000-0000-0000-0000-00000000aa01",
       },
       {
         type: "button",
         text: { type: "plain_text", text: "スキップ" },
         action_id: "gmail_skip",
-        value: "test-record-id-001",
+        value: "00000000-0000-0000-0000-00000000aa01",
       },
     ],
   });
@@ -529,34 +529,112 @@ function checkboxItem(text, actionId, value) {
 function buildDailyPlanBlocks() {
   const today = new Date().toISOString().split("T")[0];
   const d = new Date(today + "T00:00:00");
-  const DAY_OF_WEEK_JA = ["\u65E5", "\u6708", "\u706B", "\u6C34", "\u6728", "\u91D1", "\u571F"];
+  const DAY_OF_WEEK_JA = [
+    "\u65E5",
+    "\u6708",
+    "\u706B",
+    "\u6C34",
+    "\u6728",
+    "\u91D1",
+    "\u571F",
+  ];
   const dayOfWeek = DAY_OF_WEEK_JA[d.getDay()];
   const dateJa = `${d.getFullYear()}\u5E74${d.getMonth() + 1}\u6708${d.getDate()}\u65E5`;
 
   const events = [
-    { title: "\u671D\u4F1A\u30B9\u30BF\u30F3\u30C9\u30A2\u30C3\u30D7", start: `${today}T09:30:00+09:00`, end: `${today}T09:45:00+09:00`, location: undefined },
-    { title: "\u30C7\u30B6\u30A4\u30F3\u30EC\u30D3\u30E5\u30FC", start: `${today}T11:00:00+09:00`, end: `${today}T12:00:00+09:00`, location: "\u4F1A\u8B70\u5BA4A" },
-    { title: "\u30E9\u30F3\u30C1\u30DF\u30FC\u30C6\u30A3\u30F3\u30B0", start: `${today}T12:30:00+09:00`, end: `${today}T13:30:00+09:00`, location: "\u30AB\u30D5\u30A7\u30C6\u30EA\u30A2" },
-    { title: "\u30B9\u30D7\u30EA\u30F3\u30C8\u632F\u308A\u8FD4\u308A", start: `${today}T15:00:00+09:00`, end: `${today}T16:00:00+09:00`, location: undefined },
+    {
+      title: "\u671D\u4F1A\u30B9\u30BF\u30F3\u30C9\u30A2\u30C3\u30D7",
+      start: `${today}T09:30:00+09:00`,
+      end: `${today}T09:45:00+09:00`,
+      location: undefined,
+    },
+    {
+      title: "\u30C7\u30B6\u30A4\u30F3\u30EC\u30D3\u30E5\u30FC",
+      start: `${today}T11:00:00+09:00`,
+      end: `${today}T12:00:00+09:00`,
+      location: "\u4F1A\u8B70\u5BA4A",
+    },
+    {
+      title: "\u30E9\u30F3\u30C1\u30DF\u30FC\u30C6\u30A3\u30F3\u30B0",
+      start: `${today}T12:30:00+09:00`,
+      end: `${today}T13:30:00+09:00`,
+      location: "\u30AB\u30D5\u30A7\u30C6\u30EA\u30A2",
+    },
+    {
+      title: "\u30B9\u30D7\u30EA\u30F3\u30C8\u632F\u308A\u8FD4\u308A",
+      start: `${today}T15:00:00+09:00`,
+      end: `${today}T16:00:00+09:00`,
+      location: undefined,
+    },
   ];
 
+  // テスト用UUID（DBに存在しないが、UUIDフォーマットは正しい）
   const emails = [
-    { id: "e1", from: "tanaka@example.com", subject: "\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u9032\u6357\u306E\u78BA\u8A8D", classification: "needs_reply" },
-    { id: "e2", from: "suzuki@example.com", subject: "API\u8A2D\u8A08\u66F8\u306E\u30EC\u30D3\u30E5\u30FC\u4F9D\u983C", classification: "needs_reply" },
-    { id: "e3", from: "noreply@aws.amazon.com", subject: "\u8A3C\u660E\u66F8\u66F4\u65B0\u901A\u77E5", classification: "needs_attention" },
-    { id: "e4", from: "notifications@github.com", subject: "[argus] CI passed: main #142", classification: "notification" },
+    {
+      id: "00000000-0000-0000-0000-000000000e01",
+      from: "tanaka@example.com",
+      subject:
+        "\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u9032\u6357\u306E\u78BA\u8A8D",
+      classification: "needs_reply",
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000e02",
+      from: "suzuki@example.com",
+      subject:
+        "API\u8A2D\u8A08\u66F8\u306E\u30EC\u30D3\u30E5\u30FC\u4F9D\u983C",
+      classification: "needs_reply",
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000e03",
+      from: "noreply@aws.amazon.com",
+      subject: "\u8A3C\u660E\u66F8\u66F4\u65B0\u901A\u77E5",
+      classification: "needs_attention",
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000e04",
+      from: "notifications@github.com",
+      subject: "[argus] CI passed: main #142",
+      classification: "notification",
+    },
   ];
 
   const todos = [
-    { id: "todo1", text: "Q1 \u632F\u308A\u8FD4\u308A\u8CC7\u6599\u4F5C\u6210", category: "\u4ED5\u4E8B" },
-    { id: "todo2", text: "TypeScript 5.8 \u306E\u65B0\u6A5F\u80FD\u3092\u8ABF\u67FB", category: "\u5B66\u7FD2" },
-    { id: "todo3", text: "\u725B\u4E73\u3068\u5375\u3092\u8CB7\u3046", category: "\u8CB7\u3044\u7269" },
+    {
+      id: "00000000-0000-0000-0000-0000000add01",
+      text: "Q1 \u632F\u308A\u8FD4\u308A\u8CC7\u6599\u4F5C\u6210",
+      category: "\u4ED5\u4E8B",
+    },
+    {
+      id: "00000000-0000-0000-0000-0000000add02",
+      text: "TypeScript 5.8 \u306E\u65B0\u6A5F\u80FD\u3092\u8ABF\u67FB",
+      category: "\u5B66\u7FD2",
+    },
+    {
+      id: "00000000-0000-0000-0000-0000000add03",
+      text: "\u725B\u4E73\u3068\u5375\u3092\u8CB7\u3046",
+      category: "\u8CB7\u3044\u7269",
+    },
   ];
 
   const inboxTasks = [
-    { id: "t1", summary: "Slack Bot \u306E\u30A8\u30E9\u30FC\u30CF\u30F3\u30C9\u30EA\u30F3\u30B0\u6539\u5584", status: "running" },
-    { id: "t2", summary: "\u30CA\u30EC\u30C3\u30B8\u30D9\u30FC\u30B9\u306E\u691C\u7D22\u7CBE\u5EA6\u5411\u4E0A", status: "queued" },
-    { id: "t3", summary: "\u30C7\u30D7\u30ED\u30A4\u30B9\u30AF\u30EA\u30D7\u30C8\u306E\u4FEE\u6B63", status: "pending" },
+    {
+      id: "00000000-0000-0000-0000-000000000t01",
+      summary:
+        "Slack Bot \u306E\u30A8\u30E9\u30FC\u30CF\u30F3\u30C9\u30EA\u30F3\u30B0\u6539\u5584",
+      status: "running",
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000t02",
+      summary:
+        "\u30CA\u30EC\u30C3\u30B8\u30D9\u30FC\u30B9\u306E\u691C\u7D22\u7CBE\u5EA6\u5411\u4E0A",
+      status: "queued",
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000t03",
+      summary:
+        "\u30C7\u30D7\u30ED\u30A4\u30B9\u30AF\u30EA\u30D7\u30C8\u306E\u4FEE\u6B63",
+      status: "pending",
+    },
   ];
 
   const MAX_TEXT_LENGTH = 60;
@@ -573,86 +651,198 @@ function buildDailyPlanBlocks() {
   // --- Header ---
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: `${dateJa}\uFF08${dayOfWeek}\uFF09`, emoji: true },
+    text: {
+      type: "plain_text",
+      text: `${dateJa}\uFF08${dayOfWeek}\uFF09`,
+      emoji: true,
+    },
   });
 
   // --- Summary context ---
   const needsReply = emails.filter((e) => e.classification === "needs_reply");
-  const needsAttention = emails.filter((e) => e.classification === "needs_attention");
-  const notifications = emails.filter((e) => e.classification === "notification");
+  const needsAttention = emails.filter(
+    (e) => e.classification === "needs_attention",
+  );
+  const notifications = emails.filter(
+    (e) => e.classification === "notification",
+  );
   const emailParts = [];
-  if (needsReply.length > 0) emailParts.push(`\u8981\u8FD4\u4FE1 ${needsReply.length}\u4EF6`);
-  if (needsAttention.length > 0) emailParts.push(`\u8981\u78BA\u8A8D ${needsAttention.length}\u4EF6`);
-  if (notifications.length > 0) emailParts.push(`\u901A\u77E5 ${notifications.length}\u4EF6`);
-  const emailSummary = emailParts.length > 0 ? `\u30E1\u30FC\u30EB ${emails.length}\u4EF6\uFF08${emailParts.join("\u30FB")}\uFF09` : "\u30E1\u30FC\u30EB\u306A\u3057";
+  if (needsReply.length > 0)
+    emailParts.push(`\u8981\u8FD4\u4FE1 ${needsReply.length}\u4EF6`);
+  if (needsAttention.length > 0)
+    emailParts.push(`\u8981\u78BA\u8A8D ${needsAttention.length}\u4EF6`);
+  if (notifications.length > 0)
+    emailParts.push(`\u901A\u77E5 ${notifications.length}\u4EF6`);
+  const emailSummary =
+    emailParts.length > 0
+      ? `\u30E1\u30FC\u30EB ${emails.length}\u4EF6\uFF08${emailParts.join("\u30FB")}\uFF09`
+      : "\u30E1\u30FC\u30EB\u306A\u3057";
   blocks.push({
     type: "context",
     elements: [
-      { type: "mrkdwn", text: `\u4E88\u5B9A ${events.length}\u4EF6 \u00B7 ${emailSummary} \u00B7 Todo ${todos.length}\u4EF6 \u00B7 \u30BF\u30B9\u30AF ${inboxTasks.length}\u4EF6` },
+      {
+        type: "mrkdwn",
+        text: `\u4E88\u5B9A ${events.length}\u4EF6 \u00B7 ${emailSummary} \u00B7 Todo ${todos.length}\u4EF6 \u00B7 \u30BF\u30B9\u30AF ${inboxTasks.length}\u4EF6`,
+      },
     ],
   });
 
   // --- Calendar events (checkboxItem) ---
   if (events.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":calendar:  \u4ECA\u65E5\u306E\u4E88\u5B9A", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: ":calendar:  \u4ECA\u65E5\u306E\u4E88\u5B9A",
+        emoji: true,
+      },
+    });
     events.forEach((e, i) => {
-      const start = e.start.includes("T") ? formatTime(e.start) : "\u7D42\u65E5";
+      const start = e.start.includes("T")
+        ? formatTime(e.start)
+        : "\u7D42\u65E5";
       const end = e.end && e.end.includes("T") ? ` - ${formatTime(e.end)}` : "";
       const loc = e.location ? `  _${e.location}_` : "";
-      blocks.push(checkboxItem(`*${start}${end}*  ${e.title}${loc}`, `dp_check_event_${i}`, { type: "event", index: i }));
+      blocks.push(
+        checkboxItem(
+          `*${start}${end}*  ${e.title}${loc}`,
+          `dp_check_event_${i}`,
+          { type: "event", index: i },
+        ),
+      );
     });
   }
 
   // --- Emails (checkboxItem, grouped) ---
   if (emails.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":envelope:  \u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: ":envelope:  \u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB",
+        emoji: true,
+      },
+    });
 
     if (needsReply.length > 0) {
-      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `:rotating_light: *\u8981\u8FD4\u4FE1* (${needsReply.length}\u4EF6)` }] });
+      blocks.push({
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `:rotating_light: *\u8981\u8FD4\u4FE1* (${needsReply.length}\u4EF6)`,
+          },
+        ],
+      });
       for (const e of needsReply) {
-        blocks.push(checkboxItem(`${truncateText(e.subject)} \u2014 _${e.from}_`, `dp_check_email_${e.id}`, { type: "email", id: e.id }));
+        blocks.push(
+          checkboxItem(
+            `${truncateText(e.subject)} \u2014 _${e.from}_`,
+            `dp_check_email_${e.id}`,
+            { type: "email", id: e.id },
+          ),
+        );
       }
     }
     if (needsAttention.length > 0) {
-      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `*\u8981\u78BA\u8A8D* (${needsAttention.length}\u4EF6)` }] });
+      blocks.push({
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `*\u8981\u78BA\u8A8D* (${needsAttention.length}\u4EF6)`,
+          },
+        ],
+      });
       for (const e of needsAttention) {
-        blocks.push(checkboxItem(`${truncateText(e.subject)} \u2014 _${e.from}_`, `dp_check_email_${e.id}`, { type: "email", id: e.id }));
+        blocks.push(
+          checkboxItem(
+            `${truncateText(e.subject)} \u2014 _${e.from}_`,
+            `dp_check_email_${e.id}`,
+            { type: "email", id: e.id },
+          ),
+        );
       }
     }
     if (notifications.length > 0) {
-      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `:bell: \u81EA\u52D5\u901A\u77E5 ${notifications.length}\u4EF6\uFF08GitHub CI \u7B49\uFF09` }] });
+      blocks.push({
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `:bell: \u81EA\u52D5\u901A\u77E5 ${notifications.length}\u4EF6\uFF08GitHub CI \u7B49\uFF09`,
+          },
+        ],
+      });
     }
   }
 
   // --- Todos (checkboxItem, grouped by category) ---
   if (todos.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({ type: "header", text: { type: "plain_text", text: ":clipboard:  \u672A\u5B8C\u4E86\u30BF\u30B9\u30AF", emoji: true } });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: ":clipboard:  \u672A\u5B8C\u4E86\u30BF\u30B9\u30AF",
+        emoji: true,
+      },
+    });
 
-    const CATEGORY_EMOJI = { "\u4ED5\u4E8B": ":briefcase:", "\u8CB7\u3044\u7269": ":shopping_cart:", "\u5B66\u7FD2": ":books:", "\u751F\u6D3B": ":house:", "\u305D\u306E\u4ED6": ":pushpin:" };
+    const CATEGORY_EMOJI = {
+      "\u4ED5\u4E8B": ":briefcase:",
+      "\u8CB7\u3044\u7269": ":shopping_cart:",
+      "\u5B66\u7FD2": ":books:",
+      "\u751F\u6D3B": ":house:",
+      "\u305D\u306E\u4ED6": ":pushpin:",
+    };
     const todoGroups = {};
     for (const t of todos) {
       (todoGroups[t.category] ??= []).push(t);
     }
     for (const [cat, items] of Object.entries(todoGroups)) {
       const emoji = CATEGORY_EMOJI[cat] || ":pushpin:";
-      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `${emoji} *${cat}*` }] });
+      blocks.push({
+        type: "context",
+        elements: [{ type: "mrkdwn", text: `${emoji} *${cat}*` }],
+      });
       for (const t of items) {
-        blocks.push(checkboxItem(truncateText(t.text), `dp_check_todo_${t.id}`, { type: "todo", id: t.id }));
+        blocks.push(
+          checkboxItem(truncateText(t.text), `dp_check_todo_${t.id}`, {
+            type: "todo",
+            id: t.id,
+          }),
+        );
       }
     }
   }
 
   // --- Inbox tasks (checkboxItem, grouped by status) ---
   if (inboxTasks.length > 0) {
-    blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: ":incoming_envelope: *\u53D7\u4FE1\u30BF\u30B9\u30AF*" }] });
+    blocks.push({
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: ":incoming_envelope: *\u53D7\u4FE1\u30BF\u30B9\u30AF*",
+        },
+      ],
+    });
 
     const TASK_STATUS_ORDER = { running: 0, queued: 1, pending: 2 };
-    const sorted = [...inboxTasks].sort((a, b) => (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9));
+    const sorted = [...inboxTasks].sort(
+      (a, b) =>
+        (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9),
+    );
     for (const t of sorted) {
-      blocks.push(checkboxItem(truncateText(t.summary), `dp_check_inbox_${t.id}`, { type: "inbox", id: t.id }));
+      blocks.push(
+        checkboxItem(truncateText(t.summary), `dp_check_inbox_${t.id}`, {
+          type: "inbox",
+          id: t.id,
+        }),
+      );
     }
   }
 
@@ -665,7 +855,15 @@ function buildDailyPlanBlocks() {
 function buildDailyNewsBlocks() {
   const today = new Date().toISOString().split("T")[0];
   const d = new Date(today + "T00:00:00");
-  const DAY_OF_WEEK_JA = ["\u65E5", "\u6708", "\u706B", "\u6C34", "\u6728", "\u91D1", "\u571F"];
+  const DAY_OF_WEEK_JA = [
+    "\u65E5",
+    "\u6708",
+    "\u706B",
+    "\u6C34",
+    "\u6728",
+    "\u91D1",
+    "\u571F",
+  ];
   const dayOfWeek = DAY_OF_WEEK_JA[d.getDay()];
   const titleDate = `${d.getMonth() + 1}\u6708${d.getDate()}\u65E5\uFF08${dayOfWeek}\uFF09`;
 
@@ -682,20 +880,33 @@ function buildDailyNewsBlocks() {
   // Header (production format)
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: `\uD83D\uDCF0 \u30C7\u30A4\u30EA\u30FC\u30CB\u30E5\u30FC\u30B9 \u2014 ${titleDate}`, emoji: true },
+    text: {
+      type: "plain_text",
+      text: `\uD83D\uDCF0 \u30C7\u30A4\u30EA\u30FC\u30CB\u30E5\u30FC\u30B9 \u2014 ${titleDate}`,
+      emoji: true,
+    },
   });
 
   // Status context
   blocks.push({
     type: "context",
-    elements: [{ type: "mrkdwn", text: "*\u30B9\u30C6\u30FC\u30BF\u30B9*: \uD83D\uDCDD \u6E96\u5099\u4E2D" }],
+    elements: [
+      {
+        type: "mrkdwn",
+        text: "*\u30B9\u30C6\u30FC\u30BF\u30B9*: \uD83D\uDCDD \u6E96\u5099\u4E2D",
+      },
+    ],
   });
 
   // Topics (numbered list with bold)
   blocks.push({ type: "divider" });
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: ":clipboard:  \u4ECA\u65E5\u306E\u30C8\u30D4\u30C3\u30AF", emoji: true },
+    text: {
+      type: "plain_text",
+      text: ":clipboard:  \u4ECA\u65E5\u306E\u30C8\u30D4\u30C3\u30AF",
+      emoji: true,
+    },
   });
   const topicLines = topics.map((t, i) => `${i + 1}. *${t}*`);
   blocks.push({
@@ -707,7 +918,11 @@ function buildDailyNewsBlocks() {
   blocks.push({ type: "divider" });
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: ":movie_camera:  \u52D5\u753B", emoji: true },
+    text: {
+      type: "plain_text",
+      text: ":movie_camera:  \u52D5\u753B",
+      emoji: true,
+    },
   });
   blocks.push({
     type: "section",
@@ -717,14 +932,21 @@ function buildDailyNewsBlocks() {
   // Podcast (not yet generated)
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: ":headphones:  \u30DD\u30C3\u30C9\u30AD\u30E3\u30B9\u30C8", emoji: true },
+    text: {
+      type: "plain_text",
+      text: ":headphones:  \u30DD\u30C3\u30C9\u30AD\u30E3\u30B9\u30C8",
+      emoji: true,
+    },
   });
   blocks.push({
     type: "section",
     text: { type: "mrkdwn", text: "\u672A\u751F\u6210" },
   });
 
-  return { blocks, text: `${titleDate} \u30C7\u30A4\u30EA\u30FC\u30C0\u30A4\u30B8\u30A7\u30B9\u30C8` };
+  return {
+    blocks,
+    text: `${titleDate} \u30C7\u30A4\u30EA\u30FC\u30C0\u30A4\u30B8\u30A7\u30B9\u30C8`,
+  };
 }
 
 // ============================================================

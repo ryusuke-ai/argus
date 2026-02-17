@@ -9,6 +9,7 @@
 ## Tier 1: 確実に応募可能（経験1年が明記 or 第二新卒歓迎）
 
 ### 1. ラッコ株式会社
+
 - **事業**: ラッコキーワード、中古ドメイン等のWebツール群
 - **ポジション**: フルスタックエンジニア
 - **必須経験**: 1年以上（明記）
@@ -20,6 +21,7 @@
 - **応募URL**: https://herp.careers/v1/rakko
 
 ### 2. アシアル株式会社
+
 - **事業**: Monaca/Onsen UI（モバイルアプリ開発環境）、受託開発
 - **ポジション**: 新卒/第二新卒エンジニア
 - **必須経験**: 第二新卒歓迎（年数要件なし）
@@ -30,6 +32,7 @@
 - **応募URL**: https://herp.careers/v1/asial/KZo_FKHY2qVp / https://www.green-japan.com/company/3072/job/237984
 
 ### 3. 株式会社CaSy
+
 - **事業**: 家事代行マッチングプラットフォーム（東証グロース上場）
 - **ポジション**: Web開発エンジニア
 - **必須経験**: 1年以上（言語不問、明記）
@@ -40,6 +43,7 @@
 - **応募URL**: https://paiza.jp/career/job_offers/22097
 
 ### 4. SO Technologies株式会社
+
 - **事業**: 中小企業向けデジタルマーケティング支援SaaS
 - **ポジション**: 自社プロダクト開発エンジニア
 - **必須経験**: React/Node.js実務1年以上（明記）
@@ -50,6 +54,7 @@
 - **応募URL**: https://paiza.jp/career/job_offers/9012
 
 ### 5. Sales Marker（外資系）
+
 - **事業**: Intent Sales プラットフォーム（日本No.1）
 - **ポジション**: Front-End Engineer
 - **必須経験**: 1年以上（明記）
@@ -60,6 +65,7 @@
 - **応募URL**: https://japan-dev.com/jobs/sales-marker/sales-marker-front-end-engineer-2u8l5d
 
 ### 6. HENNGE（外資系 / 東証グロース上場）
+
 - **事業**: クラウドセキュリティ（SaaS認証基盤）
 - **ポジション A**: Junior Full Stack Developer (TypeScript) — 1年以上
 - **ポジション B**: Junior Front-end Engineer (Vue) — Vue 3実務1年以上
@@ -70,6 +76,7 @@
 - **応募URL**: https://www.tokyodev.com/companies/hennge/
 
 ### 7. Helpfeel（旧Nota）
+
 - **事業**: FAQ SaaS「Helpfeel」、Gyazo、Cosense（旧Scrapbox）
 - **ポジション**: プロダクトエンジニア
 - **必須経験**: React/Node.js実務1年以上
@@ -84,6 +91,7 @@
 ## Tier 2: 応募可能性が高い（経験年数が柔軟 or スキルベース評価）
 
 ### 8. エックスポイントワン
+
 - **事業**: DX推進コンサルティング + SaaS開発
 - **ポジション**: エンジニア
 - **必須経験**: 柔軟（年数不明確）
@@ -94,6 +102,7 @@
 - **応募URL**: https://paiza.jp/career/
 
 ### 9. GitLab（外資系 / 100%リモート企業）
+
 - **事業**: DevSecOpsプラットフォーム（世界最大のオールリモート企業）
 - **ポジション**: Intermediate Fullstack Engineer (TypeScript), AI Editor Extensions
 - **必須経験**: 年数明記なし（スキルベース。「many successful candidates do not meet every single requirement」と明記）
@@ -105,6 +114,7 @@
 - **応募URL**: https://job-boards.greenhouse.io/gitlab/jobs/8315155002
 
 ### 10. Automattic（外資系 / WordPress.com, Tumblr等）
+
 - **事業**: WordPress.com, WooCommerce, Tumblr等
 - **ポジション**: Experienced Software Engineer (JavaScript)
 - **必須経験**: 年数明記なし（コードテスト+ペイドトライアルで実力評価）
@@ -117,6 +127,7 @@
 - **応募URL**: https://automattic.com/work-with-us/job/experienced-software-engineer/
 
 ### 11. ちょっと株式会社
+
 - **事業**: 日本初のVercelエキスパートパートナー、Next.js/Vercel特化開発
 - **ポジション**: フロントエンドエンジニア
 - **必須経験**: 要確認
@@ -127,6 +138,7 @@
 - **応募URL**: https://herp.careers/v1/chot/5y3cHQkAMhRM
 
 ### 12. カイテク株式会社
+
 - **事業**: 介護・看護ワークシェアリングサービス
 - **ポジション**: 開発エンジニア（フルスタック志向歓迎）
 - **必須経験**: 要確認
@@ -137,6 +149,7 @@
 - **応募URL**: https://www.green-japan.com/company/9477/job/201009
 
 ### 13. 株式会社HERP
+
 - **事業**: 採用管理SaaS「HERP Hire」
 - **ポジション**: 開発エンジニア
 - **必須経験**: 要確認
@@ -147,6 +160,7 @@
 - **応募URL**: https://herp.careers/v1/herpinc
 
 ### 14. 株式会社SalesNow
+
 - **事業**: AI企業データクラウド（540万社データベース）
 - **ポジション**: Webエンジニア
 - **必須経験**: 要確認
@@ -157,6 +171,7 @@
 - **応募URL**: https://www.green-japan.com/company/10396
 
 ### 15. テックタッチ株式会社
+
 - **事業**: デジタルアダプションプラットフォーム（国内シェアNo.1）
 - **ポジション**: AI Agent事業エンジニア
 - **必須経験**: 要確認
@@ -167,6 +182,7 @@
 - **応募URL**: https://herp.careers/v1/techtouch
 
 ### 16. 株式会社ROUTE06
+
 - **事業**: 大手企業DX支援、ビジネスAPIプラットフォーム「Plain」
 - **ポジション**: ソフトウェアエンジニア
 - **必須経験**: 要確認
@@ -177,6 +193,7 @@
 - **応募URL**: https://jobs.route06.co.jp/
 
 ### 17. 株式会社カミナシ
+
 - **事業**: 現場DX SaaS「カミナシ」（ノンデスクワーカー向け）
 - **ポジション**: アプリケーションエンジニア
 - **必須経験**: 要確認
@@ -187,6 +204,7 @@
 - **応募URL**: https://herp.careers/v1/kaminashi
 
 ### 18. 株式会社トドケール
+
 - **事業**: 郵便・配達物管理SaaS
 - **ポジション**: フロントエンジニア
 - **必須経験**: SIer出身歓迎（経験の浅い方にも門戸あり）
@@ -196,6 +214,7 @@
 - **応募URL**: https://jobs.forkwell.com/todoker/jobs/10096
 
 ### 19. 株式会社コドモン
+
 - **事業**: 保育・教育施設向け業務支援SaaS（24,000施設以上導入）
 - **ポジション**: ソフトウェアエンジニア
 - **必須経験**: 要確認
@@ -211,6 +230,7 @@
 ## Tier 3: 挑戦枠（ダメ元 or 経験年数要件がやや高い）
 
 ### 20. GameWith
+
 - **事業**: ゲーム情報メディア + NFTゲーム
 - **ポジション**: フロントエンドエンジニア
 - **必須経験**: 年数不明確
@@ -221,6 +241,7 @@
 - **応募URL**: https://www.green-japan.com/company/5609
 
 ### 21. note株式会社
+
 - **事業**: クリエイター向けメディアプラットフォーム
 - **ポジション**: Webエンジニア
 - **必須経験**: 実務3年（目安）
@@ -232,6 +253,7 @@
 - **応募URL**: https://open.talentio.com/r/1/c/note-corp/
 
 ### 22. Supabase（外資系 / オープンソースBaaS）
+
 - **事業**: Firebase代替のオープンソースBaaS
 - **ポジション**: Frontend Engineer (Dashboard)
 - **必須経験**: 「deep experience」（年数明記なし、実質2-3年以上の可能性）
@@ -242,6 +264,7 @@
 - **応募URL**: https://supabase.com/careers
 
 ### 23. 株式会社estie
+
 - **事業**: 商業用不動産テック
 - **ポジション**: フロントエンドエンジニア (React/TypeScript)
 - **必須経験**: 要確認
@@ -251,6 +274,7 @@
 - **応募URL**: https://hrmos.co/pages/estie/jobs/10000024
 
 ### 24. 株式会社IVRy
+
 - **事業**: AI対話型音声SaaS
 - **ポジション**: エンジニア
 - **必須経験**: 要確認
@@ -261,6 +285,7 @@
 - **応募URL**: https://herp.careers/v1/ivry
 
 ### 25. justInCaseTechnologies
+
 - **事業**: InsurTech、保険基幹システム「joinsure」
 - **ポジション**: TypeScriptエンジニア
 - **必須経験**: TypeScript実装 + 設計リード経験（経験1年だとやや厳しい）
@@ -270,6 +295,7 @@
 - **応募URL**: https://herp.careers/v1/justincase/4pDDVWowHK4J
 
 ### 26. 株式会社COMPASS
+
 - **事業**: AI型教材「Qubena」（2,300校以上導入）
 - **ポジション**: Webフロントエンジニア (React/TypeScript)
 - **必須経験**: 要確認（「ミドル」ポジションの記載あり）
@@ -279,6 +305,7 @@
 - **応募URL**: https://hrmos.co/pages/qubena/jobs/4_1_15
 
 ### 27. 株式会社immedio
+
 - **事業**: 商談獲得自動化SaaS
 - **ポジション**: フルスタックエンジニア
 - **必須経験**: 要確認
@@ -291,27 +318,28 @@
 
 ## 将来的に注目（現時点では要件不足）
 
-| 企業 | 理由 | 再挑戦目安 |
-|------|------|------------|
-| **Vercel** | 3年以上必須（Next.js開発元で最適合だが） | 2年後 |
-| **Grafana Labs** | Senior中心だがジュニア採用実績あり。ポジション開いたら応募 | 随時チェック |
-| **LayerX** | 年収600万〜のレンジ、中堅以上想定 | 1-2年後 |
-| **マネーフォワード** | 即戦力志向、ポテンシャル層は不利 | 1-2年後 |
-| **SmartHR** | HTML/CSS/JS 3年 + React 2年必須 | 2年後 |
-| **ちゅらデータ** | 3年 + リード経験必須 | 3年後 |
-| **ミラティブ** | 2年以上目安 | 1年後 |
-| **PayPay** | 4年以上必須 | 3年後 |
-| **Mercari** | 週2出社ハイブリッド（フルリモート不可） | - |
-| **Stripe** | New Grad枠あるがオフィス勤務の可能性大 | 要確認 |
-| **Linear** | NA/Europeタイムゾーン限定（日本対象外） | - |
-| **Anthropic** | 大半がオフィス勤務 | - |
-| **OpenAI** | ほぼオフィス勤務 | - |
+| 企業                 | 理由                                                       | 再挑戦目安   |
+| -------------------- | ---------------------------------------------------------- | ------------ |
+| **Vercel**           | 3年以上必須（Next.js開発元で最適合だが）                   | 2年後        |
+| **Grafana Labs**     | Senior中心だがジュニア採用実績あり。ポジション開いたら応募 | 随時チェック |
+| **LayerX**           | 年収600万〜のレンジ、中堅以上想定                          | 1-2年後      |
+| **マネーフォワード** | 即戦力志向、ポテンシャル層は不利                           | 1-2年後      |
+| **SmartHR**          | HTML/CSS/JS 3年 + React 2年必須                            | 2年後        |
+| **ちゅらデータ**     | 3年 + リード経験必須                                       | 3年後        |
+| **ミラティブ**       | 2年以上目安                                                | 1年後        |
+| **PayPay**           | 4年以上必須                                                | 3年後        |
+| **Mercari**          | 週2出社ハイブリッド（フルリモート不可）                    | -            |
+| **Stripe**           | New Grad枠あるがオフィス勤務の可能性大                     | 要確認       |
+| **Linear**           | NA/Europeタイムゾーン限定（日本対象外）                    | -            |
+| **Anthropic**        | 大半がオフィス勤務                                         | -            |
+| **OpenAI**           | ほぼオフィス勤務                                           | -            |
 
 ---
 
 ## 推奨応募順序
 
 ### 最優先（今すぐ応募）
+
 1. **ラッコ** — AI活用推進 + フルリモート + 1年OK（AWS補強が先に必要）
 2. **アシアル** — 第二新卒歓迎 + フルリモート + 技術スタック完全一致
 3. **CaSy** — 経験1年明記 + フルリモート + 上場企業
@@ -319,6 +347,7 @@
 5. **Sales Marker** — 1年OK + Next.js/React + グローバル環境
 
 ### 準優先（カジュアル面談から）
+
 6. **HENNGE** — TypeScript 1年OK + フルリモート + 高年収
 7. **Helpfeel** — React/Node.js 1年 + 完全フルリモート
 8. **ちょっと株式会社** — Next.js/Vercel特化 + フルリモート
@@ -326,6 +355,7 @@
 10. **GitLab** — スキルベース評価 + AI Editor Extensions
 
 ### 挑戦枠
+
 11. **Automattic** — コードテスト評価 + 100%リモート
 12. **note** — 経験3年目安だがAI活用要件で差別化
 13. **Supabase** — OSS文化 + monorepo実績でアピール
@@ -334,16 +364,16 @@
 
 ## 定期チェック推奨サイト
 
-| サイト | URL | 特徴 |
-|--------|-----|------|
-| **Green** | https://www.green-japan.com/search/area/98/skill/TypeScript | フルリモート + TypeScript |
-| **Forkwell Jobs** | https://jobs.forkwell.com/select/full-time-remote-work-is-available | フルリモート可の厳選求人 |
-| **paiza転職** | https://paiza.jp/career/job_offers/topics/full_remote | フルリモート特集 |
-| **Findy** | https://findy-code.io/ | GitHub偏差値で評価（899+テストが高評価） |
-| **HERP Careers** | https://herp.careers/careers/jobs?remote-work-type-ids=FULL_REMOTEWORK | スタートアップのフルリモート |
-| **Japan Dev** | https://japan-dev.com/junior-jobs-in-japan | ジュニア向け外資系 |
-| **TokyoDev** | https://www.tokyodev.com/jobs/fully-remote | フルリモート（英語環境） |
-| **リラシク** | https://relasic.jp/ | フルリモート特化 |
+| サイト            | URL                                                                    | 特徴                                     |
+| ----------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
+| **Green**         | https://www.green-japan.com/search/area/98/skill/TypeScript            | フルリモート + TypeScript                |
+| **Forkwell Jobs** | https://jobs.forkwell.com/select/full-time-remote-work-is-available    | フルリモート可の厳選求人                 |
+| **paiza転職**     | https://paiza.jp/career/job_offers/topics/full_remote                  | フルリモート特集                         |
+| **Findy**         | https://findy-code.io/                                                 | GitHub偏差値で評価（899+テストが高評価） |
+| **HERP Careers**  | https://herp.careers/careers/jobs?remote-work-type-ids=FULL_REMOTEWORK | スタートアップのフルリモート             |
+| **Japan Dev**     | https://japan-dev.com/junior-jobs-in-japan                             | ジュニア向け外資系                       |
+| **TokyoDev**      | https://www.tokyodev.com/jobs/fully-remote                             | フルリモート（英語環境）                 |
+| **リラシク**      | https://relasic.jp/                                                    | フルリモート特化                         |
 
 ---
 
@@ -356,6 +386,6 @@
 
 ---
 
-*調査日: 2026年2月13-14日*
-*情報源: 各社採用ページ、Green、Forkwell、paiza、Findy、HERP Careers、Wantedly、Japan Dev、TokyoDev、Indeed、OpenWork、Glassdoor、Levels.fyi等*
-*注意: 求人情報は随時変更されるため、応募前に必ず最新情報を確認してください*
+_調査日: 2026年2月13-14日_
+_情報源: 各社採用ページ、Green、Forkwell、paiza、Findy、HERP Careers、Wantedly、Japan Dev、TokyoDev、Indeed、OpenWork、Glassdoor、Levels.fyi等_
+_注意: 求人情報は随時変更されるため、応募前に必ず最新情報を確認してください_
