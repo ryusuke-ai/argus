@@ -1,20 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Hoisted mocks
-const { mockFindCanvasId, mockSaveCanvasId, mockUpsertCanvas } = vi.hoisted(
-  () => ({
-    mockFindCanvasId: vi.fn(),
-    mockSaveCanvasId: vi.fn(),
-    mockUpsertCanvas: vi.fn(),
-  }),
-);
-
-// Mock @argus/slack-canvas
-vi.mock("@argus/slack-canvas", () => ({
-  findCanvasId: mockFindCanvasId,
-  saveCanvasId: mockSaveCanvasId,
-  upsertCanvas: mockUpsertCanvas,
+const { mockFetch } = vi.hoisted(() => ({
+  mockFetch: vi.fn(),
 }));
+
+// Mock global fetch
+vi.stubGlobal("fetch", mockFetch);
 
 // Mock @argus/db
 vi.mock("@argus/db", () => ({
@@ -38,7 +30,8 @@ vi.mock("drizzle-orm", () => ({
 
 import {
   buildDailyNewsCanvasMarkdown,
-  updateDailyNewsCanvas,
+  buildDailyNewsBlocks,
+  postDailyNews,
   type DailyNewsData,
 } from "./daily-news-canvas.js";
 import { db } from "@argus/db";
@@ -56,6 +49,7 @@ describe("daily-news-canvas", () => {
     process.env = {
       ...originalEnv,
       SLACK_NOTIFICATION_CHANNEL: "#notifications",
+      SLACK_BOT_TOKEN: "xoxb-test-token",
       DASHBOARD_BASE_URL: "http://localhost:3150",
     };
     // Ensure DAILY_NEWS_CHANNEL doesn't override SLACK_NOTIFICATION_CHANNEL
@@ -68,12 +62,9 @@ describe("daily-news-canvas", () => {
       }),
     });
 
-    // Default canvas mocks
-    mockFindCanvasId.mockResolvedValue(null);
-    mockSaveCanvasId.mockResolvedValue(undefined);
-    mockUpsertCanvas.mockResolvedValue({
-      success: true,
-      canvasId: "F0123CANVAS",
+    // Default fetch mock
+    mockFetch.mockResolvedValue({
+      json: vi.fn().mockResolvedValue({ ok: true }),
     });
   });
 
@@ -225,31 +216,229 @@ describe("daily-news-canvas", () => {
     });
   });
 
-  // --- updateDailyNewsCanvas tests ---
+  // --- buildDailyNewsBlocks tests ---
 
-  describe("updateDailyNewsCanvas", () => {
+  describe("buildDailyNewsBlocks", () => {
+    it("should return blocks with header containing date", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: null,
+        podcastUrl: null,
+        status: "draft",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const header = blocks.find(
+        (b) =>
+          b.type === "header" &&
+          (b.text as Record<string, unknown>).text ===
+            "📰 デイリーニュース — 2月12日（木）",
+      );
+      expect(header).toBeDefined();
+    });
+
+    it("should include status context block", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: null,
+        podcastUrl: null,
+        status: "published",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const context = blocks.find((b) => b.type === "context");
+      expect(context).toBeDefined();
+      const elements = context!.elements as Record<string, unknown>[];
+      expect(elements[0].text).toContain("✅ 完了");
+    });
+
+    it("should render topics as numbered mrkdwn text", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [
+          "Claude Code v1.5 リリース",
+          "OpenClaw エージェントフレームワーク",
+        ],
+        videoUrl: null,
+        podcastUrl: null,
+        status: "draft",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      // Find the section block after topics header
+      const topicSection = blocks.find(
+        (b) =>
+          b.type === "section" &&
+          ((b.text as Record<string, unknown>).text as string).includes(
+            "Claude Code v1.5 リリース",
+          ),
+      );
+      expect(topicSection).toBeDefined();
+      const text = (topicSection!.text as Record<string, unknown>)
+        .text as string;
+      expect(text).toContain("1. *Claude Code v1.5 リリース*");
+      expect(text).toContain("2. *OpenClaw エージェントフレームワーク*");
+    });
+
+    it("should show トピック未定 when no topics", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: null,
+        podcastUrl: null,
+        status: "draft",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const emptySection = blocks.find(
+        (b) =>
+          b.type === "section" &&
+          (b.text as Record<string, unknown>).text === "トピック未定",
+      );
+      expect(emptySection).toBeDefined();
+    });
+
+    it("should include video URL as mrkdwn link", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: "http://localhost:3150/api/files/output.mp4",
+        podcastUrl: null,
+        status: "processing",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const videoSection = blocks.find(
+        (b) =>
+          b.type === "section" &&
+          ((b.text as Record<string, unknown>).text as string).includes(
+            "http://localhost:3150/api/files/output.mp4",
+          ),
+      );
+      expect(videoSection).toBeDefined();
+    });
+
+    it("should include podcast URL as mrkdwn link", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: null,
+        podcastUrl: "http://localhost:3150/api/files/podcast.mp3",
+        status: "processing",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const podcastSection = blocks.find(
+        (b) =>
+          b.type === "section" &&
+          ((b.text as Record<string, unknown>).text as string).includes(
+            "http://localhost:3150/api/files/podcast.mp3",
+          ),
+      );
+      expect(podcastSection).toBeDefined();
+    });
+
+    it("should show 未生成 for missing media when published", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: null,
+        podcastUrl: null,
+        status: "published",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const ungenerated = blocks.filter(
+        (b) =>
+          b.type === "section" &&
+          (b.text as Record<string, unknown>).text === "未生成",
+      );
+      // Both video and podcast should show 未生成
+      expect(ungenerated).toHaveLength(2);
+    });
+
+    it("should show 生成中... for missing media when not published", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: null,
+        podcastUrl: null,
+        status: "draft",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const generating = blocks.filter(
+        (b) =>
+          b.type === "section" &&
+          (b.text as Record<string, unknown>).text === "生成中...",
+      );
+      // Both video and podcast should show 生成中...
+      expect(generating).toHaveLength(2);
+    });
+
+    it("should contain divider blocks", () => {
+      const data: DailyNewsData = {
+        date: new Date(2026, 1, 12),
+        topics: [],
+        videoUrl: null,
+        podcastUrl: null,
+        status: "draft",
+      };
+
+      const blocks = buildDailyNewsBlocks(data);
+
+      const dividers = blocks.filter((b) => b.type === "divider");
+      expect(dividers.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // --- postDailyNews tests ---
+
+  describe("postDailyNews", () => {
     it("should skip when no channel is configured", async () => {
       delete process.env.DAILY_NEWS_CHANNEL;
       delete process.env.SLACK_NOTIFICATION_CHANNEL;
 
-      await updateDailyNewsCanvas();
+      await postDailyNews();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Daily News Canvas] No channel configured (DAILY_NEWS_CHANNEL or SLACK_NOTIFICATION_CHANNEL)",
+        "[Daily News] No channel configured (DAILY_NEWS_CHANNEL or SLACK_NOTIFICATION_CHANNEL)",
       );
-      expect(mockUpsertCanvas).not.toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("should skip when SLACK_BOT_TOKEN is not set", async () => {
+      delete process.env.SLACK_BOT_TOKEN;
+
+      await postDailyNews();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Daily News] SLACK_BOT_TOKEN not set",
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("should use DAILY_NEWS_CHANNEL when set", async () => {
       process.env.DAILY_NEWS_CHANNEL = "#daily-news";
 
-      await updateDailyNewsCanvas();
+      await postDailyNews();
 
-      expect(mockUpsertCanvas).toHaveBeenCalledWith(
-        "#daily-news",
-        expect.any(String),
-        expect.any(String),
-        null,
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://slack.com/api/chat.postMessage",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("#daily-news"),
+        }),
       );
     });
 
@@ -257,17 +446,40 @@ describe("daily-news-canvas", () => {
       delete process.env.DAILY_NEWS_CHANNEL;
       process.env.SLACK_NOTIFICATION_CHANNEL = "#notifications";
 
-      await updateDailyNewsCanvas();
+      await postDailyNews();
 
-      expect(mockUpsertCanvas).toHaveBeenCalledWith(
-        "#notifications",
-        expect.any(String),
-        expect.any(String),
-        null,
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://slack.com/api/chat.postMessage",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("#notifications"),
+        }),
       );
     });
 
-    it("should query DB and build canvas from youtube posts", async () => {
+    it("should call fetch with correct headers and body", async () => {
+      await postDailyNews();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://slack.com/api/chat.postMessage",
+        expect.objectContaining({
+          method: "POST",
+          headers: {
+            Authorization: "Bearer xoxb-test-token",
+            "Content-Type": "application/json",
+          },
+        }),
+      );
+
+      const callBody = JSON.parse(
+        mockFetch.mock.calls[0][1].body as string,
+      ) as Record<string, unknown>;
+      expect(callBody.channel).toBe("#notifications");
+      expect(callBody.text).toContain("デイリーニュース");
+      expect(Array.isArray(callBody.blocks)).toBe(true);
+    });
+
+    it("should query DB and include topics in blocks", async () => {
       const mockPosts = [
         {
           id: "post-1",
@@ -293,90 +505,54 @@ describe("daily-news-canvas", () => {
         }),
       });
 
-      await updateDailyNewsCanvas();
+      await postDailyNews();
 
-      expect(mockUpsertCanvas).toHaveBeenCalledWith(
-        "#notifications",
-        expect.stringContaining("デイリーニュース"),
-        expect.stringContaining("Claude Code v1.5 リリース"),
-        null,
+      const callBody = JSON.parse(
+        mockFetch.mock.calls[0][1].body as string,
+      ) as Record<string, unknown>;
+      const blocksJson = JSON.stringify(callBody.blocks);
+      expect(blocksJson).toContain("Claude Code v1.5 リリース");
+    });
+
+    it("should handle Slack API error response", async () => {
+      mockFetch.mockResolvedValue({
+        json: vi
+          .fn()
+          .mockResolvedValue({ ok: false, error: "channel_not_found" }),
+      });
+
+      await postDailyNews();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Daily News] Slack API error:",
+        "channel_not_found",
       );
     });
 
-    it("should extract video URL from phaseArtifacts", async () => {
-      const mockPosts = [
-        {
-          id: "post-1",
-          platform: "youtube",
-          postType: "daily_news",
-          content: { title: "Topic" },
-          status: "processing",
-          publishedUrl: null,
-          publishedAt: null,
-          phaseArtifacts: { videoPath: "20260212-news/output.mp4" },
-          slackChannel: null,
-          slackMessageTs: null,
-          scheduledAt: null,
-          currentPhase: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
-
+    it("should handle DB errors gracefully", async () => {
       (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(mockPosts),
+          where: vi.fn().mockRejectedValue(new Error("DB connection error")),
         }),
       });
 
-      await updateDailyNewsCanvas();
+      await postDailyNews();
 
-      expect(mockUpsertCanvas).toHaveBeenCalledWith(
-        "#notifications",
-        expect.any(String),
-        expect.stringContaining(
-          "http://localhost:3150/api/files/20260212-news/output.mp4",
-        ),
-        null,
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Daily News] Post error:",
+        expect.any(Error),
       );
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it("should extract podcast URL from phaseArtifacts", async () => {
-      const mockPosts = [
-        {
-          id: "post-1",
-          platform: "podcast",
-          postType: "daily_news",
-          content: { title: "Podcast Topic" },
-          status: "published",
-          publishedUrl: null,
-          publishedAt: null,
-          phaseArtifacts: { podcastPath: "20260212-news/podcast.mp3" },
-          slackChannel: null,
-          slackMessageTs: null,
-          scheduledAt: null,
-          currentPhase: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
+    it("should handle empty posts gracefully", async () => {
+      await postDailyNews();
 
-      (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(mockPosts),
-        }),
-      });
-
-      await updateDailyNewsCanvas();
-
-      expect(mockUpsertCanvas).toHaveBeenCalledWith(
-        "#notifications",
-        expect.any(String),
-        expect.stringContaining(
-          "http://localhost:3150/api/files/20260212-news/podcast.mp3",
-        ),
-        null,
-      );
+      const callBody = JSON.parse(
+        mockFetch.mock.calls[0][1].body as string,
+      ) as Record<string, unknown>;
+      const blocksJson = JSON.stringify(callBody.blocks);
+      expect(blocksJson).toContain("トピック未定");
     });
 
     it("should deduplicate topics from youtube and podcast posts", async () => {
@@ -421,67 +597,15 @@ describe("daily-news-canvas", () => {
         }),
       });
 
-      await updateDailyNewsCanvas();
+      await postDailyNews();
 
-      // Should only show "Shared Topic" once
-      const markdownArg = mockUpsertCanvas.mock.calls[0][2] as string;
-      const count = (markdownArg.match(/Shared Topic/g) || []).length;
+      const callBody = JSON.parse(
+        mockFetch.mock.calls[0][1].body as string,
+      ) as Record<string, unknown>;
+      const blocksJson = JSON.stringify(callBody.blocks);
+      const count = (blocksJson.match(/Shared Topic/g) || []).length;
+      // Should only appear once in the topic text (as *Shared Topic*)
       expect(count).toBe(1);
-    });
-
-    it("should save canvas ID after successful upsert", async () => {
-      mockUpsertCanvas.mockResolvedValue({
-        success: true,
-        canvasId: "F_NEW_CANVAS",
-      });
-
-      await updateDailyNewsCanvas();
-
-      expect(mockSaveCanvasId).toHaveBeenCalledWith(
-        "daily-news",
-        "F_NEW_CANVAS",
-        "#notifications",
-      );
-    });
-
-    it("should reuse existing canvas ID", async () => {
-      mockFindCanvasId.mockResolvedValue("F_EXISTING");
-
-      await updateDailyNewsCanvas();
-
-      expect(mockUpsertCanvas).toHaveBeenCalledWith(
-        "#notifications",
-        expect.any(String),
-        expect.any(String),
-        "F_EXISTING",
-      );
-    });
-
-    it("should handle DB errors gracefully", async () => {
-      (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockRejectedValue(new Error("DB connection error")),
-        }),
-      });
-
-      await updateDailyNewsCanvas();
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Daily News Canvas] Update error:",
-        expect.any(Error),
-      );
-      expect(mockUpsertCanvas).not.toHaveBeenCalled();
-    });
-
-    it("should handle empty posts gracefully", async () => {
-      await updateDailyNewsCanvas();
-
-      expect(mockUpsertCanvas).toHaveBeenCalledWith(
-        "#notifications",
-        expect.any(String),
-        expect.stringContaining("トピック未定"),
-        null,
-      );
     });
 
     it("should extract topics from content.topics array", async () => {
@@ -512,12 +636,15 @@ describe("daily-news-canvas", () => {
         }),
       });
 
-      await updateDailyNewsCanvas();
+      await postDailyNews();
 
-      const markdownArg = mockUpsertCanvas.mock.calls[0][2] as string;
-      expect(markdownArg).toContain("Topic A");
-      expect(markdownArg).toContain("Topic B");
-      expect(markdownArg).toContain("Topic C");
+      const callBody = JSON.parse(
+        mockFetch.mock.calls[0][1].body as string,
+      ) as Record<string, unknown>;
+      const blocksJson = JSON.stringify(callBody.blocks);
+      expect(blocksJson).toContain("Topic A");
+      expect(blocksJson).toContain("Topic B");
+      expect(blocksJson).toContain("Topic C");
     });
   });
 });

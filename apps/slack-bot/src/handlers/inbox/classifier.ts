@@ -155,6 +155,21 @@ export function isCopyPaste(summary: string, originalMessage: string): boolean {
     return true;
   }
 
+  // 12. 元メッセージの先頭6文字以上が一致（先頭切り取りコピペ）
+  if (normSummary.length >= 6) {
+    const headLen = Math.min(6, normSummary.length);
+    if (normOriginal.startsWith(normSummary.slice(0, headLen))) {
+      // 先頭一致 + 全体の30%以上が一致 → コピペ
+      if (matchRate >= 0.3 && longestMatch >= 5) return true;
+    }
+  }
+
+  // 13. 20文字以上の summary は元メッセージの語順と酷似している可能性大
+  //     良い要約は15文字以下に収まるはず
+  if (normSummary.length >= 20 && matchRate >= 0.3) {
+    return true;
+  }
+
   return false;
 }
 
@@ -217,9 +232,7 @@ export async function resummarize(
 入力「来週のチームミーティングの資料をまとめておいて」→ MTG資料整理
 入力「このAPIのレスポンス形式ってどうなってる？」→ APIレスポンス確認
 入力「メールの判定基準がわからないから調べて教えてほしい」→ メール判定基準の調査${feedbackLine}`,
-      messages: [
-        { role: "user", content: messageText },
-      ],
+      messages: [{ role: "user", content: messageText }],
     });
 
     const text = response.content
@@ -295,14 +308,19 @@ export function isProperNounPhrase(summary: string): boolean {
   }
 
   // 長い summary に格助詞「が」「を」が含まれる（文断片の可能性大）
-  // 短い名詞句（「エラーが出る問題」等）は許容、15文字以上で厳格チェック
-  if (summary.length >= 15 && /[がを]/.test(summary)) {
+  // 短い名詞句（「エラーが出る問題」等）は許容、12文字以上で厳格チェック
+  if (summary.length >= 12 && /[がを]/.test(summary)) {
     return false;
   }
 
-  // 途中で切れている: ひらがなで終わり、かつ15文字以上の長い summary
+  // 「・」区切りで3つ以上のセグメントがある（summarizeJa の句結合が冗長）
+  if ((summary.match(/・/g) || []).length >= 2) {
+    return false;
+  }
+
+  // 途中で切れている: ひらがなで終わり、かつ12文字以上の長い summary
   // 名詞句なら漢字・カタカナ・英字で終わるのが自然
-  if (summary.length >= 15 && /[ぁ-ん]$/.test(summary)) {
+  if (summary.length >= 12 && /[ぁ-ん]$/.test(summary)) {
     // ただし「の調査」「の改善」等のパターンは許容
     if (!/(?:の[^\s]{1,4})$/.test(summary)) {
       return false;
@@ -321,6 +339,30 @@ function cleanupSummaryEnding(summary: string): string {
   // 末尾の動詞・依頼形を除去
   s = s.replace(
     /(?:してほしい|してください|して下さい|してくれ|しておいて|してね|してる|してた|している|していた|して|する|した|しろ|せよ|やって|ください|下さい|くれ|ておいて|ておく|てみて|ってきて|てくれ|てあげて|なさい|にして|ようにして|ようにする)$/,
+    "",
+  );
+  // 「なる」系の活用形を除去
+  s = s.replace(
+    /(?:になって|になった|になる|になっている|になってる|にならない|にならなくて)$/,
+    "",
+  );
+  // その他の動詞て形・た形を除去
+  s = s.replace(
+    /(?:行って|来て|見て|言って|持って|立って|待って|使って|思って|知って|取って|入って|出て|食べて|呼んで|読んで|飲んで|選んで|頼んで|並んで)$/,
+    "",
+  );
+  // 汎用的な「〜って」「〜んで」（上記で処理されなかった残り）
+  s = s.replace(/(?:って|んで)$/, "");
+  // 「〜ように」「〜よう」: 目的/様態表現の除去
+  s = s.replace(/(?:ように|ような|ようで|よう)$/, "");
+  // 状態動詞・知覚動詞
+  s = s.replace(
+    /(?:見える|思う|思える|できる|できない|わかる|わからない)$/,
+    "",
+  );
+  // 口語的接続表現（文の途中で切れている場合の除去）
+  s = s.replace(
+    /(?:じゃなくて|じゃなく|ではなくて|ではなく|なので|だから|そのまま|のまま)$/,
     "",
   );
   // 末尾の丁寧語
@@ -352,7 +394,7 @@ function truncateToNounPhrase(text: string, max: number): string {
 /**
  * summary の品質を保証する。コピペや長すぎる場合は AI再要約 → summarizeJa の順でフォールバック。
  */
-async function ensureQualitySummary(
+export async function ensureQualitySummary(
   summary: string,
   originalMessage: string,
   client: Anthropic | null,
@@ -375,7 +417,11 @@ async function ensureQualitySummary(
   if (client) {
     let lastFailed = summary;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const resummarized = await resummarize(originalMessage, client, lastFailed);
+      const resummarized = await resummarize(
+        originalMessage,
+        client,
+        lastFailed,
+      );
       if (
         resummarized &&
         !isCopyPaste(resummarized, originalMessage) &&
@@ -411,6 +457,94 @@ async function ensureQualitySummary(
     // 助詞境界で意味のある位置で切る（単純な slice ではなく）
     final = truncateToNounPhrase(final, 30);
   }
+  // 最終クリーンアップ後にまだ不適切なら再度クリーンアップ
+  final = cleanupSummaryEnding(final);
+  // 最終的に30文字を超えていたら強制カット
+  if (final.length > 30) {
+    final = truncateToNounPhrase(final, 30);
+    final = cleanupSummaryEnding(final);
+  }
+
+  // 最終防衛ライン: それでも体言止めでない場合、積極的に動詞形を除去
+  if (!isProperNounPhrase(final)) {
+    let aggressive = final;
+    // 「・」で区切られている場合、各部分を試す
+    if (aggressive.includes("・")) {
+      const parts = aggressive.split("・");
+      let found = false;
+      for (const part of parts) {
+        const cleaned = cleanupSummaryEnding(part.trim());
+        if (cleaned.length >= 3 && isProperNounPhrase(cleaned)) {
+          aggressive = cleaned;
+          found = true;
+          break;
+        }
+        // 「が」「を」で長くなっている場合、助詞の前で切る
+        if (cleaned.length >= 10 && /[がを]/.test(cleaned)) {
+          const particleCut = cleaned.replace(/[がを].+$/, "");
+          if (particleCut.length >= 3 && isProperNounPhrase(particleCut)) {
+            aggressive = particleCut;
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+    // 口語的接続表現を含む場合、その前の部分だけを取る
+    if (!isProperNounPhrase(aggressive)) {
+      const oralSplit = aggressive.match(
+        /^(.{3,}?)(?:じゃなくて|ではなくて|じゃなく|ではなく|そのまま|のまま)/,
+      );
+      if (oralSplit?.[1]) {
+        aggressive = oralSplit[1];
+      }
+    }
+    // 「なる」系
+    aggressive = aggressive.replace(
+      /(?:に)?(?:なって|なった|なる|になっている|になってる)$/,
+      "",
+    );
+    // 汎用的なて形・た形・ない形（てる/てたを含む）
+    aggressive = aggressive.replace(
+      /(?:てる|てた|って|んで|いて|えて|った|んだ|いた|ない)$/,
+      "",
+    );
+    // 「で+動詞連用形」パターン（「で切れ」「で壊れ」等）
+    aggressive = aggressive.replace(/で[^\sで]{1,3}$/, "");
+    // 「〜ように」「〜よう」
+    aggressive = aggressive.replace(/(?:ように|ような|よう)$/, "");
+    // 状態動詞
+    aggressive = aggressive.replace(
+      /(?:見える|思う|思える|できる|できない|わかる|わからない)$/,
+      "",
+    );
+    // 末尾の助詞
+    aggressive = aggressive.replace(/[をはがにでのとも、]$/, "");
+    if (aggressive.length > 0 && isProperNounPhrase(aggressive)) {
+      final = aggressive;
+    }
+
+    // ・区切りの複合名詞句の場合、個別セグメントでリトライ
+    if (!isProperNounPhrase(final) && final.includes("・")) {
+      const segments = final.split("・");
+      for (const seg of segments) {
+        const cleaned = cleanupSummaryEnding(seg.trim());
+        if (cleaned.length > 0 && isProperNounPhrase(cleaned)) {
+          final = cleaned;
+          break;
+        }
+        // 助詞カットのフォールバック
+        if (cleaned.length >= 10 && /[がを]/.test(cleaned)) {
+          const particleCut = cleaned.replace(/[がを].+$/, "");
+          if (particleCut.length >= 3 && isProperNounPhrase(particleCut)) {
+            final = particleCut;
+            break;
+          }
+        }
+      }
+    }
+  }
+
   console.log(`[inbox/classifier] Final forced cleanup: "${final}"`);
   return final || truncateToNounPhrase(fallback, 25);
 }

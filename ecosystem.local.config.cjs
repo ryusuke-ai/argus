@@ -115,5 +115,18 @@ module.exports = {
       min_uptime: "30s",
       restart_delay: 10000,
     },
+    {
+      name: "tunnel-watcher",
+      cwd: ROOT,
+      script: "scripts/ops/tunnel-url-watcher.sh",
+      interpreter: "/bin/bash",
+      env: commonEnv,
+      error_file: path.join(LOGS_DIR, "tunnel-watcher-error.log"),
+      out_file: path.join(LOGS_DIR, "tunnel-watcher-out.log"),
+      time: true,
+      autorestart: true,
+      max_restarts: 3,
+      min_uptime: "10s",
+    },
   ],
 };

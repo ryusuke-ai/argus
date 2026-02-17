@@ -4,6 +4,7 @@
  */
 import { db, snsPosts } from "@argus/db";
 import { and, gte, lt } from "drizzle-orm";
+import { env } from "../env.js";
 
 // --- Types ---
 
@@ -20,7 +21,7 @@ export interface DailyNewsData {
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 
 function getDashboardBaseUrl(): string {
-  return process.env.DASHBOARD_BASE_URL || "http://localhost:3150";
+  return env.DASHBOARD_BASE_URL;
 }
 
 // --- Formatting helpers ---
@@ -270,8 +271,7 @@ function extractMediaUrl(
 // --- Slack message poster ---
 
 export async function postDailyNews(): Promise<void> {
-  const channel =
-    process.env.DAILY_NEWS_CHANNEL || process.env.SLACK_NOTIFICATION_CHANNEL;
+  const channel = env.DAILY_NEWS_CHANNEL || env.SLACK_NOTIFICATION_CHANNEL;
 
   if (!channel) {
     console.error(
@@ -352,8 +352,7 @@ export async function postDailyNews(): Promise<void> {
     const blocks = buildDailyNewsBlocks(data);
     const title = `📰 デイリーニュース — ${formatDateJa(now)}`;
 
-    const token = process.env.SLACK_BOT_TOKEN;
-    if (!token) {
+    if (!env.SLACK_BOT_TOKEN) {
       console.error("[Daily News] SLACK_BOT_TOKEN not set");
       return;
     }
@@ -361,7 +360,7 @@ export async function postDailyNews(): Promise<void> {
     const response = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

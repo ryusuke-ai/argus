@@ -3,7 +3,7 @@ import { KnowledgeServiceImpl } from "./service.js";
 import type { Knowledge } from "@argus/db";
 
 // Mock query result holder
-let mockQueryResult: any = [];
+let mockQueryResult: unknown[] = [];
 
 // Mock the @argus/db module
 vi.mock("@argus/db", () => {
@@ -19,7 +19,7 @@ vi.mock("@argus/db", () => {
   // Create a promise-like object that resolves to mockQueryResult
   const executeQuery = () => Promise.resolve(mockQueryResult);
 
-  const mockDb: any = {
+  const mockDb: Record<string, ReturnType<typeof vi.fn> | undefined> = {
     select: vi.fn(() => mockDb),
     insert: vi.fn(() => mockDb),
     update: vi.fn(() => mockDb),
@@ -35,7 +35,7 @@ vi.mock("@argus/db", () => {
   };
 
   // Add thenability when needed (for search queries that end with where)
-  mockDb.where = vi.fn(function (this: any, ..._args: any[]) {
+  mockDb.where = vi.fn(function (this: unknown, ..._args: unknown[]) {
     // Return a promise-like object that can also be chained
     const result = Object.assign(Promise.resolve(mockQueryResult), {
       limit: mockDb.limit,

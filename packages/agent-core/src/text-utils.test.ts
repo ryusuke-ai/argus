@@ -160,4 +160,28 @@ describe("summarizeJa", () => {
     expect(result).toContain("まとめ");
     expect(result).not.toContain("ておいて");
   });
+
+  it("handles 'なる' verb forms: 「〜になって」を体言止めに変換", () => {
+    const result = summarizeJa("一回リアクションが❌になって");
+    expect(result).not.toMatch(/なって$/);
+    expect(result.length).toBeLessThanOrEqual(30);
+  });
+
+  it("handles 'なっている' verb form", () => {
+    const result = summarizeJa("ビルドがエラーになっている");
+    expect(result).not.toMatch(/なっている$/);
+    expect(result.length).toBeLessThanOrEqual(30);
+  });
+
+  it("handles 'になった' verb form", () => {
+    const result = summarizeJa("テストが全部失敗になった");
+    expect(result).not.toMatch(/になった$/);
+    expect(result.length).toBeLessThanOrEqual(30);
+  });
+
+  it("handles other verb te-forms: 言って/行って/見て etc.", () => {
+    expect(summarizeJa("原因を言って")).not.toMatch(/言って$/);
+    expect(summarizeJa("お店に行って")).not.toMatch(/行って$/);
+    expect(summarizeJa("ログを見て")).not.toMatch(/見て$/);
+  });
 });

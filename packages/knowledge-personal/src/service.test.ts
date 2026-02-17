@@ -115,7 +115,7 @@ describe("PersonalServiceImpl", () => {
         }),
         orderBy: vi.fn().mockResolvedValue(resolvedRows),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
   }
 
   // Helper to set up db.select({...}) mock for projected columns
@@ -123,7 +123,7 @@ describe("PersonalServiceImpl", () => {
     resolvedRows: unknown[],
     opts?: { withWhereOrderBy?: boolean },
   ) {
-    const fromResult: Record<string, any> = {
+    const fromResult: Record<string, ReturnType<typeof vi.fn>> = {
       orderBy: vi.fn().mockResolvedValue(resolvedRows),
     };
 
@@ -135,7 +135,7 @@ describe("PersonalServiceImpl", () => {
 
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue(fromResult),
-    } as any);
+    } as ReturnType<typeof db.select>);
   }
 
   beforeEach(() => {
@@ -182,7 +182,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([row]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.read("self/values.md");
     expect(result.success).toBe(true);
@@ -200,7 +200,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.read("nonexistent/file.md");
     expect(result.success).toBe(false);
@@ -221,7 +221,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([routinesRow]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const results = await service.search("メールチェック");
     expect(results.length).toBeGreaterThanOrEqual(1);
@@ -242,7 +242,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const results = await service.search("xyznonexistentquery123");
     expect(results).toEqual([]);
@@ -260,7 +260,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([row]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const results = await service.search("preferences");
     expect(results.length).toBeGreaterThanOrEqual(1);
@@ -276,7 +276,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([row]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.getPersonalityContext("values");
     expect(result.success).toBe(true);
@@ -298,7 +298,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([row]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.getPersonalityContext("routines");
     expect(result.success).toBe(true);
@@ -316,7 +316,7 @@ describe("PersonalServiceImpl", () => {
           orderBy: vi.fn().mockResolvedValue(allRows),
         }),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.getPersonalityContext();
     expect(result.success).toBe(true);
@@ -339,7 +339,7 @@ describe("PersonalServiceImpl", () => {
           orderBy: vi.fn().mockResolvedValue([]),
         }),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.getPersonalityContext();
     expect(result.success).toBe(false);
@@ -354,7 +354,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.getPersonalityContext("identity");
     expect(result.success).toBe(false);
@@ -367,7 +367,7 @@ describe("PersonalServiceImpl", () => {
   it("add() creates new note", async () => {
     vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockResolvedValue(undefined),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const result = await service.add(
       "self",
@@ -389,11 +389,11 @@ describe("PersonalServiceImpl", () => {
   // 14. add() returns error if note exists (unique constraint)
   it("add() returns error if note exists", async () => {
     const pgError = new Error("duplicate key value violates unique constraint");
-    (pgError as any).code = "23505";
+    (pgError as Error & { code: string }).code = "23505";
 
     vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockRejectedValue(pgError),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const result = await service.add("self", "values", "duplicate content");
     expect(result.success).toBe(false);
@@ -419,7 +419,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([existingRow]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     // Then: db.update() for writing
     vi.mocked(db.update).mockReturnValue({
@@ -435,7 +435,7 @@ describe("PersonalServiceImpl", () => {
           ]),
         }),
       }),
-    } as any);
+    } as ReturnType<typeof db.update>);
 
     const result = await service.update(
       "self/routines.md",
@@ -467,7 +467,7 @@ describe("PersonalServiceImpl", () => {
           ]),
         }),
       }),
-    } as any);
+    } as ReturnType<typeof db.update>);
 
     const result = await service.update(
       "self/routines.md",
@@ -488,7 +488,7 @@ describe("PersonalServiceImpl", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
       }),
-    } as any);
+    } as ReturnType<typeof db.select>);
 
     const result = await service.update(
       "nonexistent/file.md",

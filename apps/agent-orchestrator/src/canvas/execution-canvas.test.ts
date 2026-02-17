@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Mock fetch
+const { mockFetch } = vi.hoisted(() => ({
+  mockFetch: vi.fn(),
+}));
+vi.stubGlobal("fetch", mockFetch);
+
 // Mock @argus/db
 vi.mock("@argus/db", () => ({
   db: {
@@ -23,24 +29,15 @@ vi.mock("drizzle-orm", () => ({
   desc: vi.fn((col) => ({ column: col, direction: "desc" })),
 }));
 
-// Mock @argus/slack-canvas
-vi.mock("@argus/slack-canvas", () => ({
-  upsertCanvas: vi
-    .fn()
-    .mockResolvedValue({ success: true, canvasId: "canvas-123" }),
-  findCanvasId: vi.fn().mockResolvedValue(null),
-  saveCanvasId: vi.fn().mockResolvedValue(undefined),
-}));
-
 import {
   buildExecutionCanvasMarkdown,
+  buildExecutionBlocks,
   formatDuration,
-  updateExecutionCanvas,
+  postOrUpdateExecutionLog,
   _resetThrottle,
   type ExecutionWithAgent,
 } from "./execution-canvas.js";
 import { db } from "@argus/db";
-import { upsertCanvas, findCanvasId, saveCanvasId } from "@argus/slack-canvas";
 
 describe("formatDuration", () => {
   it("should return '-' for null", () => {
@@ -155,25 +152,30 @@ describe("buildExecutionCanvasMarkdown", () => {
   });
 });
 
-describe("updateExecutionCanvas", () => {
-  const originalEnv = process.env.SLACK_NOTIFICATION_CHANNEL;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    _resetThrottle();
-    process.env.SLACK_NOTIFICATION_CHANNEL = "C12345";
+describe("buildExecutionBlocks", () => {
+  it("should return blocks with header, context, divider for empty executions", () => {
+    const blocks = buildExecutionBlocks([]);
+    expect(blocks.length).toBeGreaterThanOrEqual(5);
+    expect(blocks[0]).toEqual({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: expect.stringContaining("エージェント実行ログ"),
+        emoji: true,
+      },
+    });
+    expect(blocks[1]).toMatchObject({ type: "context" });
+    expect(blocks[2]).toEqual({ type: "divider" });
+    expect(blocks[3]).toMatchObject({ type: "header" });
+    // Empty state section
+    expect(blocks[4]).toEqual({
+      type: "section",
+      text: { type: "mrkdwn", text: "実行ログなし" },
+    });
   });
 
-  afterEach(() => {
-    if (originalEnv !== undefined) {
-      process.env.SLACK_NOTIFICATION_CHANNEL = originalEnv;
-    } else {
-      delete process.env.SLACK_NOTIFICATION_CHANNEL;
-    }
-  });
-
-  it("should query DB, build markdown, and upsert canvas", async () => {
-    const mockRows = [
+  it("should render execution list as mrkdwn section", () => {
+    const executions: ExecutionWithAgent[] = [
       {
         status: "success",
         agentName: "daily-planner",
@@ -182,64 +184,180 @@ describe("updateExecutionCanvas", () => {
         errorMessage: null,
       },
     ];
+    const blocks = buildExecutionBlocks(executions);
+    const sectionBlock = blocks.find(
+      (b) => b.type === "section" && typeof b.text === "object",
+    ) as Record<string, unknown> | undefined;
+    expect(sectionBlock).toBeDefined();
+    const text = (sectionBlock!.text as { text: string }).text;
+    expect(text).toContain("daily-planner");
+    expect(text).toContain("03:50");
+    expect(text).toContain("12.3s");
+  });
 
+  it("should include error details section when errors exist", () => {
+    const executions: ExecutionWithAgent[] = [
+      {
+        status: "error",
+        agentName: "sns-scheduler",
+        startedAt: new Date("2026-02-12T04:00:00"),
+        durationMs: 45200,
+        errorMessage: "Rate limit exceeded",
+      },
+    ];
+    const blocks = buildExecutionBlocks(executions);
+    const errorHeader = blocks.find(
+      (b) =>
+        b.type === "header" &&
+        (b.text as { text: string }).text.includes("エラー詳細"),
+    );
+    expect(errorHeader).toBeDefined();
+
+    const errorSection = blocks.find(
+      (b) =>
+        b.type === "section" &&
+        (b.text as { text: string }).text.includes("Rate limit exceeded"),
+    );
+    expect(errorSection).toBeDefined();
+  });
+});
+
+describe("postOrUpdateExecutionLog", () => {
+  const originalChannel = process.env.SLACK_NOTIFICATION_CHANNEL;
+  const originalToken = process.env.SLACK_BOT_TOKEN;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _resetThrottle();
+    process.env.SLACK_NOTIFICATION_CHANNEL = "C12345";
+    process.env.SLACK_BOT_TOKEN = "xoxb-test-token";
+  });
+
+  afterEach(() => {
+    if (originalChannel !== undefined) {
+      process.env.SLACK_NOTIFICATION_CHANNEL = originalChannel;
+    } else {
+      delete process.env.SLACK_NOTIFICATION_CHANNEL;
+    }
+    if (originalToken !== undefined) {
+      process.env.SLACK_BOT_TOKEN = originalToken;
+    } else {
+      delete process.env.SLACK_BOT_TOKEN;
+    }
+  });
+
+  function mockDbSelect(rows: unknown[] = []) {
     (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
       from: vi.fn().mockReturnValue({
         innerJoin: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockResolvedValue(mockRows),
+            orderBy: vi.fn().mockResolvedValue(rows),
           }),
         }),
       }),
     });
-
-    (findCanvasId as ReturnType<typeof vi.fn>).mockResolvedValue(
-      "existing-canvas",
-    );
-
-    await updateExecutionCanvas();
-
-    expect(db.select).toHaveBeenCalled();
-    expect(findCanvasId).toHaveBeenCalledWith("execution-log");
-    expect(upsertCanvas).toHaveBeenCalledWith(
-      "C12345",
-      expect.stringContaining("エージェント実行ログ"),
-      expect.stringContaining("daily-planner"),
-      "existing-canvas",
-    );
-    expect(saveCanvasId).toHaveBeenCalledWith(
-      "execution-log",
-      "canvas-123",
-      "C12345",
-    );
-  });
+  }
 
   it("should skip when SLACK_NOTIFICATION_CHANNEL is not set", async () => {
     delete process.env.SLACK_NOTIFICATION_CHANNEL;
 
-    await updateExecutionCanvas();
+    await postOrUpdateExecutionLog();
 
     expect(db.select).not.toHaveBeenCalled();
-    expect(upsertCanvas).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should skip when SLACK_BOT_TOKEN is not set", async () => {
+    delete process.env.SLACK_BOT_TOKEN;
+
+    await postOrUpdateExecutionLog();
+
+    expect(db.select).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should call chat.postMessage on first invocation", async () => {
+    mockDbSelect([
+      {
+        status: "success",
+        agentName: "daily-planner",
+        startedAt: new Date("2026-02-12T03:50:00"),
+        durationMs: 12300,
+        errorMessage: null,
+      },
+    ]);
+
+    mockFetch.mockResolvedValue({
+      json: () => Promise.resolve({ ok: true, ts: "1234567890.123456" }),
+    });
+
+    await postOrUpdateExecutionLog();
+
+    expect(db.select).toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://slack.com/api/chat.postMessage");
+    const body = JSON.parse(options.body as string);
+    expect(body.channel).toBe("C12345");
+    expect(body.blocks).toBeDefined();
+    expect(body.blocks.length).toBeGreaterThan(0);
+  });
+
+  it("should call chat.update on second invocation (lastMessageTs retained)", async () => {
+    mockDbSelect([]);
+
+    mockFetch.mockResolvedValue({
+      json: () => Promise.resolve({ ok: true, ts: "1234567890.123456" }),
+    });
+
+    // First call: posts new message
+    await postOrUpdateExecutionLog();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect((mockFetch.mock.calls[0] as [string])[0]).toBe(
+      "https://slack.com/api/chat.postMessage",
+    );
+
+    // Reset throttle but keep lastMessageTs
+    // We can't reset just throttle without resetting lastMessageTs,
+    // so we manually set lastUpdateTime to 0 via _resetThrottle workaround
+    // Instead, we'll directly manipulate the throttle by advancing time
+    vi.useFakeTimers();
+    vi.advanceTimersByTime(11_000);
+
+    // Need to re-mock DB since it was consumed
+    mockDbSelect([]);
+
+    mockFetch.mockResolvedValue({
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    // Second call: should update existing message
+    await postOrUpdateExecutionLog();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect((mockFetch.mock.calls[1] as [string])[0]).toBe(
+      "https://slack.com/api/chat.update",
+    );
+    const body = JSON.parse(
+      (mockFetch.mock.calls[1] as [string, RequestInit])[1].body as string,
+    );
+    expect(body.ts).toBe("1234567890.123456");
+
+    vi.useRealTimers();
   });
 
   it("should throttle: skip second call within 10 seconds", async () => {
-    (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        innerJoin: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
+    mockDbSelect([]);
+
+    mockFetch.mockResolvedValue({
+      json: () => Promise.resolve({ ok: true, ts: "1234567890.123456" }),
     });
 
     // First call should proceed
-    await updateExecutionCanvas();
+    await postOrUpdateExecutionLog();
     expect(db.select).toHaveBeenCalledTimes(1);
 
     // Second call within 10s should be throttled
-    await updateExecutionCanvas();
+    await postOrUpdateExecutionLog();
     expect(db.select).toHaveBeenCalledTimes(1); // Not called again
   });
 
@@ -257,35 +375,50 @@ describe("updateExecutionCanvas", () => {
     });
 
     // Should not throw
-    await expect(updateExecutionCanvas()).resolves.not.toThrow();
+    await expect(postOrUpdateExecutionLog()).resolves.not.toThrow();
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[Execution Canvas]"),
+      expect.stringContaining("[Execution Log]"),
       expect.any(Error),
     );
 
     consoleSpy.mockRestore();
   });
 
-  it("should not save canvas ID when upsert fails", async () => {
-    (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        innerJoin: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
+  it("should fall back to postMessage when update fails", async () => {
+    mockDbSelect([]);
+
+    // First call: post new message
+    mockFetch.mockResolvedValue({
+      json: () => Promise.resolve({ ok: true, ts: "1234567890.123456" }),
     });
+    await postOrUpdateExecutionLog();
 
-    (upsertCanvas as ReturnType<typeof vi.fn>).mockResolvedValue({
-      success: false,
-      canvasId: null,
-      error: "API error",
-    });
+    // Advance time past throttle
+    vi.useFakeTimers();
+    vi.advanceTimersByTime(11_000);
+    mockDbSelect([]);
 
-    await updateExecutionCanvas();
+    // Second call: update fails → fallback to postMessage
+    mockFetch
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: false, error: "message_not_found" }),
+      })
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: true, ts: "9999999999.999999" }),
+      });
 
-    expect(saveCanvasId).not.toHaveBeenCalled();
+    await postOrUpdateExecutionLog();
+
+    // call 0 = first postMessage, call 1 = update (fail), call 2 = fallback postMessage
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect((mockFetch.mock.calls[1] as [string])[0]).toBe(
+      "https://slack.com/api/chat.update",
+    );
+    expect((mockFetch.mock.calls[2] as [string])[0]).toBe(
+      "https://slack.com/api/chat.postMessage",
+    );
+
+    vi.useRealTimers();
   });
 });

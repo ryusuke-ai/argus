@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getCfAccessConfig, verifyCfAccessJwt } from "./lib/cf-access";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // 開発環境ではスキップ
   if (process.env.NODE_ENV === "development") {
     return NextResponse.next();
@@ -26,9 +27,22 @@ export function middleware(request: NextRequest) {
     );
   }
 
-  // ヘッダーが存在すれば Cloudflare Access を通過済みと判定
-  // 注: 完全な JWT 署名検証は Cloudflare の公開鍵取得が必要だが、
-  // Cloudflare Tunnel 経由でのみアクセスされる前提では、ヘッダー存在確認で十分
+  // Cloudflare Access の設定を取得
+  // 環境変数が未設定の場合はJWT署名検証をスキップ（ローカル開発用）
+  const config = getCfAccessConfig();
+  if (!config) {
+    return NextResponse.next();
+  }
+
+  // JWT 署名検証
+  const result = await verifyCfAccessJwt(cfAccessJwt, config);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: "Forbidden: Invalid Cloudflare Access token" },
+      { status: 403 },
+    );
+  }
+
   return NextResponse.next();
 }
 

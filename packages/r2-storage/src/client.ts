@@ -23,12 +23,21 @@ function getConfig() {
   return { accountId, accessKeyId, secretAccessKey, bucketName, publicUrl };
 }
 
-function createClient(
+// Singleton S3Client instance (lazy initialization)
+let cachedClient: S3Client | null = null;
+let cachedAccountId: string | null = null;
+
+function getClient(
   accountId: string,
   accessKeyId: string,
   secretAccessKey: string,
 ): S3Client {
-  return new S3Client({
+  // Return cached client if config hasn't changed
+  if (cachedClient && cachedAccountId === accountId) {
+    return cachedClient;
+  }
+
+  cachedClient = new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: {
@@ -36,6 +45,8 @@ function createClient(
       secretAccessKey,
     },
   });
+  cachedAccountId = accountId;
+  return cachedClient;
 }
 
 const CONTENT_TYPE_MAP: Record<string, string> = {
@@ -72,7 +83,7 @@ export async function uploadFile(
   key?: string,
 ): Promise<string> {
   const config = getConfig();
-  const client = createClient(
+  const client = getClient(
     config.accountId,
     config.accessKeyId,
     config.secretAccessKey,
@@ -104,7 +115,7 @@ export async function uploadFile(
  */
 export async function deleteFile(key: string): Promise<void> {
   const config = getConfig();
-  const client = createClient(
+  const client = getClient(
     config.accountId,
     config.accessKeyId,
     config.secretAccessKey,

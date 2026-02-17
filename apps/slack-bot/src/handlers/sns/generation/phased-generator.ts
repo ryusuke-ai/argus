@@ -160,10 +160,6 @@ export class PhasedGenerator {
             userPrompt +=
               "\n\n必ず ```json``` ブロックで出力してください。前回は JSON パースに失敗しました。";
           }
-          // schemaPath バリデーション失敗によるリトライ
-          if (lastError.startsWith("Schema validation failed:")) {
-            userPrompt += `\n\n前回の出力はスキーマバリデーションに失敗しました。以下のエラーを修正してください:\n${lastError}`;
-          }
         }
 
         const disallowedTools = [
@@ -191,27 +187,9 @@ export class PhasedGenerator {
 
         const output = extractJsonFromResult(result);
 
-        // schemaPath バリデーション（将来の拡張ポイント）
-        if (phase.schemaPath) {
-          const schemaError = validateWithSchema(phase.schemaPath, output);
-          if (schemaError) {
-            // バリデーション失敗: 1回だけリトライ
-            if (attempt < maxRetries) {
-              lastError = `Schema validation failed: ${schemaError}`;
-              console.warn(
-                `[phased-generator] Phase "${phase.name}" schema validation failed (attempt ${attempt + 1}/${maxRetries + 1}):`,
-                schemaError,
-              );
-              await sleep(backoffMs(attempt));
-              continue;
-            }
-            // リトライ上限到達 — 警告のみでスキップ（バリデーション失敗は致命的としない）
-            console.warn(
-              `[phased-generator] Phase "${phase.name}" schema validation failed after retries, continuing:`,
-              schemaError,
-            );
-          }
-        }
+        // TODO: schemaPath による JSON Schema バリデーション（ajv 等の導入が必要）
+        // phase.schemaPath が設定されている場合にランタイムバリデーションを行う。
+        // 現在はスキップしている。実装時はバリデーション失敗時にリトライする仕組みも含める。
 
         return {
           phase: phase.name,
@@ -576,34 +554,4 @@ function backoffMs(attempt: number): number {
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * schemaPath で指定された JSON Schema ファイルで出力をバリデーションする。
- * スキーマファイルが存在しない場合はスキップ（null を返す）。
- * バリデーション未実装のため、現在はスケルトンのみ。
- *
- * @returns エラーメッセージ。問題なければ null。
- */
-function validateWithSchema(
-  schemaPath: string,
-  _output: unknown,
-): string | null {
-  const fullPath = resolve(PROJECT_ROOT, schemaPath);
-
-  // スキーマファイルの存在確認（readFileSync を try-catch で代用）
-  try {
-    readFileSync(fullPath, "utf-8");
-  } catch {
-    console.warn(
-      `[phased-generator] Schema file not found, skipping validation: ${schemaPath}`,
-    );
-    return null;
-  }
-
-  // TODO: JSON Schema バリデーション実装（ajv 等の導入が必要）
-  // 現在は拡張ポイントとしてスケルトンのみ残す。
-  // スキーマファイルは JSON Schema (draft-07) 形式で存在しているが、
-  // ランタイムバリデーションには ajv パッケージが必要。
-  return null;
 }

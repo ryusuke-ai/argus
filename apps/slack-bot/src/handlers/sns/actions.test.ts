@@ -142,9 +142,12 @@ vi.mock("../../canvas/sns-canvas.js", () => ({
 
 vi.mock("./generation/artifact-extractors.js", () => ({
   normalizeMediaPath: vi.fn((p: string) => p),
-  extractVideoPath: vi.fn((result: any) => {
+  extractVideoPath: vi.fn((result: Record<string, unknown>) => {
     // ツール結果から .mp4 パスを探す
-    for (const call of result.toolCalls || []) {
+    const toolCalls = (result.toolCalls || []) as Array<
+      Record<string, unknown>
+    >;
+    for (const call of toolCalls) {
       if (call.name === "Bash" && call.status === "success" && call.result) {
         const m = String(call.result).match(
           /(\/[^\s"']*agent-output\/[^\s"']*\.mp4)/,
@@ -153,9 +156,13 @@ vi.mock("./generation/artifact-extractors.js", () => ({
       }
     }
     // テキスト応答からパスを探す
-    const text = (result.message?.content || [])
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text || "")
+    const message = result.message as Record<string, unknown> | undefined;
+    const contentArr = (message?.content || []) as Array<
+      Record<string, unknown>
+    >;
+    const text = contentArr
+      .filter((b) => b.type === "text")
+      .map((b) => (b.text as string) || "")
       .join("\n");
     const match = text.match(/(\/[^\s`"']*\.mp4)/);
     return match ? match[1] : "";
@@ -175,8 +182,8 @@ vi.mock("./content-schemas.js", () => ({
 }));
 
 describe("SNS Action Handlers", () => {
-  let actionHandlers: Record<string, (args: any) => Promise<void>>;
-  let viewHandlers: Record<string, (args: any) => Promise<void>>;
+  let actionHandlers: Record<string, (args: unknown) => Promise<void>>;
+  let viewHandlers: Record<string, (args: unknown) => Promise<void>>;
   let app: { action: Mock; view: Mock };
 
   const mockPost = {
@@ -207,13 +214,15 @@ describe("SNS Action Handlers", () => {
 
     // Capture handlers when registered
     (app.action as Mock).mockImplementation(
-      (actionId: string, handler: any) => {
+      (actionId: string, handler: (args: unknown) => Promise<void>) => {
         actionHandlers[actionId] = handler;
       },
     );
-    (app.view as Mock).mockImplementation((viewId: string, handler: any) => {
-      viewHandlers[viewId] = handler;
-    });
+    (app.view as Mock).mockImplementation(
+      (viewId: string, handler: (args: unknown) => Promise<void>) => {
+        viewHandlers[viewId] = handler;
+      },
+    );
 
     // Reset DB mocks
     mockLimit.mockReset();
@@ -415,7 +424,7 @@ describe("SNS Action Handlers", () => {
       // Verify the modal contains the post text as initial value
       const viewArg = mockClient.views.open.mock.calls[0][0];
       const inputBlock = viewArg.view.blocks.find(
-        (b: any) => b.type === "input",
+        (b: Record<string, unknown>) => b.type === "input",
       );
       expect(inputBlock.element.initial_value).toBe("Hello world!");
     });
