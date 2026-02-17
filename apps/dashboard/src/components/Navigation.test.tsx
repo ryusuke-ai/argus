@@ -1,14 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import Navigation from "./Navigation";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import Navigation from "./Navigation.js";
 
-// Mock next/navigation
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
-// Mock next/link
 vi.mock("next/link", () => ({
   default: ({
     children,
@@ -17,6 +15,7 @@ vi.mock("next/link", () => ({
   }: {
     children: React.ReactNode;
     href: string;
+    [key: string]: unknown;
   }) => (
     <a href={href} {...props}>
       {children}
@@ -25,21 +24,35 @@ vi.mock("next/link", () => ({
 }));
 
 describe("Navigation", () => {
-  it("should render all navigation items", () => {
+  it("renders hamburger button on mobile", () => {
     render(<Navigation />);
-
-    expect(screen.getByText("Home")).toBeInTheDocument();
-    expect(screen.getByText("Sessions")).toBeInTheDocument();
-    expect(screen.getByText("Knowledge")).toBeInTheDocument();
-    expect(screen.getByText("Agents")).toBeInTheDocument();
-    expect(screen.getByText("Files")).toBeInTheDocument();
-    expect(screen.getByText("TikTok")).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: /メニュー/i });
+    expect(button).toBeDefined();
   });
 
-  it("should render TikTok link with correct href", () => {
+  it("opens mobile menu when hamburger is clicked", () => {
     render(<Navigation />);
+    const button = screen.getByRole("button", { name: /メニュー/i });
+    fireEvent.click(button);
+    const overlay = screen.getByTestId("mobile-overlay");
+    expect(overlay).toBeDefined();
+  });
 
-    const tiktokLink = screen.getByText("TikTok");
-    expect(tiktokLink.closest("a")).toHaveAttribute("href", "/tiktok");
+  it("closes mobile menu when overlay is clicked", () => {
+    render(<Navigation />);
+    const button = screen.getByRole("button", { name: /メニュー/i });
+    fireEvent.click(button);
+    const overlay = screen.getByTestId("mobile-overlay");
+    fireEvent.click(overlay);
+    expect(screen.queryByTestId("mobile-overlay")).toBeNull();
+  });
+
+  it("closes mobile menu when nav item is clicked", () => {
+    render(<Navigation />);
+    const button = screen.getByRole("button", { name: /メニュー/i });
+    fireEvent.click(button);
+    const sessionsLink = screen.getAllByText("Sessions")[0];
+    fireEvent.click(sessionsLink);
+    expect(screen.queryByTestId("mobile-overlay")).toBeNull();
   });
 });
