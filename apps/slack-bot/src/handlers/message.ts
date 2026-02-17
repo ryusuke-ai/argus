@@ -108,6 +108,14 @@ export function setupMessageHandler(): void {
       return;
     }
 
+    // 進捗レポーター: 1メッセージを chat.update で更新（複数メッセージを投稿しない）
+    const reporter = new ProgressReporter({
+      client,
+      channel,
+      threadTs,
+      taskLabel: "処理中",
+    });
+
     try {
       // Download images if present
       let prompt = text;
@@ -127,13 +135,6 @@ export function setupMessageHandler(): void {
       // Pass model override if set for this channel
       const model = channelModelOverrides.get(channel);
 
-      // 進捗レポーター: 1メッセージを chat.update で更新（複数メッセージを投稿しない）
-      const reporter = new ProgressReporter({
-        client,
-        channel,
-        threadTs,
-        taskLabel: "処理中",
-      });
       await reporter.start();
 
       const onProgress = async (progressMsg: string) => {
@@ -207,6 +208,7 @@ export function setupMessageHandler(): void {
       await postEmailDrafts(beforeDraftCheck, channel, threadTs, client);
     } catch (error) {
       console.error("Error handling message:", error);
+      await reporter.finish();
       await say({
         text: "エラーが発生しました。もう一度お試しください。",
         thread_ts: threadTs,
