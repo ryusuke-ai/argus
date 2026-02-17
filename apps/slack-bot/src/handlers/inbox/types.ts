@@ -8,4 +8,6 @@ export type InboxTask = typeof inboxTasks.$inferSelect;
 export const MAX_CONCURRENT = 3;
 
 /** INBOX_CHANNEL 環境変数 */
-export const INBOX_CHANNEL = process.env.SLACK_INBOX_CHANNEL || "";
+export function getInboxChannel(): string {
+  return process.env.SLACK_INBOX_CHANNEL || "";
+}

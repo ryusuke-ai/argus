@@ -80,31 +80,30 @@ async function executeAndReport(
   client: WebClient,
   task: InboxTask,
 ): Promise<void> {
-  try {
-    // 進捗レポーター: 1メッセージを chat.update で1行更新（最新ステップのみ表示）
-    const estimate =
-      ESTIMATE_MINUTES_BY_INTENT[task.intent] ||
-      ESTIMATE_MINUTES_BY_INTENT.other;
-    let reporter: ProgressReporter | undefined;
+  // 進捗レポーター: 1メッセージを chat.update で1行更新（最新ステップのみ表示）
+  const estimate =
+    ESTIMATE_MINUTES_BY_INTENT[task.intent] || ESTIMATE_MINUTES_BY_INTENT.other;
+  let reporter: ProgressReporter | undefined;
 
-    if (task.slackThreadTs) {
-      reporter = new ProgressReporter({
-        client,
-        channel: task.slackChannel,
-        threadTs: task.slackThreadTs,
-        taskLabel: task.summary || task.intent,
-        estimateText: estimate,
-      });
+  if (task.slackThreadTs) {
+    reporter = new ProgressReporter({
+      client,
+      channel: task.slackChannel,
+      threadTs: task.slackThreadTs,
+      taskLabel: task.summary || task.intent,
+      estimateText: estimate,
+    });
 
-      // 動画タスクの場合はフェーズを事前定義
-      const phases = detectTaskPhases(task.originalMessage, task.intent);
-      if (phases) {
-        await reporter.setPhases(phases);
-      }
-
-      await reporter.start();
+    // 動画タスクの場合はフェーズを事前定義
+    const phases = detectTaskPhases(task.originalMessage, task.intent);
+    if (phases) {
+      await reporter.setPhases(phases);
     }
 
+    await reporter.start();
+  }
+
+  try {
     // 成果物スナップショット（実行前）
     const outputDir = path.resolve(process.cwd(), "../../.claude/agent-output");
     const snapshotBefore = scanOutputDir(outputDir);
@@ -223,6 +222,10 @@ async function executeAndReport(
     );
   } catch (error) {
     console.error(`[inbox] Task ${task.id} execution error:`, error);
+    // 進捗メッセージをクリーンアップ
+    if (reporter) {
+      await reporter.finish();
+    }
     // 失敗時も DB を更新
     await db
       .update(inboxTasks)

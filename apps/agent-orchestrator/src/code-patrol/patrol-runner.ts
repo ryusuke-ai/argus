@@ -36,7 +36,7 @@ import {
   buildReportBlocks,
   postPatrolReport,
 } from "./report-builder.js";
-import { env } from "../env.js";
+import { env, getExecEnv } from "../env.js";
 
 const execAsync = promisify(exec);
 
@@ -236,10 +236,7 @@ export function fallbackAnalysis(
  * Gather static analysis data for AI quality review.
  */
 export async function buildQualityInput(): Promise<string> {
-  const shellEnv = {
-    ...process.env,
-    PATH: `/opt/homebrew/bin:${process.env.PATH}`,
-  };
+  const shellEnv = getExecEnv();
   const parts: string[] = [];
 
   const [eslintResult, anyResult, nodePrefixResult] = await Promise.allSettled([

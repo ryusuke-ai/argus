@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens } from "@argus/tiktok";
+import { env } from "../../../../../env";
 
 function getRedirectUri(): string {
-  const baseUrl = process.env.DASHBOARD_BASE_URL || "http://localhost:3150";
-  return `${baseUrl}/api/tiktok/auth/callback`;
+  return `${env.DASHBOARD_BASE_URL}/api/tiktok/auth/callback`;
 }
 
 /**
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get("state");
   const errorParam = searchParams.get("error");
 
-  const baseUrl = process.env.DASHBOARD_BASE_URL || "http://localhost:3150";
+  const baseUrl = env.DASHBOARD_BASE_URL;
 
   // TikTok がエラーを返した場合
   if (errorParam) {

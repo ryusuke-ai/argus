@@ -187,9 +187,7 @@ export class PhasedGenerator {
 
         const output = extractJsonFromResult(result);
 
-        // TODO: schemaPath による JSON Schema バリデーション（ajv 等の導入が必要）
-        // phase.schemaPath が設定されている場合にランタイムバリデーションを行う。
-        // 現在はスキップしている。実装時はバリデーション失敗時にリトライする仕組みも含める。
+        // NOTE: JSON Schema バリデーションは将来的に ajv 等で実装予定（現在はフェーズ出力の構造チェックのみ）
 
         return {
           phase: phase.name,

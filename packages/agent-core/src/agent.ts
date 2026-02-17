@@ -146,11 +146,12 @@ export async function query(
   try {
     const sdkOptions = buildOptions(options);
 
+    // 外部 AbortController が渡された場合はそれを使用、なければ timeout 用に生成
+    const controller = options?.abortController ?? new AbortController();
     if (options?.timeout) {
-      const controller = new AbortController();
       setTimeout(() => controller.abort(), options.timeout);
-      sdkOptions.abortController = controller;
     }
+    sdkOptions.abortController = controller;
 
     const stream = sdkQuery({ prompt, options: sdkOptions });
     return await consumeSDKStream(stream);
@@ -179,11 +180,16 @@ export async function resume(
     model?: string;
     hooks?: ArgusHooks;
     sdkOptions?: Partial<Options>;
+    abortController?: AbortController;
   },
 ): Promise<AgentResult> {
   try {
     const sdkOptions = buildOptions(options);
     sdkOptions.resume = sessionId;
+
+    if (options?.abortController) {
+      sdkOptions.abortController = options.abortController;
+    }
 
     const stream = sdkQuery({ prompt: message, options: sdkOptions });
     return await consumeSDKStream(stream);

@@ -1,37 +1,29 @@
 import { z } from "zod";
 
+/**
+ * サーバーサイド環境変数のスキーマ定義。
+ * Next.js の Server Component / API Route でのみ使用する。
+ * クライアントで使う変数は NEXT_PUBLIC_ プレフィックスで直接参照すること。
+ *
+ * DATABASE_URL は @argus/db が管理するためここでは扱わない。
+ */
 const envSchema = z.object({
-  // Database
-  DATABASE_URL: z.string().url(),
+  // Cloudflare Access
+  CF_ACCESS_TEAM_NAME: z.string().optional(),
+  CF_ACCESS_AUD: z.string().optional(),
 
-  // Slack
-  SLACK_BOT_TOKEN: z.string().startsWith("xoxb-"),
-  SLACK_NOTIFICATION_CHANNEL: z.string().optional(),
-  DAILY_PLAN_CHANNEL: z.string().optional(),
-  CODE_PATROL_CHANNEL: z.string().optional(),
-  DAILY_NEWS_CHANNEL: z.string().optional(),
-  CONSISTENCY_CHECK_CHANNEL: z.string().optional(),
-  GMAIL_SLACK_CHANNEL: z.string().optional(),
-
-  // Gmail
-  GMAIL_ADDRESS: z.string().email().optional(),
-  GMAIL_CLIENT_ID: z.string().optional(),
-  GMAIL_CLIENT_SECRET: z.string().optional(),
-
-  // AI
-  ANTHROPIC_API_KEY: z.string(),
+  // TikTok OAuth
+  TIKTOK_CLIENT_KEY: z.string().optional(),
+  TIKTOK_CLIENT_SECRET: z.string().optional(),
+  TIKTOK_REDIRECT_URI: z.string().optional(),
 
   // Dashboard
   DASHBOARD_BASE_URL: z.string().url().default("http://localhost:3150"),
 
-  // Server
-  PORT: z.string().default("3950"),
-
-  // Agent
-  AGENT_RETRY_DELAY_MS: z.string().optional(),
-
-  // Shell
-  EXTRA_PATH: z.string().default("/opt/homebrew/bin"),
+  // Node.js
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -58,7 +50,7 @@ export function resetEnvCache(): void {
  * Proxy を通じて環境変数にアクセスする。
  * - 初回アクセス時に safeParse でバリデーション
  * - スキーマキーの値が変わっていなければキャッシュを返す
- * - テスト時の process.env 動的変更にも対応（スナップショット比較）
+ * - テスト時の process.env 動的変更にも対応
  */
 export const env: Env = new Proxy({} as Env, {
   get(_, prop: string) {
@@ -68,22 +60,10 @@ export const env: Env = new Proxy({} as Env, {
       if (parsed.success) {
         cached = { snapshot, data: parsed.data };
       } else {
-        // Fallback: return raw process.env value (test environments without full env)
+        // バリデーション失敗時は process.env をそのまま返す（開発環境用）
         return process.env[prop];
       }
     }
     return cached.data[prop as keyof Env];
   },
 });
-
-/**
- * Build env object for child_process.exec with EXTRA_PATH prepended to PATH.
- * Replaces hardcoded `/opt/homebrew/bin` references throughout the codebase.
- */
-export function getExecEnv(): NodeJS.ProcessEnv {
-  const extraPath = env.EXTRA_PATH ?? "/opt/homebrew/bin";
-  return {
-    ...process.env,
-    PATH: `${extraPath}:${process.env.PATH}`,
-  };
-}

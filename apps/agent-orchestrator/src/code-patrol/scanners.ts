@@ -2,6 +2,7 @@
 
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import { getExecEnv } from "../env.js";
 import type {
   AuditAdvisory,
   SecretFinding,
@@ -29,7 +30,7 @@ export async function runAudit(): Promise<ScanResult["audit"]> {
     const { stdout } = await execAsync("pnpm audit --json", {
       cwd: REPO_ROOT,
       timeout: 60_000,
-      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+      env: getExecEnv(),
     });
 
     return parseAuditOutput(stdout);
@@ -125,8 +126,7 @@ export async function scanSecrets(): Promise<SecretFinding[]> {
         cwd: REPO_ROOT,
         timeout: 30_000,
         env: {
-          ...process.env,
-          PATH: `/opt/homebrew/bin:${process.env.PATH}`,
+          ...getExecEnv(),
           SECRET_PATTERN: pattern,
         },
       },
@@ -182,7 +182,7 @@ export async function runTypeCheck(): Promise<TypeErrorFinding[]> {
       {
         cwd: REPO_ROOT,
         timeout: 120_000,
-        env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+        env: getExecEnv(),
       },
     );
 

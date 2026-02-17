@@ -15,7 +15,7 @@ import {
 import { processQueue } from "./queue-processor.js";
 import { handleThreadReply } from "./thread-handler.js";
 import { triggerDailyPlanUpdate } from "./daily-plan-trigger.js";
-import { INBOX_CHANNEL } from "./types.js";
+import { getInboxChannel } from "./types.js";
 
 /**
  * Inbox のメッセージリスナーとリアクションリスナーを登録する。
@@ -25,7 +25,7 @@ export function registerInboxListeners(): void {
   app.message(async ({ message, client }) => {
     if ("subtype" in message && message.subtype === "bot_message") return;
     if ("bot_id" in message) return;
-    if (message.channel !== INBOX_CHANNEL) return;
+    if (message.channel !== getInboxChannel()) return;
 
     const text =
       "text" in message && typeof message.text === "string" ? message.text : "";
@@ -74,7 +74,7 @@ export function registerInboxListeners(): void {
 
     try {
       // 受付リアクション
-      await addReaction(client, INBOX_CHANNEL, message.ts, "eyes");
+      await addReaction(client, getInboxChannel(), message.ts, "eyes");
 
       // 1. 分類
       const classification = await classifyMessage(text);
@@ -83,57 +83,51 @@ export function registerInboxListeners(): void {
       if (classification.intent === "todo") {
         await handleTodoCreate(
           client,
-          INBOX_CHANNEL,
+          getInboxChannel(),
           message.ts,
           threadTs,
           classification,
           text,
         );
-        await removeReaction(client, INBOX_CHANNEL, message.ts, "eyes");
-        await addReaction(client, INBOX_CHANNEL, message.ts, "memo");
+        await removeReaction(client, getInboxChannel(), message.ts, "eyes");
+        await addReaction(client, getInboxChannel(), message.ts, "memo");
         // Daily Plan を再生成して投稿（非同期・失敗しても TODO 処理には影響しない）
         triggerDailyPlanUpdate();
         return;
       }
       if (classification.intent === "todo_complete") {
-        await handleTodoComplete(client, INBOX_CHANNEL, threadTs, text);
-        await removeReaction(client, INBOX_CHANNEL, message.ts, "eyes");
+        await handleTodoComplete(client, getInboxChannel(), threadTs, text);
+        await removeReaction(client, getInboxChannel(), message.ts, "eyes");
         return;
       }
       if (classification.intent === "todo_check") {
-        await handleTodoCheck(client, INBOX_CHANNEL, threadTs);
-        await removeReaction(client, INBOX_CHANNEL, message.ts, "eyes");
+        await handleTodoCheck(client, getInboxChannel(), threadTs);
+        await removeReaction(client, getInboxChannel(), message.ts, "eyes");
         return;
       }
 
-      // 2. Bot が summary をトップレベルに投稿 → スレッドタイトルになる
-      const summaryMsg = await client.chat.postMessage({
-        channel: INBOX_CHANNEL,
-        text: classification.summary,
-      });
-      const botThreadTs = summaryMsg.ts!;
-
-      // 3. 受付通知をスレッド内に投稿（intent + clarifyQuestion 等の詳細）
+      // 2. ユーザーのメッセージにスレッド返信として受付通知を投稿
+      const botThreadTs = message.ts;
       const blocks = buildClassificationBlocks({
         summary: classification.summary,
         intent: classification.intent,
         clarifyQuestion: classification.clarifyQuestion,
       });
       await client.chat.postMessage({
-        channel: INBOX_CHANNEL,
+        channel: getInboxChannel(),
         thread_ts: botThreadTs,
         text: `${classification.summary} (${classification.intent})`,
         blocks: blocks as unknown as KnownBlock[],
       });
 
-      // 4. DB にタスクを挿入（slackThreadTs は Bot メッセージの ts）
+      // 3. DB にタスクを挿入（slackThreadTs = ユーザーメッセージの ts）
       const [task] = await db
         .insert(inboxTasks)
         .values({
           intent: classification.intent,
           autonomyLevel: classification.autonomyLevel,
           summary: classification.summary,
-          slackChannel: INBOX_CHANNEL,
+          slackChannel: getInboxChannel(),
           slackMessageTs: message.ts,
           slackThreadTs: botThreadTs,
           status: classification.clarifyQuestion ? "pending" : "queued",
@@ -145,8 +139,8 @@ export function registerInboxListeners(): void {
       // 5. clarifyQuestion がある → 質問待ち, なければ → キュー処理開始
       if (classification.clarifyQuestion) {
         // 理解不能: 質問はブロック内に含まれている
-        await removeReaction(client, INBOX_CHANNEL, message.ts, "eyes");
-        await addReaction(client, INBOX_CHANNEL, message.ts, "bell");
+        await removeReaction(client, getInboxChannel(), message.ts, "eyes");
+        await addReaction(client, getInboxChannel(), message.ts, "bell");
         console.log(`[inbox] Task ${task.id} needs clarification`);
       } else {
         // 自動実行
@@ -157,7 +151,7 @@ export function registerInboxListeners(): void {
     } catch (error) {
       console.error("[inbox] Failed to handle message:", error);
       await client.chat.postMessage({
-        channel: INBOX_CHANNEL,
+        channel: getInboxChannel(),
         thread_ts: threadTs,
         text: "❌ タスクの登録に失敗しました。",
       });
@@ -172,7 +166,7 @@ export function registerInboxListeners(): void {
       channel: string;
       ts: string;
     };
-    if (messageItem.channel !== INBOX_CHANNEL) return;
+    if (messageItem.channel !== getInboxChannel()) return;
 
     // ✅ リアクションで ToDo 完了
     if (event.reaction === "white_check_mark") {
@@ -198,7 +192,7 @@ export function registerInboxListeners(): void {
       .where(
         and(
           eq(inboxTasks.slackMessageTs, messageTs),
-          eq(inboxTasks.slackChannel, INBOX_CHANNEL),
+          eq(inboxTasks.slackChannel, getInboxChannel()),
           or(
             eq(inboxTasks.status, "pending"),
             eq(inboxTasks.status, "queued"),
@@ -216,13 +210,13 @@ export function registerInboxListeners(): void {
       .set({ status: "rejected", completedAt: new Date() })
       .where(eq(inboxTasks.id, task.id));
 
-    await removeReaction(client, INBOX_CHANNEL, messageTs, "bell");
-    await removeReaction(client, INBOX_CHANNEL, messageTs, "eyes");
-    await addReaction(client, INBOX_CHANNEL, messageTs, "x");
+    await removeReaction(client, getInboxChannel(), messageTs, "bell");
+    await removeReaction(client, getInboxChannel(), messageTs, "eyes");
+    await addReaction(client, getInboxChannel(), messageTs, "x");
 
     if (task.slackThreadTs) {
       await client.chat.postMessage({
-        channel: INBOX_CHANNEL,
+        channel: getInboxChannel(),
         thread_ts: task.slackThreadTs,
         text: "👎 却下されました。",
       });

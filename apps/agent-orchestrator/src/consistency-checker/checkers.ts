@@ -6,6 +6,7 @@ import { readFile, readdir, access } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import { getExecEnv } from "../env.js";
 
 const execAsync = promisify(exec);
 
@@ -415,7 +416,7 @@ export async function checkGitHygiene(): Promise<Finding[]> {
     const { stdout } = await execAsync("git ls-files '*.DS_Store'", {
       cwd: REPO_ROOT,
       timeout: 10_000,
-      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+      env: getExecEnv(),
     });
 
     if (stdout.trim()) {
@@ -444,7 +445,7 @@ export async function checkCodeDuplication(): Promise<Finding[]> {
       {
         cwd: REPO_ROOT,
         timeout: 120_000,
-        env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+        env: getExecEnv(),
       },
     );
 
@@ -531,7 +532,7 @@ export async function checkLintViolations(): Promise<Finding[]> {
     const { stdout, stderr } = await execAsync("pnpm lint 2>&1 || true", {
       cwd: REPO_ROOT,
       timeout: 120_000,
-      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+      env: getExecEnv(),
     });
 
     const output = stdout || stderr;
@@ -577,7 +578,7 @@ export async function checkUnusedExports(): Promise<Finding[]> {
       {
         cwd: REPO_ROOT,
         timeout: 30_000,
-        env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+        env: getExecEnv(),
       },
     );
 
@@ -593,10 +594,7 @@ export async function checkUnusedExports(): Promise<Finding[]> {
         {
           cwd: REPO_ROOT,
           timeout: 10_000,
-          env: {
-            ...process.env,
-            PATH: `/opt/homebrew/bin:${process.env.PATH}`,
-          },
+          env: getExecEnv(),
         },
       );
 

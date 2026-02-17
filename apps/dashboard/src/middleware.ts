@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getCfAccessConfig, verifyCfAccessJwt } from "./lib/cf-access";
+import { env } from "./env";
 
 export async function middleware(request: NextRequest) {
   // 開発環境ではスキップ
-  if (process.env.NODE_ENV === "development") {
+  if (env.NODE_ENV === "development") {
     return NextResponse.next();
   }
 
