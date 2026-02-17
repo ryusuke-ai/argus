@@ -157,8 +157,7 @@ argus/
 │   ├── gmail/                  # Google API (OAuth2 + Gmail MCP)
 │   ├── google-calendar/        # Google Calendar MCP server
 │   ├── tiktok/                 # TikTok Content Posting API
-│   ├── r2-storage/             # Cloudflare R2 client
-│   └── slack-canvas/           # Slack Canvas API client
+│   └── r2-storage/             # Cloudflare R2 client
 ├── docs/
 │   ├── adr/                    # Architecture Decision Records
 │   └── diagrams/               # Mermaid architecture diagrams
@@ -175,7 +174,6 @@ argus/
 | `@argus/google-calendar`    | Google Calendar MCP server (reuses Gmail OAuth2 infrastructure)                                     |
 | `@argus/tiktok`             | TikTok Content Posting API v2 with OAuth2 and chunked file upload                                   |
 | `@argus/r2-storage`         | Cloudflare R2 object storage via S3-compatible API                                                  |
-| `@argus/slack-canvas`       | Slack Canvas API client for creating and updating canvases                                          |
 
 ## Quick Start
 

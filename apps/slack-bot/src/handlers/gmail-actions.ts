@@ -3,6 +3,8 @@ import { app } from "../app.js";
 import { sendReply, sendNewEmail } from "@argus/gmail";
 import { db, gmailMessages, gmailOutgoing } from "@argus/db";
 import { eq } from "drizzle-orm";
+
+type GmailMessageRow = typeof gmailMessages.$inferSelect;
 import {
   extractActionValue,
   extractMessageRef,
@@ -19,47 +21,59 @@ export function setupGmailActionHandlers(): void {
     if (!gmailMessageDbId) return;
 
     // DB からメール情報取得
-    const [record] = await db
-      .select()
-      .from(gmailMessages)
-      .where(eq(gmailMessages.id, gmailMessageDbId))
-      .limit(1);
+    let record: GmailMessageRow | undefined;
+    try {
+      const rows = await db
+        .select()
+        .from(gmailMessages)
+        .where(eq(gmailMessages.id, gmailMessageDbId))
+        .limit(1);
+      record = rows[0];
+    } catch (dbError) {
+      console.error("[Gmail Action] DB query failed:", dbError);
+    }
 
-    if (!record || !record.draftReply) {
-      console.error(
+    if (record?.draftReply) {
+      // Gmail API で返信送信
+      const replyResult = await sendReply(
+        record.gmailId,
+        record.threadId,
+        record.fromAddress,
+        record.subject,
+        record.draftReply,
+      );
+
+      if (!replyResult.success) {
+        console.error("[Gmail Action] Reply failed:", replyResult.error);
+        const { channelId, messageTs } = extractMessageRef(ba);
+        if (channelId && messageTs) {
+          await client.chat.postMessage({
+            channel: channelId,
+            thread_ts: messageTs,
+            text: "❌ 返信の送信に失敗しました。もう一度お試しください。",
+          });
+        }
+        return;
+      }
+
+      // DB 更新（失敗しても UI 更新は継続）
+      try {
+        await db
+          .update(gmailMessages)
+          .set({ status: "replied", repliedAt: new Date() })
+          .where(eq(gmailMessages.id, gmailMessageDbId));
+      } catch (dbError) {
+        console.error(
+          "[Gmail Action] DB update failed (continuing with UI update):",
+          dbError,
+        );
+      }
+    } else {
+      console.log(
         "[Gmail Action] Record or draft not found:",
         gmailMessageDbId,
       );
-      return;
     }
-
-    // Gmail API で返信送信
-    const replyResult = await sendReply(
-      record.gmailId,
-      record.threadId,
-      record.fromAddress,
-      record.subject,
-      record.draftReply,
-    );
-
-    if (!replyResult.success) {
-      console.error("[Gmail Action] Reply failed:", replyResult.error);
-      const { channelId, messageTs } = extractMessageRef(ba);
-      if (channelId && messageTs) {
-        await client.chat.postMessage({
-          channel: channelId,
-          thread_ts: messageTs,
-          text: "❌ 返信の送信に失敗しました。もう一度お試しください。",
-        });
-      }
-      return;
-    }
-
-    // DB 更新
-    await db
-      .update(gmailMessages)
-      .set({ status: "replied", repliedAt: new Date() })
-      .where(eq(gmailMessages.id, gmailMessageDbId));
 
     // Slack メッセージを更新（ボタンを削除し「返信済み」表示）
     const { channelId, messageTs } = extractMessageRef(ba);
@@ -70,8 +84,10 @@ export function setupGmailActionHandlers(): void {
         messageTs,
         "✅",
         "返信済み",
-        record.subject,
-        { to: record.fromAddress, showTimestamp: true },
+        record?.subject || "（不明）",
+        record
+          ? { to: record.fromAddress, showTimestamp: true }
+          : { showTimestamp: true },
       );
     }
   });
@@ -85,13 +101,17 @@ export function setupGmailActionHandlers(): void {
     if (!gmailMessageDbId) return;
 
     // DB からメール情報取得
-    const [record] = await db
-      .select()
-      .from(gmailMessages)
-      .where(eq(gmailMessages.id, gmailMessageDbId))
-      .limit(1);
-
-    if (!record) return;
+    let record: GmailMessageRow | undefined;
+    try {
+      const rows = await db
+        .select()
+        .from(gmailMessages)
+        .where(eq(gmailMessages.id, gmailMessageDbId))
+        .limit(1);
+      record = rows[0];
+    } catch (dbError) {
+      console.error("[Gmail Action] DB query failed:", dbError);
+    }
 
     const triggerId = ba.trigger_id;
     if (!triggerId) return;
@@ -114,7 +134,7 @@ export function setupGmailActionHandlers(): void {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `*To:* ${record.fromAddress}\n*Subject:* Re: ${record.subject}`,
+              text: `*To:* ${record?.fromAddress || "（不明）"}\n*Subject:* Re: ${record?.subject || "（不明）"}`,
             },
           },
           { type: "divider" },
@@ -126,7 +146,7 @@ export function setupGmailActionHandlers(): void {
               type: "plain_text_input",
               action_id: "reply_text",
               multiline: true,
-              initial_value: record.draftReply || "",
+              initial_value: record?.draftReply || "",
             },
           },
         ],
@@ -144,11 +164,17 @@ export function setupGmailActionHandlers(): void {
 
     if (!gmailMessageDbId || !editedText) return;
 
-    const [record] = await db
-      .select()
-      .from(gmailMessages)
-      .where(eq(gmailMessages.id, gmailMessageDbId))
-      .limit(1);
+    let record: GmailMessageRow | undefined;
+    try {
+      const rows = await db
+        .select()
+        .from(gmailMessages)
+        .where(eq(gmailMessages.id, gmailMessageDbId))
+        .limit(1);
+      record = rows[0];
+    } catch (dbError) {
+      console.error("[Gmail Action] DB query failed:", dbError);
+    }
 
     if (!record) return;
 
@@ -162,13 +188,27 @@ export function setupGmailActionHandlers(): void {
 
     if (!editReplyResult.success) {
       console.error("[Gmail Action] Edit reply failed:", editReplyResult.error);
+      if (channelId && messageTs) {
+        await client.chat.postMessage({
+          channel: channelId,
+          thread_ts: messageTs,
+          text: "❌ 返信の送信に失敗しました。もう一度お試しください。",
+        });
+      }
       return;
     }
 
-    await db
-      .update(gmailMessages)
-      .set({ status: "replied", repliedAt: new Date() })
-      .where(eq(gmailMessages.id, gmailMessageDbId));
+    try {
+      await db
+        .update(gmailMessages)
+        .set({ status: "replied", repliedAt: new Date() })
+        .where(eq(gmailMessages.id, gmailMessageDbId));
+    } catch (dbError) {
+      console.error(
+        "[Gmail Action] DB update failed (continuing with UI update):",
+        dbError,
+      );
+    }
 
     if (channelId && messageTs) {
       await updateGmailActionBlocks(
@@ -191,16 +231,25 @@ export function setupGmailActionHandlers(): void {
     const gmailMessageDbId = extractActionValue(ba);
     if (!gmailMessageDbId) return;
 
-    const [record] = await db
-      .select()
-      .from(gmailMessages)
-      .where(eq(gmailMessages.id, gmailMessageDbId))
-      .limit(1);
+    let record: GmailMessageRow | undefined;
+    try {
+      const rows = await db
+        .select()
+        .from(gmailMessages)
+        .where(eq(gmailMessages.id, gmailMessageDbId))
+        .limit(1);
+      record = rows[0];
 
-    await db
-      .update(gmailMessages)
-      .set({ status: "skipped" })
-      .where(eq(gmailMessages.id, gmailMessageDbId));
+      await db
+        .update(gmailMessages)
+        .set({ status: "skipped" })
+        .where(eq(gmailMessages.id, gmailMessageDbId));
+    } catch (dbError) {
+      console.error(
+        "[Gmail Action] DB operation failed (continuing with UI update):",
+        dbError,
+      );
+    }
 
     const { channelId, messageTs } = extractMessageRef(ba);
     if (channelId && messageTs) {
