@@ -58,6 +58,8 @@ describe("daily-news-canvas", () => {
       SLACK_NOTIFICATION_CHANNEL: "#notifications",
       DASHBOARD_BASE_URL: "http://localhost:3150",
     };
+    // Ensure DAILY_NEWS_CHANNEL doesn't override SLACK_NOTIFICATION_CHANNEL
+    delete process.env.DAILY_NEWS_CHANNEL;
 
     // Default DB mock
     (db.select as ReturnType<typeof vi.fn>).mockReturnValue({

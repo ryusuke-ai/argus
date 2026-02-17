@@ -167,8 +167,8 @@ function extractJsonFromResult(
       "[script-generator] Schema validation failed, trying repair:",
       result.error,
     );
-  } catch {
-    // JSON パース失敗 → 修復を試みる
+  } catch (error) {
+    console.error("[script-generator] JSON parse failed, trying repair", error);
   }
 
   try {

@@ -94,6 +94,7 @@ export function getAuthUrl(codeVerifier?: string): {
 export async function exchangeCodeForTokens(
   code: string,
   codeVerifier?: string,
+  redirectUri?: string,
 ): Promise<{ success: boolean; tokens?: TiktokTokens; error?: string }> {
   try {
     const params: Record<string, string> = {
@@ -101,7 +102,7 @@ export async function exchangeCodeForTokens(
       client_secret: getClientSecret(),
       code,
       grant_type: "authorization_code",
-      redirect_uri: getRedirectUri(),
+      redirect_uri: redirectUri || getRedirectUri(),
     };
     if (codeVerifier) {
       params.code_verifier = codeVerifier;

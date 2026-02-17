@@ -32,6 +32,390 @@ function getClient(): Anthropic | null {
 }
 
 /**
+ * summary が元メッセージのコピペ（またはほぼコピペ）かを判定する。
+ *
+ * 判定基準:
+ * 1. 元メッセージの部分文字列である（正規化後）
+ * 2. 連続部分文字列の重複が多い（summary の大部分が元メッセージの連続フレーズ）
+ * 3. 動詞・依頼形で終わっている（体言止めではない）
+ */
+export function isCopyPaste(summary: string, originalMessage: string): boolean {
+  if (!summary || !originalMessage) return false;
+
+  // 正規化: 空白・句読点・記号を除去して比較
+  const normalize = (s: string) =>
+    s.replace(/[\s。、.!！？?…・「」『』（）()【】\n]/g, "");
+
+  const normSummary = normalize(summary);
+  const normOriginal = normalize(originalMessage);
+
+  if (normSummary.length === 0) return false;
+
+  // 1. summary が元メッセージの部分文字列（ほぼそのまま使っている）
+  if (normOriginal.includes(normSummary)) return true;
+
+  // 1b. 元メッセージの先頭部分をそのまま切り取っただけ（途中切れコピペ）
+  //     元メッセージの先頭 N 文字と summary の先頭 N 文字が一致する場合
+  const prefixLen = Math.min(normSummary.length, normOriginal.length);
+  if (prefixLen >= 8) {
+    const summaryPrefix = normSummary.slice(0, prefixLen);
+    const originalPrefix = normOriginal.slice(0, prefixLen);
+    if (summaryPrefix === originalPrefix) return true;
+  }
+
+  // 2. 連続部分文字列の重複率: summary 中の最長共通部分文字列の占有率で判定
+  //    「要約」は元テキストの語を再構成するので、連続一致が短い。
+  //    「コピペ」は元テキストの長い連続部分をそのまま含む。
+  const longestMatch = longestCommonSubstringLength(normSummary, normOriginal);
+  const matchRate = longestMatch / normSummary.length;
+  // summary の60%以上が元メッセージの連続フレーズと一致 → コピペ
+  if (matchRate >= 0.6 && longestMatch >= 8) return true;
+
+  // 3. 動詞・依頼形・用言形で終わっている（体言止めになっていない）
+  //    要約は「〜の調査」「〜改善」のような名詞句であるべき
+  if (
+    /(?:して|する|した|しろ|せよ|てほしい|てほしいです|ください|下さい|してね|くれ|やって|ますか|たい|だろう|ている|ていた|ておく|ておいて|にして|のこと|ですか|ません|ましょう|しよう|てみて|ってきて|てくれ|てあげて|なさい|ぞ|ようにして|ようにする|てね|てる|てた|ってる|ってた|れる|られる|せる|させる|ないで|なくて|みたい|っぽい|だよ|だね|だな|かな|じゃん|やん|よね|よな|けど|から|ので|のに|って|わ)$/.test(
+      summary,
+    )
+  ) {
+    return true;
+  }
+
+  // 3b. 「〜です」「〜ます」の丁寧語で終わっている（要約は体言止め）
+  if (/(?:です|ます|でした|ました)$/.test(summary)) {
+    return true;
+  }
+
+  // 3c. 「〜見える」「〜なってる」「〜できる」等の状態動詞・形容詞で終わっている
+  if (
+    /(?:見える|思う|思える|なってる|なっている|できる|できない|ある|ない|いる|いない|わかる|わからない|知りたい|ほしい|欲しい)$/.test(
+      summary,
+    )
+  ) {
+    return true;
+  }
+
+  // 4. 文末が不自然に途切れている（文字数制限で切られたコピペ）
+  //    名詞句の要約なら助詞で終わらない
+  if (summary.length >= 15 && /[をはがにでのとも、]$/.test(summary)) {
+    return true;
+  }
+
+  // 4b. 短い summary でも助詞で終わっていたらコピペの疑い（体言止めでない）
+  if (summary.length >= 8 && /[をはがにでも、]$/.test(summary)) {
+    return true;
+  }
+
+  // 5. 長めの summary は元メッセージとの類似度を厳しくチェック
+  //    15文字以上の summary で50%以上一致 → コピペの可能性大
+  if (normSummary.length >= 15 && matchRate >= 0.5 && longestMatch >= 8) {
+    return true;
+  }
+
+  // 6. 句点「。」が含まれる（要約は名詞句なので句点は不要）
+  if (summary.includes("。")) {
+    return true;
+  }
+
+  // 7. 元メッセージの先頭から始まる語順がほぼ同じ かつ 類似度も高い
+  //    （先頭一致だけでなく、全体的なコピペ度も確認）
+  if (normSummary.length >= 15) {
+    const headLen = Math.min(8, normSummary.length);
+    if (
+      normOriginal.startsWith(normSummary.slice(0, headLen)) &&
+      matchRate >= 0.4
+    ) {
+      return true;
+    }
+  }
+
+  // 8. 「〜ように」で終わっている（目的表現の途切れ）
+  if (/ように$/.test(summary)) {
+    return true;
+  }
+
+  // 9. 「〜のこと」「〜こと」で終わっている（名詞句ではあるが曖昧すぎる）
+  if (/(?:の)?こと$/.test(summary)) {
+    return true;
+  }
+
+  // 10. summary が長すぎる（15文字超かつ元メッセージと語順が似ている）
+  //     良い要約は短い名詞句なので、15文字を超えて元メッセージとの重複が
+  //     ある程度あればコピペの可能性が高い
+  if (normSummary.length >= 20 && matchRate >= 0.35 && longestMatch >= 6) {
+    return true;
+  }
+
+  // 11. 口語表現・接続詞で終わっている（文の途中で切れている）
+  if (
+    /(?:から|ので|けど|けれど|けれども|だから|なので|ために|のため|だけど|なのに|ものの|ところ|みたいで|らしくて|ぽくて)$/.test(
+      summary,
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/** 2つの文字列の最長共通部分文字列の長さを返す */
+function longestCommonSubstringLength(a: string, b: string): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  let maxLen = 0;
+  // a の各位置から始まる部分文字列が b に含まれるか
+  for (let i = 0; i < a.length; i++) {
+    for (let len = a.length - i; len > maxLen; len--) {
+      if (b.includes(a.slice(i, i + len))) {
+        maxLen = len;
+        break;
+      }
+    }
+  }
+  return maxLen;
+}
+
+/**
+ * AI (Haiku) に summary だけを再生成させる軽量呼び出し。
+ * 分類プロンプト全体を使わず、要約に特化した短いプロンプトで呼ぶ。
+ * failedSummary: 前回生成に失敗した summary（あれば品質問題をフィードバック）
+ */
+export async function resummarize(
+  messageText: string,
+  client: Anthropic,
+  failedSummary?: string,
+): Promise<string | null> {
+  try {
+    const feedbackLine = failedSummary
+      ? `\n\n前回の要約「${failedSummary}」は不適切でした（コピペ/長すぎ/体言止めでない等）。全く別の表現で、より短く抽象的に書き直してください。元メッセージの単語をそのまま並べるのではなく、意味を圧縮してください。`
+      : "";
+
+    const response = await client.messages.create({
+      model: CLASSIFIER_MODEL,
+      max_tokens: 64,
+      system: `ユーザーのメッセージを短い体言止めの名詞句に要約してください。
+
+## ルール
+- 8文字以内を目指す（最大15文字）
+- 体言止め（名詞で終わる）: ✅「AI動向の調査」 ❌「AI動向を調べて」
+- 形式: [トピック] + [アクション種別]（調査/修正/改善/作成/削除/追加/送信/登録 等）
+- ユーザーの発言をそのままコピペしない。必ず抽象化・圧縮する
+- 名詞句のみを出力（説明文や引用符は不要）
+
+## 禁止事項
+- 動詞形で終わらない（〜して、〜する、〜ください、〜たい、〜ている）
+- 助詞で終わらない（を、は、が、に、で、の、と）
+- 丁寧語で終わらない（です、ます）
+- 読点「、」を含めない
+- 句点「。」を含めない
+- 元メッセージの文頭からそのまま切り取らない
+
+## 例
+入力「最新のAI動向について調べてください」→ AI動向の調査
+入力「agent-coreのエラーハンドリングを改善してもらえますか？」→ エラーハンドリング改善
+入力「スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けてる」→ タイトル要約改善
+入力「classifierのテスト書いて、全部通るようにして」→ classifierテスト整備
+入力「来週のチームミーティングの資料をまとめておいて」→ MTG資料整理
+入力「このAPIのレスポンス形式ってどうなってる？」→ APIレスポンス確認
+入力「メールの判定基準がわからないから調べて教えてほしい」→ メール判定基準の調査${feedbackLine}`,
+      messages: [
+        { role: "user", content: messageText },
+      ],
+    });
+
+    const text = response.content
+      .filter(
+        (block: { type: string }): block is Anthropic.TextBlock =>
+          block.type === "text",
+      )
+      .map((block: Anthropic.TextBlock) => block.text)
+      .join("")
+      .trim()
+      .replace(/^["「『]|["」』]$/g, "");
+
+    if (text.length > 0 && text.length <= 30) {
+      return text;
+    }
+    return null;
+  } catch (error) {
+    console.error("[inbox/classifier] Resummarize failed:", error);
+    return null;
+  }
+}
+
+/**
+ * summary が体言止めの名詞句として適切かどうかを判定する。
+ * 不適切な例: 動詞・依頼形・丁寧語で終わっている、助詞で途切れている、
+ *             文断片（口語表現を含む長い文）、途中で切れたテキスト
+ */
+export function isProperNounPhrase(summary: string): boolean {
+  if (!summary || summary.length === 0) return false;
+
+  // 動詞・依頼形で終わっている
+  if (
+    /(?:して|する|した|しろ|せよ|てほしい|てほしいです|ください|下さい|してね|くれ|やって|ますか|たい|だろう|ている|ていた|ておく|ておいて|にして|ですか|ません|ましょう|しよう|てみて|ってきて|てくれ|てあげて|なさい|ようにして|ようにする|てね|てる|てた|ってる|ってた|れる|られる|せる|させる|ないで|なくて|みたい|っぽい|だよ|だね|だな|かな|じゃん|やん|よね|よな|けど|のに|わ)$/.test(
+      summary,
+    )
+  ) {
+    return false;
+  }
+
+  // 丁寧語で終わっている
+  if (/(?:です|ます|でした|ました)$/.test(summary)) {
+    return false;
+  }
+
+  // 状態動詞・形容詞で終わっている
+  if (
+    /(?:見える|思う|思える|なってる|なっている|できる|できない|ある|ない|いる|いない|わかる|わからない|知りたい|ほしい|欲しい)$/.test(
+      summary,
+    )
+  ) {
+    return false;
+  }
+
+  // 末尾が助詞で途切れている（体言止めでない）
+  if (/[をはがにでのとも、から]$/.test(summary)) {
+    return false;
+  }
+
+  // 「って」で終わっている（引用形・口語の途中切れ）
+  if (/って$/.test(summary)) {
+    return false;
+  }
+
+  // --- ここから追加: 文断片・途中切れの検出 ---
+
+  // 口語的接続表現を含む（名詞句ではなく文の断片）
+  if (
+    /(?:じゃなくて|じゃなく|ではなく|ではなくて|だけど|なのに|そのまま|のまま|けれど|にもかかわらず)/.test(
+      summary,
+    )
+  ) {
+    return false;
+  }
+
+  // 長い summary に格助詞「が」「を」が含まれる（文断片の可能性大）
+  // 短い名詞句（「エラーが出る問題」等）は許容、15文字以上で厳格チェック
+  if (summary.length >= 15 && /[がを]/.test(summary)) {
+    return false;
+  }
+
+  // 途中で切れている: ひらがなで終わり、かつ15文字以上の長い summary
+  // 名詞句なら漢字・カタカナ・英字で終わるのが自然
+  if (summary.length >= 15 && /[ぁ-ん]$/.test(summary)) {
+    // ただし「の調査」「の改善」等のパターンは許容
+    if (!/(?:の[^\s]{1,4})$/.test(summary)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * summary の末尾が助詞・動詞形などの不完全な形で終わっている場合にクリーンアップする。
+ * 例: 「〜の改善を」→「〜の改善」、「〜にして」→「〜」
+ */
+function cleanupSummaryEnding(summary: string): string {
+  let s = summary;
+  // 末尾の動詞・依頼形を除去
+  s = s.replace(
+    /(?:してほしい|してください|して下さい|してくれ|しておいて|してね|してる|してた|している|していた|して|する|した|しろ|せよ|やって|ください|下さい|くれ|ておいて|ておく|てみて|ってきて|てくれ|てあげて|なさい|にして|ようにして|ようにする)$/,
+    "",
+  );
+  // 末尾の丁寧語
+  s = s.replace(/(?:です|ます|でした|ました|ですか|ませんか)$/, "");
+  // 末尾の助詞（途切れ）
+  s = s.replace(/[をはがにでのともへから、]$/, "");
+  // クリーンアップ後に再度助詞チェック（「〜を修正」→「〜修正」はOKだが「〜を」で終わるのは不可）
+  s = s.replace(/[をはがにで、]$/, "");
+  return s.trim() || summary;
+}
+
+/**
+ * 助詞の位置を見つけて意味のある区切りで切り詰め、体言止めにする。
+ */
+function truncateToNounPhrase(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const sliced = text.slice(0, max);
+  // 助詞境界で意味のある位置で切る
+  const particles = /[をはがにでのとも][^をはがにでのとも]*$/;
+  const m = sliced.match(particles);
+  if (m && m.index !== undefined && m.index >= max * 0.5) {
+    const truncated = sliced.slice(0, m.index);
+    // 末尾の助詞を除去
+    return truncated.replace(/[をはがにでのとも]$/, "") || sliced.slice(0, max);
+  }
+  return sliced;
+}
+
+/**
+ * summary の品質を保証する。コピペや長すぎる場合は AI再要約 → summarizeJa の順でフォールバック。
+ */
+async function ensureQualitySummary(
+  summary: string,
+  originalMessage: string,
+  client: Anthropic | null,
+): Promise<string> {
+  const tooLong = summary.length > 30;
+  const copyPaste = isCopyPaste(summary, originalMessage);
+  const notNounPhrase = !isProperNounPhrase(summary);
+  const needsFix = tooLong || copyPaste || notNounPhrase;
+  if (!needsFix) return summary;
+
+  const reasons: string[] = [];
+  if (tooLong) reasons.push(`too long (${summary.length} chars)`);
+  if (copyPaste) reasons.push("copy-paste detected");
+  if (notNounPhrase) reasons.push("not a proper noun phrase");
+  console.log(
+    `[inbox/classifier] Summary issues [${reasons.join(", ")}]: "${summary}", attempting resummarize`,
+  );
+
+  // AI 再要約を試行（最大2回: 1回目は元 summary をフィードバック、2回目は1回目の失敗もフィードバック）
+  if (client) {
+    let lastFailed = summary;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const resummarized = await resummarize(originalMessage, client, lastFailed);
+      if (
+        resummarized &&
+        !isCopyPaste(resummarized, originalMessage) &&
+        isProperNounPhrase(resummarized)
+      ) {
+        console.log(
+          `[inbox/classifier] Resummarized (attempt ${attempt + 1}): "${resummarized}"`,
+        );
+        return resummarized;
+      }
+      if (resummarized) {
+        console.log(
+          `[inbox/classifier] Resummarize attempt ${attempt + 1} rejected: "${resummarized}" (copyPaste=${isCopyPaste(resummarized, originalMessage)}, properNoun=${isProperNounPhrase(resummarized)})`,
+        );
+        lastFailed = resummarized;
+      }
+    }
+  }
+
+  // AI 再要約も失敗 → 正規表現ベースのフォールバック
+  // summarizeJa はすでに動詞→名詞変換・フィラー除去を行っているため、
+  // isCopyPaste チェックは緩和し、体言止めと長さだけを確認する
+  const fallback = summarizeJa(originalMessage);
+  console.log(`[inbox/classifier] Using summarizeJa fallback: "${fallback}"`);
+
+  if (fallback.length <= 30 && isProperNounPhrase(fallback)) {
+    return fallback;
+  }
+
+  // それでもダメなら末尾クリーンアップ＋助詞境界で切り詰め
+  let final = cleanupSummaryEnding(fallback);
+  if (final.length > 30) {
+    // 助詞境界で意味のある位置で切る（単純な slice ではなく）
+    final = truncateToNounPhrase(final, 30);
+  }
+  console.log(`[inbox/classifier] Final forced cleanup: "${final}"`);
+  return final || truncateToNounPhrase(fallback, 25);
+}
+
+/**
  * メッセージを分類する。
  * API キーがあれば Haiku で分類、なければキーワードベースで分類。
  */
@@ -72,13 +456,12 @@ export async function classifyMessage(
     }
   }
 
-  // 最終ガード: どのパスでも summary が30文字を超えたら summarizeText で短縮
-  if (result.summary.length > 30) {
-    console.log(
-      `[inbox/classifier] GUARD: summary too long (${result.summary.length} chars: "${result.summary}"), truncating`,
-    );
-    result.summary = summarizeJa(messageText);
-  }
+  // 最終ガード: summary の品質チェック（コピペ検出 + 長さチェック → AI再要約 → summarizeJa）
+  result.summary = await ensureQualitySummary(
+    result.summary,
+    messageText,
+    client,
+  );
 
   console.log(
     `[inbox/classifier] FINAL summary: "${result.summary}" (${result.summary.length} chars) for: "${messageText.slice(0, 50)}"`,
@@ -103,26 +486,21 @@ export function parseClassificationResult(
 
     if (result.success) {
       const parsed = result.data;
-      // summary が長すぎる場合はキーワードベースの summarizeText でフォールバック
-      let summary = parsed.summary;
-      if (summary.length > 30 && originalText) {
-        console.log(
-          `[inbox/classifier] AI summary too long (${summary.length} chars), using summarizeText fallback`,
-        );
-        summary = summarizeJa(originalText);
-      }
       return {
         intent: parsed.intent as Intent,
         autonomyLevel: 2,
-        summary,
+        summary: parsed.summary,
         executionPrompt: parsed.executionPrompt,
         reasoning: parsed.reasoning,
         clarifyQuestion: parsed.clarifyQuestion || undefined,
       };
     }
     console.error("[inbox/classifier] Schema validation failed:", result.error);
-  } catch {
-    // パース失敗 → フォールスルー
+  } catch (error) {
+    console.error(
+      "[inbox/classifier] Failed to parse classification JSON",
+      error,
+    );
   }
 
   console.warn(
@@ -163,10 +541,13 @@ const STRONG_RULES: ScoringRule[] = [
   { pattern: /って何|とは[?？]?$/, intent: "question", weight: 10 },
   { pattern: /[?？]$/, intent: "question", weight: 8 },
   { pattern: /どう(?:なってる|すれば|したら)/, intent: "question", weight: 8 },
-  // reminder: カレンダー操作
+  // reminder: カレンダー操作・メール送信
   { pattern: /リマインドして|リマインダー/, intent: "reminder", weight: 10 },
   { pattern: /カレンダーに.*(?:追加|登録)/, intent: "reminder", weight: 10 },
   { pattern: /予定.*(?:入れて|追加|登録)/, intent: "reminder", weight: 8 },
+  { pattern: /メール.*(?:送って|送信|出して)/, intent: "reminder", weight: 10 },
+  { pattern: /(?:送って|送信して).*メール/, intent: "reminder", weight: 10 },
+  { pattern: /(?:メールして|メールで)/, intent: "reminder", weight: 8 },
   // organize: 整理系動詞
   { pattern: /整理して|まとめて/, intent: "organize", weight: 10 },
   { pattern: /一覧.*(?:出して|作って|見せて)/, intent: "organize", weight: 8 },

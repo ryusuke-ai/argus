@@ -23,6 +23,12 @@ const { mockFetch } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
 }));
 
+// Mock @argus/agent-core (isMaxPlanAvailable returns false to use API path)
+vi.mock("@argus/agent-core", () => ({
+  isMaxPlanAvailable: vi.fn(() => false),
+  query: vi.fn(),
+}));
+
 // Mock @argus/gmail
 vi.mock("@argus/gmail", () => ({
   loadTokens: mockLoadTokens,

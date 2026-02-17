@@ -70,11 +70,11 @@ export async function checkTsconfigReferences(): Promise<Finding[]> {
             await access(join(dirPath, entry, "tsconfig.json"));
             actualPackages.add(`${dir}/${entry}`);
           } catch {
-            // No tsconfig.json — skip
+            // Intentionally ignored: access() throws when tsconfig.json doesn't exist
           }
         }
       } catch {
-        // Directory doesn't exist
+        // Intentionally ignored: directory may not exist in this monorepo layout
       }
     }
 
@@ -136,7 +136,7 @@ export async function checkDependencyVersions(): Promise<Finding[]> {
           packageJsonPaths.push(join(dirPath, entry, "package.json"));
         }
       } catch {
-        // skip
+        // Intentionally ignored: directory may not exist in this monorepo layout
       }
     }
 
@@ -165,7 +165,7 @@ export async function checkDependencyVersions(): Promise<Finding[]> {
         addDeps(pkg.dependencies, false);
         addDeps(pkg.devDependencies, true);
       } catch {
-        // File doesn't exist or invalid JSON — skip
+        // Intentionally ignored: package.json may not exist or contain invalid JSON
       }
     }
 
@@ -277,11 +277,11 @@ export async function checkClaudeMdFreshness(): Promise<Finding[]> {
             await access(join(dirPath, entry, "package.json"));
             actualPackages.add(`${dir}/${entry}`);
           } catch {
-            // skip
+            // Intentionally ignored: access() throws when package.json doesn't exist
           }
         }
       } catch {
-        // skip
+        // Intentionally ignored: directory may not exist in this monorepo layout
       }
     }
 
@@ -324,11 +324,11 @@ export async function checkReadmeCompleteness(): Promise<Finding[]> {
           await access(join(pkgDir, entry, "package.json"));
           actualPackages.add(entry);
         } catch {
-          // skip
+          // Intentionally ignored: access() throws when package.json doesn't exist
         }
       }
     } catch {
-      // skip
+      // Intentionally ignored: packages directory may not exist
     }
 
     for (const pkg of actualPackages) {
@@ -428,7 +428,7 @@ export async function checkGitHygiene(): Promise<Finding[]> {
       });
     }
   } catch {
-    // git not available or not a repo — skip
+    // Intentionally ignored: git may not be available or directory may not be a repo
   }
 
   return findings;
@@ -453,6 +453,7 @@ export async function checkCodeDuplication(): Promise<Finding[]> {
     try {
       reportJson = await readFile(reportPath, "utf-8");
     } catch {
+      // Intentionally ignored: report file may not exist; fall back to parsing stdout
       const jsonMatch = stdout.match(/\{[\s\S]*\}/);
       if (!jsonMatch) return findings;
       reportJson = jsonMatch[0];
@@ -655,11 +656,11 @@ export async function checkTestCoverage(): Promise<Finding[]> {
           try {
             await collectTsFiles(srcPath, sourceFiles, dirPath);
           } catch {
-            // No src directory
+            // Intentionally ignored: src directory may not exist for this package
           }
         }
       } catch {
-        // Directory doesn't exist
+        // Intentionally ignored: directory may not exist in this monorepo layout
       }
     }
 
@@ -672,6 +673,7 @@ export async function checkTestCoverage(): Promise<Finding[]> {
       try {
         await access(join(REPO_ROOT, testFile));
       } catch {
+        // Intentionally ignored: test file not found means this source is untested
         untestedFiles.push(file);
       }
     }
@@ -721,6 +723,7 @@ export async function listDir(dirPath: string): Promise<Set<string>> {
     const entries = await readdir(dirPath);
     return new Set(entries.filter((e) => !e.startsWith(".")));
   } catch {
+    // Intentionally ignored: directory may not exist; return empty set as fallback
     return new Set();
   }
 }

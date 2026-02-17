@@ -9,6 +9,7 @@ import {
 } from "@argus/db";
 import {
   query,
+  extractText,
   scanOutputDir,
   findNewArtifacts,
   createDBObservationHooks,
@@ -188,10 +189,7 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     }
 
     if (!result.success) {
-      const errorText = result.message.content
-        .filter((block) => block.type === "text")
-        .map((block) => block.text)
-        .join("\n");
+      const errorText = extractText(result.message.content);
       const errorMessage = errorText || "Agent execution failed";
       console.error(`[Agent Executor] ${errorMessage}`);
       await db
@@ -228,13 +226,7 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     console.log(`[Agent Executor] Success: ${agent.name}`);
 
     if (agent.type === "executor") {
-      const resultText = result.message.content
-        .filter(
-          (block): block is { type: "text"; text: string } =>
-            block.type === "text" && typeof block.text === "string",
-        )
-        .map((block) => block.text)
-        .join("\n");
+      const resultText = extractText(result.message.content);
 
       if (resultText) {
         const notification = `*${agent.name}* completed:\n${resultText.slice(0, 500)}${resultText.length > 500 ? "..." : ""}`;

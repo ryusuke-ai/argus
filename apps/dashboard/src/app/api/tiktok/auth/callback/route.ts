@@ -1,18 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { saveTokens } from "@argus/tiktok";
-import type { TiktokTokens } from "@argus/tiktok";
-
-const TIKTOK_TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
-
-interface TiktokTokenResponse {
-  access_token?: string;
-  refresh_token?: string;
-  expires_in?: number;
-  open_id?: string;
-  scope?: string;
-  error?: string;
-  error_description?: string;
-}
+import { exchangeCodeForTokens } from "@argus/tiktok";
 
 function getRedirectUri(): string {
   const baseUrl = process.env.DASHBOARD_BASE_URL || "http://localhost:3150";
@@ -57,62 +44,20 @@ export async function GET(request: NextRequest) {
   }
   const codeVerifier = state.slice(colonIndex + 1);
 
-  try {
-    const clientKey = process.env.TIKTOK_CLIENT_KEY;
-    const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  // トークン交換（redirect_uri を Dashboard 用に指定）
+  const result = await exchangeCodeForTokens(
+    code,
+    codeVerifier,
+    getRedirectUri(),
+  );
 
-    if (!clientKey || !clientSecret) {
-      return NextResponse.redirect(
-        `${baseUrl}/tiktok?error=${encodeURIComponent("TikTok credentials not configured")}`,
-      );
-    }
-
-    // トークン交換（redirect_uri を Dashboard 用に直接指定）
-    const body = new URLSearchParams({
-      client_key: clientKey,
-      client_secret: clientSecret,
-      code,
-      grant_type: "authorization_code",
-      redirect_uri: getRedirectUri(),
-      code_verifier: codeVerifier,
-    });
-
-    const response = await fetch(TIKTOK_TOKEN_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: body.toString(),
-    });
-
-    const data = (await response.json()) as TiktokTokenResponse;
-
-    if (data.error || !data.access_token) {
-      const errorMessage =
-        data.error_description || data.error || "Token exchange failed";
-      console.error("[TikTok] Token exchange error:", errorMessage);
-      return NextResponse.redirect(
-        `${baseUrl}/tiktok?error=${encodeURIComponent(errorMessage)}`,
-      );
-    }
-
-    // トークンを DB に保存
-    const tokens: TiktokTokens = {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token || "",
-      expiry: new Date(Date.now() + (data.expires_in || 86400) * 1000),
-      openId: data.open_id || "",
-      scopes: data.scope || "video.upload,video.publish,user.info.basic",
-    };
-
-    await saveTokens(tokens);
-
-    return NextResponse.redirect(`${baseUrl}/tiktok?connected=true`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[TikTok] Callback processing error:", message);
+  if (!result.success) {
+    const errorMessage = result.error || "Token exchange failed";
+    console.error("[TikTok] Token exchange error:", errorMessage);
     return NextResponse.redirect(
-      `${baseUrl}/tiktok?error=${encodeURIComponent(message)}`,
+      `${baseUrl}/tiktok?error=${encodeURIComponent(errorMessage)}`,
     );
   }
+
+  return NextResponse.redirect(`${baseUrl}/tiktok?connected=true`);
 }

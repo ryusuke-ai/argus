@@ -21,8 +21,8 @@ async function notifySlackMessage(
       },
       body: JSON.stringify({ channel, text }),
     });
-  } catch {
-    // Best effort notification
+  } catch (error) {
+    console.error("[CodePatrol] Failed to send Slack notification", error);
   }
 }
 

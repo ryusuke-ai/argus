@@ -178,7 +178,7 @@ export class ProgressReporter {
         ts: this.messageTs,
       });
     } catch {
-      // 削除失敗は無視（メッセージが既に消えている等）
+      // Intentionally ignored: message may already be deleted by user or Slack
     }
     this.messageTs = null;
   }
@@ -199,70 +199,41 @@ export class ProgressReporter {
   }
 
   /**
-   * フェーズあり: コンパクト2ブロック構成。絵文字は先頭の ⏳ のみ。
-   * - ブロック1 (section): フェーズ名 + ダッシュ + 現在のステップ
-   * - ブロック2 (context): Phase N/M + 経過 + 残り（全てテキスト）
+   * フェーズあり: context ブロック1つの1行表示。
+   * ステップが変わるたびにこの1行がコロコロ切り替わる。
    */
   private buildPhasedBlocks(elapsed: number): Block[] {
-    const blocks: Block[] = [];
-
     const runningPhase = this.phases.find((p) => p.status === "running");
     const currentStep = this.steps[this.steps.length - 1];
 
-    let mainText: string;
-    if (runningPhase && currentStep) {
-      mainText = `⏳ *${runningPhase.label}* — ${currentStep.text}`;
-    } else if (runningPhase) {
-      mainText = `⏳ *${runningPhase.label}*`;
-    } else {
-      mainText = `⏳ 処理を開始しています...`;
-    }
+    const parts: string[] = [];
+    parts.push(`⏳ ${formatDuration(elapsed)}`);
+    if (runningPhase) parts.push(runningPhase.label);
+    if (currentStep) parts.push(currentStep.text);
 
-    blocks.push({
-      type: "section",
-      text: { type: "mrkdwn", text: mainText },
-    });
-
-    const donePhases = this.phases.filter((p) => p.status === "done").length;
-    const footerParts: string[] = [];
-    footerParts.push(`Phase ${donePhases + 1}/${this.phases.length}`);
-    footerParts.push(`経過: ${formatDuration(elapsed)}`);
-
-    const remaining = this.estimateRemainingTime();
-    if (remaining !== null) {
-      footerParts.push(`残り: 約${formatDuration(remaining)}`);
-    }
-
-    blocks.push({
-      type: "context",
-      elements: [{ type: "mrkdwn", text: footerParts.join(" | ") }],
-    });
-
-    return blocks;
+    return [
+      {
+        type: "context",
+        elements: [{ type: "mrkdwn", text: parts.join(" · ") }],
+      },
+    ];
   }
 
   /**
-   * フェーズなし: コンパクト2ブロック構成。絵文字は先頭の ⏳ のみ。
-   * - ブロック1 (section): 現在実行中のステップ
-   * - ブロック2 (context): ステップ数 + 経過時間 + 目安（全てテキスト）
+   * フェーズなし: context ブロック1つの1行表示。
    */
-  private buildFlatBlocks(_elapsed: number): Block[] {
-    const blocks: Block[] = [];
-
+  private buildFlatBlocks(elapsed: number): Block[] {
     const currentStep = this.steps[this.steps.length - 1];
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: currentStep
-          ? `⏳ ${currentStep.text}`
-          : `⏳ 処理を開始しています...`,
+    const text = currentStep
+      ? `⏳ ${formatDuration(elapsed)} · ${currentStep.text}`
+      : `⏳ ${formatDuration(elapsed)} · 処理を開始しています...`;
+
+    return [
+      {
+        type: "context",
+        elements: [{ type: "mrkdwn", text }],
       },
-    });
-
-    // フェーズなしタスクではステップ数・経過・目安のフッターは表示しない
-
-    return blocks;
+    ];
   }
 
   /**

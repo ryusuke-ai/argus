@@ -21,6 +21,14 @@ vi.mock("../session-manager", () => ({
 
 vi.mock("@argus/agent-core", () => ({
   getDefaultModel: vi.fn(() => "claude-sonnet-4-5-20250929"),
+  extractText: vi.fn((content: Array<{ type: string; text?: string }>) =>
+    content
+      .filter(
+        (block) => block.type === "text" && typeof block.text === "string",
+      )
+      .map((block) => block.text)
+      .join("\n"),
+  ),
   scanOutputDir: vi.fn(() => new Set<string>()),
   findNewArtifacts: vi.fn(() => []),
   uploadArtifactsToSlack: vi.fn(async () => []),

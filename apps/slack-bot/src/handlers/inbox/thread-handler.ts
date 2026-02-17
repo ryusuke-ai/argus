@@ -27,7 +27,10 @@ export async function handleThreadReply(
     .from(inboxTasks)
     .where(
       and(
-        eq(inboxTasks.slackThreadTs, parentThreadTs),
+        or(
+          eq(inboxTasks.slackThreadTs, parentThreadTs),
+          eq(inboxTasks.slackMessageTs, parentThreadTs),
+        ),
         eq(inboxTasks.slackChannel, INBOX_CHANNEL),
         eq(inboxTasks.status, "pending"),
       ),
@@ -79,7 +82,10 @@ export async function handleThreadReply(
     .from(inboxTasks)
     .where(
       and(
-        eq(inboxTasks.slackThreadTs, parentThreadTs),
+        or(
+          eq(inboxTasks.slackThreadTs, parentThreadTs),
+          eq(inboxTasks.slackMessageTs, parentThreadTs),
+        ),
         eq(inboxTasks.slackChannel, INBOX_CHANNEL),
         eq(inboxTasks.status, "running"),
       ),
@@ -95,18 +101,22 @@ export async function handleThreadReply(
     return;
   }
 
-  // 3. completed/failed/waiting タスク → session resume で会話継続
+  // 3. completed/failed/waiting/rejected タスク → session resume で会話継続
   const [existingTask] = await db
     .select()
     .from(inboxTasks)
     .where(
       and(
-        eq(inboxTasks.slackThreadTs, parentThreadTs),
+        or(
+          eq(inboxTasks.slackThreadTs, parentThreadTs),
+          eq(inboxTasks.slackMessageTs, parentThreadTs),
+        ),
         eq(inboxTasks.slackChannel, INBOX_CHANNEL),
         or(
           eq(inboxTasks.status, "completed"),
           eq(inboxTasks.status, "failed"),
           eq(inboxTasks.status, "waiting"),
+          eq(inboxTasks.status, "rejected"),
         ),
       ),
     )
@@ -114,6 +124,30 @@ export async function handleThreadReply(
     .limit(1);
 
   if (existingTask) {
+    // 失敗/完了済みタスクへの再投稿: 親メッセージのリアクションを :eyes: に切り替え
+    const prevReaction =
+      existingTask.status === "failed" || existingTask.status === "rejected"
+        ? "x"
+        : existingTask.status === "completed"
+          ? "white_check_mark"
+          : existingTask.status === "waiting"
+            ? "bell"
+            : null;
+    if (prevReaction) {
+      await removeReaction(
+        client,
+        INBOX_CHANNEL,
+        existingTask.slackMessageTs,
+        prevReaction,
+      );
+    }
+    await addReaction(
+      client,
+      INBOX_CHANNEL,
+      existingTask.slackMessageTs,
+      "eyes",
+    );
+
     if (existingTask.sessionId) {
       await resumeInThread(
         client,
@@ -184,6 +218,37 @@ export async function resumeInThread(
         .where(eq(inboxTasks.id, task.id));
     }
 
+    // ステータス判定: 入力待ち / 完了 / 失敗
+    const taskStatus = result.needsInput
+      ? "waiting"
+      : result.success
+        ? "completed"
+        : "failed";
+
+    // 親メッセージのリアクションを結果に応じて更新
+    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
+    const parentReaction = result.needsInput
+      ? "bell"
+      : result.success
+        ? "white_check_mark"
+        : "x";
+    await addReaction(
+      client,
+      INBOX_CHANNEL,
+      task.slackMessageTs,
+      parentReaction,
+    );
+
+    // DB ステータスも更新
+    await db
+      .update(inboxTasks)
+      .set({
+        status: taskStatus,
+        result: result.resultText,
+        completedAt: taskStatus === "waiting" ? null : new Date(),
+      })
+      .where(eq(inboxTasks.id, task.id));
+
     // フォローアップ回答: メタ情報（ツール数等）は不要、テキストのみ表示
     const blocks = buildResultBlocks(result.resultText);
 
@@ -206,6 +271,9 @@ export async function resumeInThread(
       );
     }
     await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
+    // 親メッセージのリアクションを :x: に戻す
+    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
+    await addReaction(client, INBOX_CHANNEL, task.slackMessageTs, "x");
     await client.chat.postMessage({
       channel: INBOX_CHANNEL,
       thread_ts: threadTs,
@@ -259,12 +327,25 @@ export async function newQueryInThread(
     await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
 
     // sessionId を DB に保存（次回は resume できるように）
+    const updates: Record<string, unknown> = {
+      status: result.success ? "completed" : "failed",
+      result: result.resultText,
+      completedAt: new Date(),
+    };
     if (result.sessionId) {
-      await db
-        .update(inboxTasks)
-        .set({ sessionId: result.sessionId })
-        .where(eq(inboxTasks.id, task.id));
+      updates.sessionId = result.sessionId;
     }
+    await db.update(inboxTasks).set(updates).where(eq(inboxTasks.id, task.id));
+
+    // 親メッセージのリアクションを結果に応じて更新
+    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
+    const parentReaction = result.success ? "white_check_mark" : "x";
+    await addReaction(
+      client,
+      INBOX_CHANNEL,
+      task.slackMessageTs,
+      parentReaction,
+    );
 
     const blocks = buildResultBlocks(result.resultText);
     await client.chat.postMessage({
@@ -286,6 +367,9 @@ export async function newQueryInThread(
         .catch(() => {});
     }
     await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
+    // 親メッセージのリアクションを :x: に戻す
+    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
+    await addReaction(client, INBOX_CHANNEL, task.slackMessageTs, "x");
     await client.chat.postMessage({
       channel: INBOX_CHANNEL,
       thread_ts: threadTs,

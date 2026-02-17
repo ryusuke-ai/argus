@@ -55,6 +55,7 @@ export interface TaskInput {
 }
 
 import type { ProgressReporter } from "../../utils/progress-reporter.js";
+import { PERSONAL_KNOWLEDGE_PROMPT } from "../../constants.js";
 
 function buildSystemPrompt(): string {
   const now = new Date();
@@ -108,30 +109,30 @@ function buildSystemPrompt(): string {
 
 メール送信を指示された場合は、必ずこの send_email ツールを使用してください。Bash でコードを書いて送信しようとしないでください。
 
-### Personal Knowledge MCP
-ユーザーの個人情報（価値観、強み、思考スタイル、好み、習慣等）を保存・検索するナレッジベースです。
-ユーザーの個人情報に関する質問を受けたら、**必ず最初に personal_list でファイル一覧を確認**し、該当しそうなファイルを personal_read で読んでください。
-
-- **personal_list**: ノート一覧を取得（category でフィルタ可能: self）
-- **personal_read**: 指定パスのノートを読む（例: "self/values.md"）
-- **personal_search**: キーワードでノート内容を横断検索
-- **personal_context**: パーソナリティ情報を取得（section: identity, values, strengths, thinking, preferences, routines）
-- **personal_add**: 新規ノートを作成
-- **personal_update**: 既存ノートを更新（append または replace）
-
-**使い方のコツ**:
-1. まず personal_list で全体像を把握する
-2. ファイル名から該当しそうなものを personal_read で読む
-3. 見つからない場合は personal_search で短いキーワード（例: 「目標」「強み」）で検索する
+${PERSONAL_KNOWLEDGE_PROMPT}
 
 ## ルール
 - 必ず日本語で回答する
-- **結果のみを簡潔に報告する**。途中の試行錯誤・調査過程・思考プロセスは一切含めない
-- 例: メール送信 → 「テストメールを送信しました。\n- 宛先: xxx\n- 件名: xxx」のみ
-- 例: 予定追加 → 「予定を追加しました。\n- 日時: xxx\n- タイトル: xxx」のみ
 - MCP ツールが利用可能な場合は、Bash でコードを書かず必ず MCP ツールを使う
 - エラーが発生した場合は原因を1行で説明する
 - 質問や確認はせず、最善の判断で進める
+
+## 出力フォーマット（最重要）
+ツールを呼ぶ途中でテキストを出力しないでください。
+**最後の1回だけ**、完了報告をテキスト出力してください。
+途中経過（「ファイルを読みました」「検索しました」「確認します」等）は一切書かないでください。
+
+最後の完了報告は**結果の要約だけ**を簡潔に書いてください:
+- メール送信 → 「メールを送信しました。\n- 宛先: xxx\n- 件名: xxx」
+- 予定追加 → 「予定を追加しました。\n- 日時: xxx\n- タイトル: xxx」
+- 調査 → 調査結果のみ（調査プロセスは不要）
+- コード変更 → 変更内容と結果のみ
+
+悪い例（これは出力しないで）:
+「まずファイルを確認します。→ 読み込みました。→ 次に編集します。→ 完了しました。結果は…」
+
+良い例:
+「予定を追加しました。\n- 日時: 2026/02/18 19:00-20:00\n- タイトル: チームミーティング」
 `;
 }
 
@@ -260,13 +261,19 @@ export class InboxExecutor {
     }
   }
 
+  /**
+   * エージェント出力から最後のテキストブロックだけを抽出する。
+   * ストリーム中に途中経過テキストが複数出力されていても、
+   * 最終的なまとめ（最後のテキストブロック）だけを返す。
+   */
   private extractText(result: AgentResult): string {
     const textBlocks = result.message.content.filter(
-      (block): block is { type: "text"; text: string } =>
+      (block): block is typeof block & { text: string } =>
         block.type === "text" && typeof block.text === "string",
     );
-    const text = textBlocks.map((block) => block.text).join("\n");
-    return text || "(結果テキストなし)";
+    if (textBlocks.length === 0) return "(結果テキストなし)";
+    // 最後のテキストブロックのみ（= エージェントの最終まとめ）
+    return textBlocks[textBlocks.length - 1].text;
   }
 
   /**

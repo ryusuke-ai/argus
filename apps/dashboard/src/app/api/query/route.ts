@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@argus/agent-core";
+import { query, extractText } from "@argus/agent-core";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,10 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: result.success,
       sessionId: result.sessionId,
-      content: result.message.content
-        .filter((block) => block.type === "text")
-        .map((block) => block.text)
-        .join("\n"),
+      content: extractText(result.message.content),
       cost: result.message.total_cost_usd,
     });
   } catch (error) {

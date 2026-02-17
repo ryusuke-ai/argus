@@ -373,6 +373,8 @@ describe("PodcastPublisher", () => {
   describe("publishPodcast", () => {
     beforeEach(() => {
       vi.stubEnv("DASHBOARD_BASE_URL", "https://dashboard.example.com");
+      vi.stubEnv("SUPABASE_URL", "");
+      vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
     });
 
     it("should copy MP3 to episodes dir and return URLs", async () => {
@@ -497,6 +499,8 @@ describe("PodcastPublisher", () => {
   describe("RSS update with published episodes from DB", () => {
     beforeEach(() => {
       vi.stubEnv("DASHBOARD_BASE_URL", "https://dashboard.example.com");
+      vi.stubEnv("SUPABASE_URL", "");
+      vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
       vi.stubEnv("PODCAST_TITLE", "テストポッドキャスト");
       vi.stubEnv("PODCAST_DESCRIPTION", "テスト説明");
       vi.stubEnv("PODCAST_AUTHOR", "TestAuthor");
@@ -645,6 +649,8 @@ describe("PodcastPublisher", () => {
 
     it("should use local storage when Supabase is not configured", async () => {
       vi.unstubAllEnvs();
+      vi.stubEnv("SUPABASE_URL", "");
+      vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
       vi.resetModules();
       mockExistsSync.mockReturnValue(true);
       mockDbWhere.mockResolvedValue([]);

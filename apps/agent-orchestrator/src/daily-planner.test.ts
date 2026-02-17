@@ -1450,7 +1450,7 @@ describe("daily-planner", () => {
       );
     });
 
-    it("should collect data, build canvas, post, and save", async () => {
+    it("should collect data, post message, and save", async () => {
       // Mock calendar
       mockLoadTokens.mockResolvedValue({
         accessToken: "token",
@@ -1463,7 +1463,7 @@ describe("daily-planner", () => {
       });
       mockListEvents.mockResolvedValue({ success: true, data: [] });
 
-      // Mock emails + tasks + todos (empty) + findExistingCanvasId (no existing canvas)
+      // Mock emails + tasks + todos (empty)
       (db.select as ReturnType<typeof vi.fn>).mockImplementation(() => ({
         from: vi.fn().mockImplementation(() => ({
           where: vi.fn().mockImplementation(() => {
@@ -1478,9 +1478,9 @@ describe("daily-planner", () => {
         })),
       }));
 
-      // Mock Slack Canvas API
+      // Mock Slack chat.postMessage API
       const mockFetchImpl = vi.fn().mockResolvedValue({
-        json: vi.fn().mockResolvedValue({ ok: true, canvas_id: "F0123CANVAS" }),
+        json: vi.fn().mockResolvedValue({ ok: true, ts: "1234567890.123456" }),
       });
       vi.stubGlobal("fetch", mockFetchImpl);
 
@@ -1491,9 +1491,9 @@ describe("daily-planner", () => {
 
       await generateDailyPlan();
 
-      // Should have created a Canvas
+      // Should have posted a normal message
       expect(mockFetchImpl).toHaveBeenCalledWith(
-        "https://slack.com/api/canvases.create",
+        "https://slack.com/api/chat.postMessage",
         expect.any(Object),
       );
 

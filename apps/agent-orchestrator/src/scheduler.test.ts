@@ -32,6 +32,23 @@ vi.mock("./agent-executor.js", () => ({
   executeAgent: vi.fn(),
 }));
 
+// Mock modules imported by scheduler but not relevant to agent scheduling tests
+vi.mock("./gmail-checker.js", () => ({
+  checkGmail: vi.fn(),
+}));
+vi.mock("./daily-planner/index.js", () => ({
+  generateDailyPlan: vi.fn(),
+}));
+vi.mock("./code-patrol/index.js", () => ({
+  runCodePatrol: vi.fn(),
+}));
+vi.mock("./consistency-checker/index.js", () => ({
+  runConsistencyCheck: vi.fn(),
+}));
+vi.mock("./canvas/daily-news-canvas.js", () => ({
+  updateDailyNewsCanvas: vi.fn(),
+}));
+
 import { AgentScheduler } from "./scheduler.js";
 import { db } from "@argus/db";
 import { executeAgent } from "./agent-executor.js";
@@ -75,11 +92,22 @@ describe("AgentScheduler", () => {
     stop: vi.fn(),
   });
 
+  const originalEnv = process.env;
+
   beforeEach(() => {
     vi.clearAllMocks();
     scheduler = new AgentScheduler();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Disable non-agent schedulers by clearing their env vars
+    process.env = { ...originalEnv };
+    delete process.env.GMAIL_ADDRESS;
+    delete process.env.DAILY_PLAN_CHANNEL;
+    delete process.env.CODE_PATROL_CHANNEL;
+    delete process.env.CONSISTENCY_CHECK_CHANNEL;
+    delete process.env.DAILY_NEWS_CHANNEL;
+    delete process.env.SLACK_NOTIFICATION_CHANNEL;
 
     // Default: validate returns true
     mockValidate.mockReturnValue(true);
@@ -98,6 +126,7 @@ describe("AgentScheduler", () => {
   afterEach(() => {
     consoleSpy.mockRestore();
     scheduler.shutdown();
+    process.env = originalEnv;
   });
 
   describe("initialize", () => {

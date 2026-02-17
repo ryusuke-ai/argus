@@ -199,6 +199,23 @@ pnpm dev
 | `pnpm db:push`          | Push schema changes to database      |
 | `pnpm lint`             | Run ESLint                           |
 
+### Docker Compose (Demo)
+
+No API keys or local toolchain required. Just Docker:
+
+```bash
+docker-compose up
+# Visit http://localhost:3150
+```
+
+This starts PostgreSQL and the Dashboard with pre-seeded demo data (sessions, agent executions, knowledge entries, inbox tasks, etc.). The Slack Bot and Orchestrator are excluded since they require external API credentials.
+
+To tear down and remove data:
+
+```bash
+docker-compose down -v
+```
+
 ## Design Decisions
 
 Key architectural decisions are documented as ADRs:

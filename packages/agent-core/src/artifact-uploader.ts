@@ -59,7 +59,7 @@ export function scanOutputDir(dir: string): Set<string> {
       }
     }
   } catch {
-    // Directory does not exist or is inaccessible — return empty Set
+    // Intentionally ignored: output directory may not exist yet; return empty set
   }
 
   return result;

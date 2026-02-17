@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { app } from "../app.js";
 import { SessionManager } from "../session-manager.js";
 import {
+  extractText,
   scanOutputDir,
   findNewArtifacts,
   uploadArtifactsToSlack,
@@ -152,13 +153,7 @@ export function setupMessageHandler(): void {
       }
 
       // Extract text content from response blocks
-      const assistantText = result.message.content
-        .filter(
-          (block): block is { type: "text"; text: string } =>
-            block.type === "text" && typeof block.text === "string",
-        )
-        .map((block) => block.text)
-        .join("\n");
+      const assistantText = extractText(result.message.content);
 
       const replyText = assistantText
         ? markdownToMrkdwn(assistantText)

@@ -4,6 +4,11 @@ import { NextRequest } from "next/server";
 
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
+  extractText: (content: Array<{ type: string; text?: string }>) =>
+    content
+      .filter((b) => b.type === "text" && typeof b.text === "string")
+      .map((b) => b.text)
+      .join("\n"),
 }));
 
 import { query } from "@argus/agent-core";

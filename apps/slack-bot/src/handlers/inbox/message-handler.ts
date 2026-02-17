@@ -3,7 +3,6 @@ import { app } from "../../app.js";
 import { db, inboxTasks } from "@argus/db";
 import { eq, and, or } from "drizzle-orm";
 import { classifyMessage } from "./classifier.js";
-import { summarizeJa } from "@argus/agent-core";
 import { buildClassificationBlocks } from "./reporter.js";
 import type { KnownBlock } from "@slack/types";
 import { addReaction, removeReaction } from "../../utils/reactions.js";
@@ -107,7 +106,27 @@ export function registerInboxListeners(): void {
         return;
       }
 
-      // 2. DB にタスクを挿入
+      // 2. Bot が summary をトップレベルに投稿 → スレッドタイトルになる
+      const summaryMsg = await client.chat.postMessage({
+        channel: INBOX_CHANNEL,
+        text: classification.summary,
+      });
+      const botThreadTs = summaryMsg.ts!;
+
+      // 3. 受付通知をスレッド内に投稿（intent + clarifyQuestion 等の詳細）
+      const blocks = buildClassificationBlocks({
+        summary: classification.summary,
+        intent: classification.intent,
+        clarifyQuestion: classification.clarifyQuestion,
+      });
+      await client.chat.postMessage({
+        channel: INBOX_CHANNEL,
+        thread_ts: botThreadTs,
+        text: `${classification.summary} (${classification.intent})`,
+        blocks: blocks as unknown as KnownBlock[],
+      });
+
+      // 4. DB にタスクを挿入（slackThreadTs は Bot メッセージの ts）
       const [task] = await db
         .insert(inboxTasks)
         .values({
@@ -116,36 +135,14 @@ export function registerInboxListeners(): void {
           summary: classification.summary,
           slackChannel: INBOX_CHANNEL,
           slackMessageTs: message.ts,
-          slackThreadTs: threadTs,
+          slackThreadTs: botThreadTs,
           status: classification.clarifyQuestion ? "pending" : "queued",
           originalMessage: text,
           executionPrompt: classification.executionPrompt,
         })
         .returning();
 
-      // 3. summary が長すぎる場合は短縮し、DB も更新
-      if (classification.summary.length > 30) {
-        classification.summary = summarizeJa(text);
-        await db
-          .update(inboxTasks)
-          .set({ summary: classification.summary })
-          .where(eq(inboxTasks.id, task.id));
-      }
-
-      // 受付通知をスレッドに投稿
-      const blocks = buildClassificationBlocks({
-        summary: classification.summary,
-        intent: classification.intent,
-        clarifyQuestion: classification.clarifyQuestion,
-      });
-      await client.chat.postMessage({
-        channel: INBOX_CHANNEL,
-        thread_ts: threadTs,
-        text: `${classification.summary} (${classification.intent})`,
-        blocks: blocks as unknown as KnownBlock[],
-      });
-
-      // 4. clarifyQuestion がある → 質問待ち, なければ → キュー処理開始
+      // 5. clarifyQuestion がある → 質問待ち, なければ → キュー処理開始
       if (classification.clarifyQuestion) {
         // 理解不能: 質問はブロック内に含まれている
         await removeReaction(client, INBOX_CHANNEL, message.ts, "eyes");
