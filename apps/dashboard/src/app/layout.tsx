@@ -16,7 +16,7 @@ export default function RootLayout({
     <html lang="ja">
       <body className="flex min-h-screen">
         <Navigation />
-        <div className="flex-1 ml-56">{children}</div>
+        <div className="flex-1 md:ml-56">{children}</div>
       </body>
     </html>
   );
