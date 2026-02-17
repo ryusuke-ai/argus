@@ -41,7 +41,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
   ]);
 
   return (
-    <main className="p-8 max-w-6xl">
+    <main className="p-4 pt-16 md:p-8 md:pt-8 max-w-6xl">
       <Link
         href="/sessions"
         className="text-blue-600 hover:underline mb-4 inline-block text-sm"
