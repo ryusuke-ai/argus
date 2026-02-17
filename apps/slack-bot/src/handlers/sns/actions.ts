@@ -8,15 +8,14 @@ import { addReaction } from "../../utils/reactions.js";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** postId の UUID バリデーション。無効な場合は Slack にエラーを返す。 */
-async function validatePostId(
-  postId: string | undefined,
+/** postId が無効な UUID の場合は Slack にエラーを返し true を返す。 */
+async function rejectInvalidPostId(
+  postId: string,
   client: WebClient,
   channelId?: string,
   messageTs?: string,
 ): Promise<boolean> {
-  if (!postId) return false;
-  if (UUID_RE.test(postId)) return true;
+  if (UUID_RE.test(postId)) return false;
   console.error(`[sns] Invalid postId (not UUID): "${postId}"`);
   if (channelId && messageTs) {
     await client.chat
@@ -27,7 +26,7 @@ async function validatePostId(
       })
       .catch(() => {});
   }
-  return false;
+  return true;
 }
 import {
   parseXPostContent,
@@ -77,7 +76,10 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
+    if (!postId) return;
+    if (
+      await rejectInvalidPostId(postId, client, ba.channel?.id, ba.message?.ts)
+    )
       return;
 
     const [post] = await db
@@ -132,7 +134,10 @@ export function setupSnsActions(): void {
     await ack();
     const ba = body as BlockAction;
     const postId = "value" in action ? action.value : undefined;
-    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
+    if (!postId) return;
+    if (
+      await rejectInvalidPostId(postId, client, ba.channel?.id, ba.message?.ts)
+    )
       return;
 
     await client.chat.postMessage({
@@ -153,7 +158,8 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!(await validatePostId(postId, client, channelId, messageTs))) return;
+    if (!postId) return;
+    if (await rejectInvalidPostId(postId, client, channelId, messageTs)) return;
 
     if (channelId && messageTs) {
       await addReaction(client, channelId, messageTs, "eyes");
@@ -203,13 +209,14 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
+    if (!postId) return;
     if (
-      !(await validatePostId(
+      await rejectInvalidPostId(
         postId,
         client,
         channelIdForReaction,
         messageTsForReaction,
-      ))
+      )
     )
       return;
 
@@ -289,7 +296,8 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!(await validatePostId(postId, client, channelId, messageTs))) return;
+    if (!postId) return;
+    if (await rejectInvalidPostId(postId, client, channelId, messageTs)) return;
 
     if (channelId && messageTs) {
       await addReaction(client, channelId, messageTs, "eyes");
@@ -340,13 +348,14 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
+    if (!postId) return;
     if (
-      !(await validatePostId(
+      await rejectInvalidPostId(
         postId,
         client,
         channelIdForReaction,
         messageTsForReaction,
-      ))
+      )
     )
       return;
 
@@ -426,7 +435,8 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!(await validatePostId(postId, client, channelId, messageTs))) return;
+    if (!postId) return;
+    if (await rejectInvalidPostId(postId, client, channelId, messageTs)) return;
 
     if (channelId && messageTs) {
       await addReaction(client, channelId, messageTs, "eyes");
@@ -473,7 +483,10 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
+    if (!postId) return;
+    if (
+      await rejectInvalidPostId(postId, client, ba.channel?.id, ba.message?.ts)
+    )
       return;
 
     try {
@@ -508,7 +521,10 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
+    if (!postId) return;
+    if (
+      await rejectInvalidPostId(postId, client, ba.channel?.id, ba.message?.ts)
+    )
       return;
 
     const channelId = ba.channel?.id;
