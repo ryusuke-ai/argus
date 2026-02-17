@@ -577,7 +577,7 @@ describe("SessionManager", () => {
       );
     });
 
-    it("should not call onProgress for non-notifiable tools like Read and Grep", async () => {
+    it("should call onProgress for Read and Grep tools", async () => {
       const session = {
         id: "uuid-2",
         sessionId: "",
@@ -606,6 +606,8 @@ describe("SessionManager", () => {
               toolName: "Read",
               toolInput: { file_path: "test.ts" },
             });
+            // 5秒以上間隔を空ける（スロットル: PROGRESS_THROTTLE_MS = 5000ms）
+            vi.advanceTimersByTime(5100);
             await capturedHooks.onPreToolUse({
               sessionId: "sess-1",
               toolUseId: "tu_2",
@@ -634,9 +636,19 @@ describe("SessionManager", () => {
 
       const onProgress = vi.fn().mockResolvedValue(undefined);
 
+      vi.useFakeTimers();
       await manager.handleMessage(session, "test", undefined, onProgress);
+      vi.useRealTimers();
 
-      expect(onProgress).not.toHaveBeenCalled();
+      expect(onProgress).toHaveBeenCalledTimes(2);
+      expect(onProgress).toHaveBeenNthCalledWith(
+        1,
+        "📁 test.ts を読み込んでいます",
+      );
+      expect(onProgress).toHaveBeenNthCalledWith(
+        2,
+        "🔍 コード内を検索しています",
+      );
     });
   });
 });
@@ -788,12 +800,57 @@ describe("formatToolProgress", () => {
     });
   });
 
-  describe("non-notifiable tools", () => {
-    it("should return null for Read, Grep, Glob, Edit", () => {
-      expect(formatToolProgress("Read", { file_path: "test.ts" })).toBeNull();
-      expect(formatToolProgress("Grep", { pattern: "foo" })).toBeNull();
-      expect(formatToolProgress("Glob", { pattern: "*.ts" })).toBeNull();
-      expect(formatToolProgress("Edit", { file_path: "test.ts" })).toBeNull();
+  describe("Read/Edit/Grep/Glob tools", () => {
+    it("should return progress message for Read", () => {
+      expect(
+        formatToolProgress("Read", { file_path: "/path/to/test.ts" }),
+      ).toBe("📁 test.ts を読み込んでいます");
+    });
+
+    it("should return progress message for Edit", () => {
+      expect(
+        formatToolProgress("Edit", { file_path: "/path/to/test.ts" }),
+      ).toBe("✏️ test.ts を編集しています");
+    });
+
+    it("should return progress message for Grep", () => {
+      expect(formatToolProgress("Grep", { pattern: "foo" })).toBe(
+        "🔍 コード内を検索しています",
+      );
+    });
+
+    it("should return progress message for Glob", () => {
+      expect(formatToolProgress("Glob", { pattern: "*.ts" })).toBe(
+        "🔍 ファイルを探しています",
+      );
+    });
+  });
+
+  describe("Web tools", () => {
+    it("should return progress message for WebSearch", () => {
+      expect(formatToolProgress("WebSearch", { query: "test" })).toBe(
+        "🌐 Webを検索しています",
+      );
+    });
+
+    it("should return progress message for WebFetch", () => {
+      expect(
+        formatToolProgress("WebFetch", { url: "https://example.com" }),
+      ).toBe("🌐 Webページを取得しています");
+    });
+  });
+
+  describe("MCP tools", () => {
+    it("should return progress for mcp__ prefixed tools", () => {
+      expect(formatToolProgress("mcp__calendar__list_events", {})).toBe(
+        "🔧 calendar: list_events",
+      );
+    });
+
+    it("should return browser progress for mcp__playwright tools", () => {
+      expect(formatToolProgress("mcp__playwright__browser_click", {})).toBe(
+        "🌐 ブラウザを操作しています",
+      );
     });
   });
 });

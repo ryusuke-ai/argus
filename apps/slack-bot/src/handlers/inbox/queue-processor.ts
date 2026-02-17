@@ -81,7 +81,7 @@ async function executeAndReport(
   task: InboxTask,
 ): Promise<void> {
   try {
-    // 進捗レポーター: 1メッセージ内にステップを累積表示
+    // 進捗レポーター: 1メッセージを chat.update で1行更新（最新ステップのみ表示）
     const estimate =
       ESTIMATE_MINUTES_BY_INTENT[task.intent] ||
       ESTIMATE_MINUTES_BY_INTENT.other;
@@ -122,12 +122,14 @@ async function executeAndReport(
 
     const durationSec = (result.durationMs / 1000).toFixed(1);
 
-    // ステータス判定: 入力待ち / 完了 / 失敗
-    const taskStatus = result.needsInput
-      ? "waiting"
-      : result.success
-        ? "completed"
-        : "failed";
+    // ステータス判定: 中止 / 入力待ち / 完了 / 失敗
+    const taskStatus = result.aborted
+      ? "rejected"
+      : result.needsInput
+        ? "waiting"
+        : result.success
+          ? "completed"
+          : "failed";
 
     // 進捗メッセージを削除（結果は別途投稿する）
     if (reporter) {
@@ -146,18 +148,20 @@ async function executeAndReport(
       })
       .where(eq(inboxTasks.id, task.id));
 
-    // リアクションで状態を示す: 🔔(入力待ち) / ✅(完了) / ❌(失敗)
+    // リアクションで状態を示す: 🛑(中止) / 🔔(入力待ち) / ✅(完了) / ❌(失敗)
     await removeReaction(
       client,
       task.slackChannel,
       task.slackMessageTs,
       "eyes",
     );
-    const reactionName = result.needsInput
-      ? "bell"
-      : result.success
-        ? "white_check_mark"
-        : "x";
+    const reactionName = result.aborted
+      ? "octagonal_sign"
+      : result.needsInput
+        ? "bell"
+        : result.success
+          ? "white_check_mark"
+          : "x";
     await addReaction(
       client,
       task.slackChannel,
@@ -198,11 +202,13 @@ async function executeAndReport(
             durationSec,
           });
 
-      const text = result.needsInput
-        ? `🔔 回答待ち: ${task.summary}`
-        : result.success
-          ? `✅ 完了: ${task.summary}`
-          : `❌ 失敗: ${task.summary}`;
+      const text = result.aborted
+        ? `🛑 中止: ${task.summary}`
+        : result.needsInput
+          ? `🔔 回答待ち: ${task.summary}`
+          : result.success
+            ? `✅ 完了: ${task.summary}`
+            : `❌ 失敗: ${task.summary}`;
 
       await client.chat.postMessage({
         channel: task.slackChannel,

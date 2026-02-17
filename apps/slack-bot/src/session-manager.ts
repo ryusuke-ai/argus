@@ -416,13 +416,44 @@ export function formatToolProgress(
       }
       return `⚡ スキルを実行しています`;
     }
+    case "Read": {
+      const filePath = toolInput.file_path;
+      if (typeof filePath === "string") {
+        const filename = filePath.split("/").pop() || filePath;
+        return `📁 ${filename} を読み込んでいます`;
+      }
+      return `📁 ファイルを読み込んでいます`;
+    }
+    case "Edit": {
+      const filePath = toolInput.file_path;
+      if (typeof filePath === "string") {
+        const filename = filePath.split("/").pop() || filePath;
+        return `✏️ ${filename} を編集しています`;
+      }
+      return `✏️ ファイルを編集しています`;
+    }
+    case "Grep":
+      return `🔍 コード内を検索しています`;
+    case "Glob":
+      return `🔍 ファイルを探しています`;
+    case "WebSearch":
+      return `🌐 Webを検索しています`;
+    case "WebFetch":
+      return `🌐 Webページを取得しています`;
     default: {
       // MCP tools (e.g. playwright_*) → ブラウザ操作の進捗
       if (
         toolName.startsWith("playwright_") ||
-        toolName.startsWith("browser_")
+        toolName.startsWith("browser_") ||
+        toolName.startsWith("mcp__playwright")
       ) {
         return `🌐 ブラウザを操作しています`;
+      }
+      if (toolName.startsWith("mcp__")) {
+        const parts = toolName.split("__");
+        const server = parts[1] || "";
+        const method = parts[2] || "";
+        return `🔧 ${server}: ${method}`;
       }
       return null;
     }
