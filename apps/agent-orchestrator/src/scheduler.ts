@@ -91,7 +91,7 @@ export class AgentScheduler {
   }
 
   /**
-   * Schedule Gmail checker cron job (every 5 minutes).
+   * Schedule Gmail checker cron job (every 3 hours).
    * Only activates when GMAIL_ADDRESS environment variable is set.
    */
   private scheduleGmailChecker(): void {
@@ -99,7 +99,7 @@ export class AgentScheduler {
       console.log("[Scheduler] Gmail checker disabled: GMAIL_ADDRESS not set");
       return;
     }
-    this.gmailTask = cron.schedule("*/5 * * * *", async () => {
+    this.gmailTask = cron.schedule("0 */3 * * *", async () => {
       console.log("[Scheduler] Running Gmail check...");
       try {
         await checkGmail();
@@ -108,7 +108,7 @@ export class AgentScheduler {
         console.error("[Scheduler] Gmail check error:", error);
       }
     });
-    console.log("[Scheduler] Gmail checker scheduled (every 5 minutes)");
+    console.log("[Scheduler] Gmail checker scheduled (every 3 hours)");
   }
 
   /**
