@@ -28,71 +28,142 @@ import {
 import { getPlatformLabel } from "../scheduling/scheduler-utils.js";
 import { normalizeMediaPath } from "../generation/artifact-extractors.js";
 
+/** メモリレベル排他制御フラグ（同一プロセス内での二重ポーリング防止） */
+const pollingState = { active: false };
+
 /**
  * スケジュール済み投稿を毎分チェックし、投稿時刻が到来したものを自動投稿する。
  */
 export async function pollScheduledPosts(client: WebClient): Promise<void> {
-  const now = new Date();
-
-  const scheduledPosts = await db
-    .select()
-    .from(snsPosts)
-    .where(
-      and(eq(snsPosts.status, "scheduled"), lte(snsPosts.scheduledAt, now)),
+  if (pollingState.active) {
+    console.log(
+      "[sns-scheduler] Previous polling cycle still running, skipping",
     );
+    return;
+  }
 
-  for (const post of scheduledPosts) {
-    try {
-      const result = await publishPost(post);
+  pollingState.active = true;
+  try {
+    const now = new Date();
 
-      if (result.success) {
-        await db
+    const scheduledPosts = await db
+      .select()
+      .from(snsPosts)
+      .where(
+        and(eq(snsPosts.status, "scheduled"), lte(snsPosts.scheduledAt, now)),
+      );
+
+    for (const post of scheduledPosts) {
+      try {
+        // CAS: API呼び出し前にステータスを "publishing" に変更（悲観的ロック）
+        const [locked] = await db
           .update(snsPosts)
-          .set({
-            status: "published",
-            publishedUrl: result.url || "",
-            publishedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(snsPosts.id, post.id));
+          .set({ status: "publishing", updatedAt: new Date() })
+          .where(
+            and(eq(snsPosts.id, post.id), eq(snsPosts.status, "scheduled")),
+          )
+          .returning({ id: snsPosts.id });
 
-        // Slack 通知
-        const platformLabel = getPlatformLabel(post.platform);
-        if (post.slackChannel) {
-          if (post.slackMessageTs) {
-            // 元メッセージを更新
-            await client.chat.update({
-              channel: post.slackChannel,
-              ts: post.slackMessageTs,
-              blocks: buildPublishedBlocks(
-                platformLabel,
-                result.url || "",
-              ) as KnownBlock[],
-              text: `${platformLabel} のスケジュール投稿が完了しました`,
-            });
-            await addReaction(
-              client,
-              post.slackChannel,
-              post.slackMessageTs,
-              "rocket",
-            );
-          } else {
-            // フォールバック: チャンネル直接投稿
-            await client.chat.postMessage({
-              channel: post.slackChannel,
-              blocks: buildPublishedBlocks(
-                platformLabel,
-                result.url || "",
-              ) as KnownBlock[],
-              text: `${platformLabel} のスケジュール投稿が完了しました`,
-            });
-          }
+        if (!locked) {
+          console.log(
+            `[sns-scheduler] Post ${post.id} already being processed, skipping`,
+          );
+          continue;
         }
 
-        console.log(
-          `[sns-scheduler] Published scheduled post: ${post.id} (${post.platform})`,
+        const result = await publishPost(post);
+
+        if (result.success) {
+          await db
+            .update(snsPosts)
+            .set({
+              status: "published",
+              publishedUrl: result.url || "",
+              publishedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(snsPosts.id, post.id));
+
+          // Slack 通知
+          const platformLabel = getPlatformLabel(post.platform);
+          if (post.slackChannel) {
+            if (post.slackMessageTs) {
+              // 元メッセージを更新
+              await client.chat.update({
+                channel: post.slackChannel,
+                ts: post.slackMessageTs,
+                blocks: buildPublishedBlocks(
+                  platformLabel,
+                  result.url || "",
+                ) as KnownBlock[],
+                text: `${platformLabel} のスケジュール投稿が完了しました`,
+              });
+              await addReaction(
+                client,
+                post.slackChannel,
+                post.slackMessageTs,
+                "rocket",
+              );
+            } else {
+              // フォールバック: チャンネル直接投稿
+              await client.chat.postMessage({
+                channel: post.slackChannel,
+                blocks: buildPublishedBlocks(
+                  platformLabel,
+                  result.url || "",
+                ) as KnownBlock[],
+                text: `${platformLabel} のスケジュール投稿が完了しました`,
+              });
+            }
+          }
+
+          console.log(
+            `[sns-scheduler] Published scheduled post: ${post.id} (${post.platform})`,
+          );
+        } else {
+          // 失敗 → failed に変更（無限ループ防止）
+          await db
+            .update(snsPosts)
+            .set({
+              status: "failed",
+              scheduledAt: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(snsPosts.id, post.id));
+
+          const platformLabel = getPlatformLabel(post.platform);
+          if (post.slackChannel) {
+            if (post.slackMessageTs) {
+              await client.chat.postMessage({
+                channel: post.slackChannel,
+                thread_ts: post.slackMessageTs,
+                text: `${platformLabel} のスケジュール投稿に失敗しました: ${result.error || "不明なエラー"}`,
+              });
+              await addReaction(
+                client,
+                post.slackChannel,
+                post.slackMessageTs,
+                "x",
+              );
+            } else {
+              await client.chat.postMessage({
+                channel: post.slackChannel,
+                text: `${platformLabel} のスケジュール投稿に失敗しました: ${result.error || "不明なエラー"}`,
+              });
+            }
+          }
+
+          console.error(
+            `[sns-scheduler] Scheduled publish failed: ${post.id}`,
+            result.error,
+          );
+        }
+      } catch (error) {
+        console.error(
+          `[sns-scheduler] Publish error for post ${post.id}:`,
+          error,
         );
-      } else {
+
         // 失敗 → failed に変更（無限ループ防止）
         await db
           .update(snsPosts)
@@ -103,67 +174,28 @@ export async function pollScheduledPosts(client: WebClient): Promise<void> {
           })
           .where(eq(snsPosts.id, post.id));
 
-        const platformLabel = getPlatformLabel(post.platform);
-        if (post.slackChannel) {
-          if (post.slackMessageTs) {
-            await client.chat.postMessage({
+        // Slack 通知
+        if (post.slackChannel && post.slackMessageTs) {
+          const platformLabel = getPlatformLabel(post.platform);
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          fireAndForget(
+            client.chat.postMessage({
               channel: post.slackChannel,
               thread_ts: post.slackMessageTs,
-              text: `${platformLabel} のスケジュール投稿に失敗しました: ${result.error || "不明なエラー"}`,
-            });
-            await addReaction(
-              client,
-              post.slackChannel,
-              post.slackMessageTs,
-              "x",
-            );
-          } else {
-            await client.chat.postMessage({
-              channel: post.slackChannel,
-              text: `${platformLabel} のスケジュール投稿に失敗しました: ${result.error || "不明なエラー"}`,
-            });
-          }
+              text: `${platformLabel} のスケジュール投稿で予期せぬエラーが発生しました: ${errorMsg}`,
+            }),
+            "scheduled post error notification",
+          );
+          fireAndForget(
+            addReaction(client, post.slackChannel, post.slackMessageTs, "x"),
+            "scheduled post error reaction",
+          );
         }
-
-        console.error(
-          `[sns-scheduler] Scheduled publish failed: ${post.id}`,
-          result.error,
-        );
-      }
-    } catch (error) {
-      console.error(
-        `[sns-scheduler] Publish error for post ${post.id}:`,
-        error,
-      );
-
-      // 失敗 → failed に変更（無限ループ防止）
-      await db
-        .update(snsPosts)
-        .set({
-          status: "failed",
-          scheduledAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(snsPosts.id, post.id));
-
-      // Slack 通知
-      if (post.slackChannel && post.slackMessageTs) {
-        const platformLabel = getPlatformLabel(post.platform);
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        fireAndForget(
-          client.chat.postMessage({
-            channel: post.slackChannel,
-            thread_ts: post.slackMessageTs,
-            text: `${platformLabel} のスケジュール投稿で予期せぬエラーが発生しました: ${errorMsg}`,
-          }),
-          "scheduled post error notification",
-        );
-        fireAndForget(
-          addReaction(client, post.slackChannel, post.slackMessageTs, "x"),
-          "scheduled post error reaction",
-        );
       }
     }
+  } finally {
+    pollingState.active = false;
   }
 }
 

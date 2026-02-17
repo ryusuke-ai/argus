@@ -55,6 +55,7 @@ export const snsPostStatusEnum = pgEnum("sns_post_status", [
   "image_ready",
   "rendered",
   "scheduled",
+  "publishing",
   "published",
   "skipped",
   "failed",
