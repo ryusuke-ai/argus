@@ -19,6 +19,7 @@ import {
   buildGitHubPostBlocks,
   buildPodcastPostBlocks,
   buildTikTokPostBlocks,
+  buildSectionBlocksFromText,
 } from "../ui/reporter.js";
 import { getNextOptimalTime, formatScheduledTime } from "./optimal-time.js";
 import type { Platform } from "./optimal-time.js";
@@ -214,40 +215,20 @@ export async function generateArticleSuggestion(
 
     // スレッドに全文投稿
     try {
-      const SECTION_LIMIT = 3000;
-      const body = content.body;
-      if (body.length <= SECTION_LIMIT) {
+      const fullText = `*${content.title}*\n\n${content.body}`;
+      const sectionBlocks = buildSectionBlocksFromText(fullText);
+      const total = sectionBlocks.length;
+
+      for (let i = 0; i < total; i++) {
         await client.chat.postMessage({
           channel: SNS_CHANNEL,
           thread_ts: mainMsg.ts,
-          blocks: [
-            {
-              type: "section",
-              text: { type: "mrkdwn", text: `*${content.title}*\n\n${body}` },
-            },
-          ],
-          text: `${content.title} (全文)`,
+          blocks: [sectionBlocks[i]],
+          text:
+            total === 1
+              ? `${content.title} (全文)`
+              : `${content.title} (${i + 1}/${total})`,
         });
-      } else {
-        for (let i = 0; i < body.length; i += SECTION_LIMIT) {
-          const chunk = body.slice(i, i + SECTION_LIMIT);
-          const part = Math.floor(i / SECTION_LIMIT) + 1;
-          const total = Math.ceil(body.length / SECTION_LIMIT);
-          await client.chat.postMessage({
-            channel: SNS_CHANNEL,
-            thread_ts: mainMsg.ts,
-            blocks: [
-              {
-                type: "section",
-                text: {
-                  type: "mrkdwn",
-                  text: part === 1 ? `*${content.title}*\n\n${chunk}` : chunk,
-                },
-              },
-            ],
-            text: `${content.title} (${part}/${total})`,
-          });
-        }
       }
     } catch (err) {
       console.warn(

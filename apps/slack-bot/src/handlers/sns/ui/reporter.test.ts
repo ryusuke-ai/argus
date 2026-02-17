@@ -16,6 +16,8 @@ import {
   buildRenderedBlocks,
   buildInstagramPostBlocks,
   buildInstagramImageBlocks,
+  splitTextForSection,
+  buildSectionBlocksFromText,
 } from "./reporter.js";
 
 /** ContextBlock の elements からテキストを安全に抽出するヘルパー */
@@ -722,6 +724,145 @@ describe("SNS Reporter", () => {
       const actions = blocks[4];
       expect(actions.elements[0].action_id).toBe("sns_publish");
       expect(actions.elements[0].value).toBe("post-1");
+    });
+  });
+
+  describe("splitTextForSection", () => {
+    it("should return text as-is when under limit", () => {
+      const text = "短いテキスト";
+      const chunks = splitTextForSection(text);
+      expect(chunks).toEqual([text]);
+    });
+
+    it("should return single chunk for exactly 3000 chars", () => {
+      const text = "a".repeat(3000);
+      const chunks = splitTextForSection(text);
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0]).toBe(text);
+    });
+
+    it("should split at newline boundary when over limit", () => {
+      // 2900文字 + 改行 + 200文字 = 3101文字
+      const firstPart = "あ".repeat(2900);
+      const secondPart = "い".repeat(200);
+      const text = `${firstPart}\n${secondPart}`;
+      const chunks = splitTextForSection(text);
+      expect(chunks).toHaveLength(2);
+      expect(chunks[0]).toBe(firstPart);
+      expect(chunks[1]).toBe(secondPart);
+    });
+
+    it("should force-split when no newline is found within limit", () => {
+      const text = "a".repeat(6000);
+      const chunks = splitTextForSection(text);
+      expect(chunks).toHaveLength(2);
+      expect(chunks[0]).toBe("a".repeat(3000));
+      expect(chunks[1]).toBe("a".repeat(3000));
+    });
+
+    it("should handle empty text", () => {
+      const chunks = splitTextForSection("");
+      expect(chunks).toEqual([""]);
+    });
+
+    it("should split very long text into multiple chunks", () => {
+      // 9100文字のテキスト、各行100文字
+      const lines = Array.from(
+        { length: 91 },
+        (_, i) => `行${String(i + 1).padStart(3, "0")}: ${"x".repeat(92)}`,
+      );
+      const text = lines.join("\n");
+      expect(text.length).toBeGreaterThan(3000);
+
+      const chunks = splitTextForSection(text);
+      // 全てのチャンクが3000文字以下
+      for (const chunk of chunks) {
+        expect(chunk.length).toBeLessThanOrEqual(3000);
+      }
+      // 元のテキストが完全に保持されている（改行で分割するので復元可能）
+      expect(chunks.join("\n")).toBe(text);
+    });
+
+    it("should respect custom limit", () => {
+      const text = "abc\ndef\nghi";
+      const chunks = splitTextForSection(text, 5);
+      expect(chunks).toEqual(["abc", "def", "ghi"]);
+    });
+
+    it("should handle text with only newlines", () => {
+      const text = "\n\n\n";
+      const chunks = splitTextForSection(text);
+      expect(chunks).toEqual([text]);
+    });
+
+    it("should handle single very long line followed by short lines", () => {
+      const longLine = "x".repeat(3500);
+      const shortLine = "short";
+      const text = `${longLine}\n${shortLine}`;
+      const chunks = splitTextForSection(text);
+      // 最初のチャンクは3000文字（強制分割）
+      expect(chunks[0].length).toBeLessThanOrEqual(3000);
+      // テキスト全体が保持されている
+      const reconstructed = chunks.join("\n");
+      // 強制分割の場合は改行なしで結合
+      expect(reconstructed.length).toBeGreaterThanOrEqual(text.length);
+    });
+  });
+
+  describe("buildSectionBlocksFromText", () => {
+    it("should return single section block for short text", () => {
+      const blocks = buildSectionBlocksFromText("短いテキスト");
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].type).toBe("section");
+      expect(blocks[0].text?.text).toBe("短いテキスト");
+      expect(blocks[0].text?.type).toBe("mrkdwn");
+    });
+
+    it("should return multiple section blocks for long text", () => {
+      const text = Array.from(
+        { length: 100 },
+        (_, i) => `行${i + 1}: ${"x".repeat(90)}`,
+      ).join("\n");
+      expect(text.length).toBeGreaterThan(3000);
+
+      const blocks = buildSectionBlocksFromText(text);
+      expect(blocks.length).toBeGreaterThan(1);
+      for (const block of blocks) {
+        expect(block.type).toBe("section");
+        expect(block.text!.type).toBe("mrkdwn");
+        expect(block.text!.text.length).toBeLessThanOrEqual(3000);
+      }
+    });
+
+    it("should respect format parameter", () => {
+      const blocks = buildSectionBlocksFromText("テスト", "plain_text");
+      expect(blocks[0].text?.type).toBe("plain_text");
+    });
+  });
+
+  describe("buildXPostBlocks with long text", () => {
+    it("should split long X post text into multiple section blocks", () => {
+      const longText = Array.from(
+        { length: 50 },
+        (_, i) => `ポスト${i + 1}: ${"テスト".repeat(30)}`,
+      ).join("\n");
+      expect(longText.length).toBeGreaterThan(3000);
+
+      const blocks = buildXPostBlocks({
+        id: "post-long",
+        text: longText,
+        category: "tips",
+      });
+
+      // section ブロックが複数あること
+      const sectionBlocks = blocks.filter(
+        (b: KnownBlock) => b.type === "section",
+      ) as SectionBlock[];
+      expect(sectionBlocks.length).toBeGreaterThan(1);
+      // 全ての section ブロックのテキストが3000文字以下
+      for (const block of sectionBlocks) {
+        expect(block.text!.text.length).toBeLessThanOrEqual(3000);
+      }
     });
   });
 });
