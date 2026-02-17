@@ -4,6 +4,8 @@ import {
   parseClassificationResult,
   keywordClassification,
   isCopyPaste,
+  isProperNounPhrase,
+  ensureQualitySummary,
 } from "./classifier.js";
 import { summarizeJa as summarizeText } from "@argus/agent-core";
 
@@ -224,10 +226,7 @@ describe("isCopyPaste", () => {
 
   it("元メッセージそのままはコピペと判定", () => {
     expect(
-      isCopyPaste(
-        "最新のAI動向について調べて",
-        "最新のAI動向について調べて",
-      ),
+      isCopyPaste("最新のAI動向について調べて", "最新のAI動向について調べて"),
     ).toBe(true);
   });
 
@@ -238,21 +237,21 @@ describe("isCopyPaste", () => {
   });
 
   it("短い名詞句はコピペ判定されない", () => {
-    expect(
-      isCopyPaste("メール送信", "テストメールを送ってください"),
-    ).toBe(false);
+    expect(isCopyPaste("メール送信", "テストメールを送ってください")).toBe(
+      false,
+    );
   });
 
   it("動詞形で終わるものはコピペと判定", () => {
-    expect(
-      isCopyPaste("エラーを修正して", "エラーを修正してください"),
-    ).toBe(true);
+    expect(isCopyPaste("エラーを修正して", "エラーを修正してください")).toBe(
+      true,
+    );
   });
 
   it("依頼形で終わるものはコピペと判定", () => {
-    expect(
-      isCopyPaste("調べてほしい", "mailの判定基準を調べてほしい"),
-    ).toBe(true);
+    expect(isCopyPaste("調べてほしい", "mailの判定基準を調べてほしい")).toBe(
+      true,
+    );
   });
 
   it("体言止めの名詞句はOK", () => {
@@ -281,5 +280,138 @@ describe("isCopyPaste", () => {
   it("「〜する」形は判定しない（名詞的用法もあるため）", () => {
     // 「調査・修正」のような名詞句はOK
     expect(isCopyPaste("原因調査と修正", "原因調査して、修正して")).toBe(false);
+  });
+
+  it("「〜になって」で終わるものはコピペと判定（動詞形）", () => {
+    expect(
+      isCopyPaste(
+        "一回リアクションが❌になって",
+        "一回リアクションが❌になって",
+      ),
+    ).toBe(true);
+  });
+
+  it("「〜になっている」で終わるものはコピペと判定", () => {
+    expect(
+      isCopyPaste("ビルドがエラーになっている", "ビルドがエラーになっている"),
+    ).toBe(true);
+  });
+
+  it("「〜見える」で終わるものはコピペと判定", () => {
+    expect(
+      isCopyPaste(
+        "途中で切れてるように見える",
+        "途中で文字数制限かなんかで切れてるように見える",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("isProperNounPhrase", () => {
+  it("体言止めの名詞句はtrue", () => {
+    expect(isProperNounPhrase("Inboxタイトル要約改善")).toBe(true);
+    expect(isProperNounPhrase("AI最新動向の調査")).toBe(true);
+    expect(isProperNounPhrase("メール送信")).toBe(true);
+    expect(isProperNounPhrase("リアクション❌問題")).toBe(true);
+  });
+
+  it("動詞形で終わるものはfalse", () => {
+    expect(isProperNounPhrase("一回リアクションが❌になって")).toBe(false);
+    expect(isProperNounPhrase("ビルドがエラーになっている")).toBe(false);
+    expect(isProperNounPhrase("途中で切れてるように見える")).toBe(false);
+    expect(isProperNounPhrase("原因調査して")).toBe(false);
+  });
+});
+
+describe("ensureQualitySummary（APIなしフォールバック経路）", () => {
+  // client=null → AI再要約スキップ → summarizeJa + cleanupSummaryEnding のみで処理
+  // これが最も脆弱なパスで、実際に問題が発生していた経路
+
+  it("「〜になって」で終わる summary を体言止めに修正する", async () => {
+    const original = "一回リアクションが❌になって";
+    // LLMがコピペ summary を返した場合をシミュレーション
+    const badSummary = "一回リアクションが❌になって";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(`ensureQualitySummary result: "${result}"`);
+    // 動詞形で終わらないこと
+    expect(result).not.toMatch(/(?:なって|して|する|ている|ください)$/);
+    // 体言止めであること
+    expect(isProperNounPhrase(result)).toBe(true);
+    expect(result.length).toBeLessThanOrEqual(30);
+  });
+
+  it("「〜になっている」で終わる summary を修正する", async () => {
+    const original = "ビルドがエラーになっている";
+    const badSummary = "ビルドがエラーになっている";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(`ensureQualitySummary result: "${result}"`);
+    expect(result).not.toMatch(/(?:なっている|して|する)$/);
+    expect(isProperNounPhrase(result)).toBe(true);
+  });
+
+  it("「〜ように見える」で終わる summary を修正する", async () => {
+    const original =
+      "スレッドのタイトルが要約じゃなくて途中で文字数制限で切れてるように見える";
+    const badSummary = "途中で切れてるように見える";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary result: "${result}" (${result.length} chars)`,
+    );
+    console.log(
+      `isProperNounPhrase("${result}") = ${isProperNounPhrase(result)}`,
+    );
+    // 動詞形で終わらないこと
+    expect(result).not.toMatch(/見える$/);
+    // 30文字以内であること
+    expect(result.length).toBeLessThanOrEqual(30);
+    // コピペではないこと（元の発言がそのまま残っていない）
+    expect(result).not.toContain("見える");
+  });
+
+  it("「〜してください」で終わる summary を修正する", async () => {
+    const original = "classifierのテスト書いて、全部通るようにしてください";
+    const badSummary = "classifierのテスト書いてください";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(`ensureQualitySummary result: "${result}"`);
+    expect(result).not.toMatch(/(?:ください|して)$/);
+    expect(isProperNounPhrase(result)).toBe(true);
+  });
+
+  it("既に良い summary はそのまま通す", async () => {
+    const original = "最新のAI動向について調べてください";
+    const goodSummary = "AI最新動向の調査";
+    const result = await ensureQualitySummary(goodSummary, original, null);
+    expect(result).toBe("AI最新動向の調査");
+  });
+
+  it("長すぎる summary を30文字以内に切り詰める", async () => {
+    const original =
+      "agent-orchestratorのデイリープランナーのエラーハンドリングを大幅に改善して運用の安定性を向上させてください";
+    const badSummary =
+      "agent-orchestratorのデイリープランナーのエラーハンドリングを大幅に改善して";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(`ensureQualitySummary result: "${result}" (${result.length})`);
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(isProperNounPhrase(result)).toBe(true);
+  });
+
+  it("口語表現「〜じゃなくて」を含む summary を修正する", async () => {
+    const original =
+      "スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けてる";
+    const badSummary = "タイトルが要約じゃなくて発言そのまま";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary result: "${result}" (${result.length} chars)`,
+    );
+    console.log(
+      `isProperNounPhrase("${result}") = ${isProperNounPhrase(result)}`,
+    );
+    // 口語的接続表現が除去されていること
+    expect(result).not.toContain("じゃなくて");
+    expect(result).not.toContain("そのまま");
+    // 30文字以内
+    expect(result.length).toBeLessThanOrEqual(30);
+    // 動詞形で終わらない
+    expect(result).not.toMatch(/(?:てる|てた|して|する|ている)$/);
   });
 });

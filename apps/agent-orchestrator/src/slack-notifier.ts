@@ -3,14 +3,14 @@
 
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
+import { env } from "./env.js";
 
 export async function notifySlack(text: string): Promise<boolean> {
-  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
-  const NOTIFICATION_CHANNEL = process.env.SLACK_NOTIFICATION_CHANNEL;
+  const NOTIFICATION_CHANNEL = env.SLACK_NOTIFICATION_CHANNEL;
 
-  if (!SLACK_BOT_TOKEN || !NOTIFICATION_CHANNEL) {
+  if (!NOTIFICATION_CHANNEL) {
     console.log(
-      "[Slack Notifier] Skipping: SLACK_BOT_TOKEN or SLACK_NOTIFICATION_CHANNEL not set",
+      "[Slack Notifier] Skipping: SLACK_NOTIFICATION_CHANNEL not set",
     );
     return false;
   }
@@ -19,7 +19,7 @@ export async function notifySlack(text: string): Promise<boolean> {
     const response = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
+        Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -45,12 +45,6 @@ export async function uploadFileToSlack(
   channel: string,
   threadTs?: string,
 ): Promise<boolean> {
-  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
-  if (!SLACK_BOT_TOKEN) {
-    console.log("[Slack Notifier] Skipping upload: SLACK_BOT_TOKEN not set");
-    return false;
-  }
-
   try {
     const fileContent = await readFile(filePath);
     const fileName = basename(filePath);
@@ -65,7 +59,7 @@ export async function uploadFileToSlack(
 
     const response = await fetch("https://slack.com/api/files.uploadV2", {
       method: "POST",
-      headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}` },
+      headers: { Authorization: `Bearer ${env.SLACK_BOT_TOKEN}` },
       body: formData,
     });
 

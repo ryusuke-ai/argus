@@ -92,10 +92,10 @@ vi.mock("../../utils/progress-reporter.js", () => ({
 }));
 
 vi.mock("drizzle-orm", () => ({
-  eq: vi.fn((a: any, b: any) => ({ field: a, value: b })),
-  asc: vi.fn((a: any) => a),
-  and: vi.fn((...args: any[]) => ({ and: args })),
-  or: vi.fn((...args: any[]) => ({ or: args })),
+  eq: vi.fn((a: unknown, b: unknown) => ({ field: a, value: b })),
+  asc: vi.fn((a: unknown) => a),
+  and: vi.fn((...args: unknown[]) => ({ and: args })),
+  or: vi.fn((...args: unknown[]) => ({ or: args })),
 }));
 
 describe("setupInboxHandler", () => {
@@ -176,7 +176,7 @@ describe("message handler", () => {
 
     // Mock DB insert
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([
           {
@@ -222,7 +222,7 @@ describe("message handler", () => {
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([
           {
@@ -273,7 +273,7 @@ describe("reaction handler", () => {
 
     // Extract registered reaction_added handler
     const eventCalls = mockAppEvent.mock.calls.filter(
-      (c: any[]) => c[0] === "reaction_added",
+      (c: unknown[]) => c[0] === "reaction_added",
     );
     reactionHandler = eventCalls[0][1];
   });
@@ -281,7 +281,7 @@ describe("reaction handler", () => {
   it("should reject task on thumbsdown reaction", async () => {
     const { db } = await import("@argus/db");
 
-    (db.select as any).mockReturnValue({
+    vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([
@@ -297,7 +297,7 @@ describe("reaction handler", () => {
       }),
     });
 
-    (db.update as any).mockReturnValue({
+    vi.mocked(db.update).mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue(undefined),
       }),
@@ -334,7 +334,7 @@ describe("reaction handler", () => {
 
   it("should ignore bot reactions", async () => {
     const { db } = await import("@argus/db");
-    const selectCountBefore = (db.select as any).mock.calls.length;
+    const selectCountBefore = vi.mocked(db.select).mock.calls.length;
 
     const mockClient = {
       auth: { test: vi.fn().mockResolvedValue({ user_id: "BOT_USER" }) },
@@ -349,31 +349,31 @@ describe("reaction handler", () => {
     await reactionHandler({ event, client: mockClient });
 
     // db.select should not have been called by the reaction handler
-    expect((db.select as any).mock.calls.length).toBe(selectCountBefore);
+    expect(vi.mocked(db.select).mock.calls.length).toBe(selectCountBefore);
   });
 
   it("should ignore irrelevant reactions including thumbsup", async () => {
     const { db } = await import("@argus/db");
 
     // eyes reaction should be ignored
-    const selectCountBefore = (db.select as any).mock.calls.length;
+    const selectCountBefore = vi.mocked(db.select).mock.calls.length;
     const event1 = {
       reaction: "eyes",
       user: "HUMAN_USER",
       item: { type: "message", channel: "C_INBOX", ts: "1.1" },
     };
     await reactionHandler({ event: event1, client: {} });
-    expect((db.select as any).mock.calls.length).toBe(selectCountBefore);
+    expect(vi.mocked(db.select).mock.calls.length).toBe(selectCountBefore);
 
     // +1 (thumbsup) should also be ignored now (approval flow removed)
-    const selectCountBefore2 = (db.select as any).mock.calls.length;
+    const selectCountBefore2 = vi.mocked(db.select).mock.calls.length;
     const event2 = {
       reaction: "+1",
       user: "HUMAN_USER",
       item: { type: "message", channel: "C_INBOX", ts: "1.1" },
     };
     await reactionHandler({ event: event2, client: {} });
-    expect((db.select as any).mock.calls.length).toBe(selectCountBefore2);
+    expect(vi.mocked(db.select).mock.calls.length).toBe(selectCountBefore2);
   });
 });
 
@@ -390,7 +390,7 @@ describe("processQueue", () => {
 
     // First call: return a task. Second call: no more tasks.
     let selectCallCount = 0;
-    (db.select as any).mockImplementation(() => ({
+    vi.mocked(db.select).mockImplementation(() => ({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
@@ -419,7 +419,7 @@ describe("processQueue", () => {
       }),
     }));
 
-    (db.update as any).mockReturnValue({
+    vi.mocked(db.update).mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           returning: vi
@@ -448,7 +448,7 @@ describe("processQueue", () => {
     };
 
     const mod = await import("./index.js");
-    await mod.processQueue(mockClient as any);
+    await mod.processQueue(mockClient);
 
     // executeAndReport は fire-and-forget なので、microtask チェーンの完了を待つ
     await new Promise((r) => setTimeout(r, 50));
@@ -485,7 +485,7 @@ describe("handleThreadReply", () => {
     const { db } = await import("@argus/db");
 
     // Mock select to return a pending task (clarify awaiting reply)
-    (db.select as any).mockReturnValue({
+    vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([
@@ -504,7 +504,7 @@ describe("handleThreadReply", () => {
     });
 
     // Mock update
-    (db.update as any).mockReturnValue({
+    vi.mocked(db.update).mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue(undefined),
       }),

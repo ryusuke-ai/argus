@@ -182,7 +182,7 @@ describe("message handler", () => {
       },
     });
 
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([
           {
@@ -287,8 +287,11 @@ describe("message handler", () => {
     expect(db.insert).not.toHaveBeenCalled();
 
     // エラーメッセージが投稿される（生成中メッセージ + エラーメッセージ = 2回）
-    const errorCall = mockClient.chat.postMessage.mock.calls.find((call: any) =>
-      call[0]?.text?.includes("失敗"),
+    const errorCall = mockClient.chat.postMessage.mock.calls.find(
+      (call: unknown[]) => {
+        const arg = call[0] as Record<string, unknown> | undefined;
+        return typeof arg?.text === "string" && arg.text.includes("失敗");
+      },
     );
     expect(errorCall).toBeTruthy();
   });
@@ -321,7 +324,7 @@ describe("message handler", () => {
       },
     });
 
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi
           .fn()
@@ -362,7 +365,7 @@ describe("message handler", () => {
       },
     });
 
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi
           .fn()
@@ -402,7 +405,7 @@ describe("message handler", () => {
     });
 
     const { db } = await import("@argus/db");
-    (db.insert as any).mockReturnValue({
+    vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
         returning: vi
           .fn()

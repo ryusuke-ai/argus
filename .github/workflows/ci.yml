@@ -19,4 +19,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm build
-      - run: pnpm test
+      - run: pnpm test -- --coverage
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./apps/*/coverage/coverage-final.json,./packages/*/coverage/coverage-final.json
+          fail_ci_if_error: false

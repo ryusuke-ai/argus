@@ -31,5 +31,17 @@ const envSchema = z.object({
   AGENT_RETRY_DELAY_MS: z.string().optional(),
 });
 
-export const env = envSchema.parse(process.env);
 export type Env = z.infer<typeof envSchema>;
+
+// Proxy defers validation until first property access and always reads
+// from process.env so that test-level overrides are reflected.
+export const env: Env = new Proxy({} as Env, {
+  get(_, prop: string) {
+    const parsed = envSchema.safeParse(process.env);
+    if (parsed.success) {
+      return parsed.data[prop as keyof Env];
+    }
+    // Fallback: return raw process.env value (test environments without full env)
+    return process.env[prop];
+  },
+});

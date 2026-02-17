@@ -18,7 +18,8 @@ describe("Database Client", () => {
 
       // Accessing a property triggers initialization and should throw
       expect(() => {
-        (db as any).query;
+        // Access via bracket notation to trigger the lazy Proxy without type errors
+        (db as Record<string, unknown>)["query"];
       }).toThrow("DATABASE_URL is not set");
     } finally {
       // Restore original value

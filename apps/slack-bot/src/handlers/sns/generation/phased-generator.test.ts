@@ -607,7 +607,7 @@ describe("PhasedGenerator", () => {
     const result = await generator.run(singlePhaseConfig, "テスト");
 
     expect(result.success).toBe(true);
-    const content = result.content as any;
+    const content = result.content as Record<string, unknown>;
     expect(content.title).toBe("AI記事");
     expect(content.body).toContain("途中で切れた本文");
   });
@@ -638,7 +638,7 @@ describe("PhasedGenerator", () => {
     const result = await generator.run(singlePhaseConfig, "テスト");
 
     expect(result.success).toBe(true);
-    const content = result.content as any;
+    const content = result.content as Record<string, unknown>;
     expect(content.name).toBe("repo");
     expect(content.description).toBe("テスト");
   });

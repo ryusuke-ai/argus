@@ -1,6 +1,7 @@
 // Code Patrol v2 - Report building and Slack posting
 
 import type { ScanResult, PatrolReport } from "./types.js";
+import { env } from "../env.js";
 
 /**
  * Send a Slack notification message.
@@ -9,14 +10,13 @@ async function notifySlackMessage(
   channel: string,
   text: string,
 ): Promise<void> {
-  const slackBotToken = process.env.SLACK_BOT_TOKEN;
-  if (!slackBotToken) return;
+  if (!env.SLACK_BOT_TOKEN) return;
 
   try {
     await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${slackBotToken}`,
+        Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ channel, text }),
@@ -248,9 +248,7 @@ export async function postPatrolReport(
   blocks: Record<string, unknown>[],
   report: PatrolReport,
 ): Promise<string | null> {
-  const slackBotToken = process.env.SLACK_BOT_TOKEN;
-
-  if (!slackBotToken) {
+  if (!env.SLACK_BOT_TOKEN) {
     console.log("[Code Patrol] SLACK_BOT_TOKEN not set. Skipping post.");
     return null;
   }
@@ -259,7 +257,7 @@ export async function postPatrolReport(
     const response = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${slackBotToken}`,
+        Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

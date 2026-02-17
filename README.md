@@ -4,6 +4,7 @@
 [![Packages](https://img.shields.io/badge/packages-12-blue?style=flat-square)](https://github.com/ryusuke-ai/argus)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://github.com/ryusuke-ai/argus)
 [![Claude Agent SDK](https://img.shields.io/badge/Claude_Agent_SDK-v0.2.34-black?style=flat-square&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)
+[![codecov](https://codecov.io/gh/ryusuke-ai/argus/branch/master/graph/badge.svg)](https://codecov.io/gh/ryusuke-ai/argus)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 
 > AI-powered multi-agent orchestration system that autonomously manages tasks, generates content, and integrates with external services — all controlled through Slack.
@@ -227,6 +228,8 @@ Key architectural decisions are documented as ADRs:
 | [ADR-003](docs/adr/003-personal-knowledge-db-migration.md) | Migrated personal knowledge from filesystem to PostgreSQL for security and deployment |
 | [ADR-004](docs/adr/004-inbox-agent-autonomy-levels.md)     | Inbox agent with AI-based classification and autonomous execution pipeline            |
 | [ADR-005](docs/adr/005-multi-platform-sns-pipeline.md)     | Multi-platform SNS publishing with phased generation and Slack approval workflow      |
+
+For a complete list of all REST API endpoints and MCP server tools, see the [API Reference](./docs/API.md).
 
 ## Deployment
 

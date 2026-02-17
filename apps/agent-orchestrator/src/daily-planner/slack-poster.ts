@@ -3,6 +3,7 @@
 
 import { getDayOfWeek } from "./collectors.js";
 import { formatDateJa } from "./types.js";
+import { env } from "../env.js";
 
 // --- Slack posting ---
 
@@ -15,9 +16,7 @@ export async function postDailyPlan(
   blocks: Record<string, unknown>[],
   date: string,
 ): Promise<string | null> {
-  const slackBotToken = process.env.SLACK_BOT_TOKEN;
-
-  if (!slackBotToken) {
+  if (!env.SLACK_BOT_TOKEN) {
     console.log("[Daily Planner] SLACK_BOT_TOKEN not set. Skipping post.");
     return null;
   }
@@ -28,7 +27,7 @@ export async function postDailyPlan(
     const response = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${slackBotToken}`,
+        Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

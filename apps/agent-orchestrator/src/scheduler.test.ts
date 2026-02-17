@@ -46,7 +46,7 @@ vi.mock("./consistency-checker/index.js", () => ({
   runConsistencyCheck: vi.fn(),
 }));
 vi.mock("./canvas/daily-news-canvas.js", () => ({
-  updateDailyNewsCanvas: vi.fn(),
+  postDailyNews: vi.fn(),
 }));
 
 import { AgentScheduler } from "./scheduler.js";

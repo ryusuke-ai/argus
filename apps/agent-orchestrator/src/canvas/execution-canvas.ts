@@ -4,6 +4,7 @@
  */
 import { db, agentExecutions, agents } from "@argus/db";
 import { eq, gte, or, desc } from "drizzle-orm";
+import { env } from "../env.js";
 
 // --- Types ---
 
@@ -204,7 +205,7 @@ export async function postOrUpdateExecutionLog(): Promise<void> {
   }
   lastUpdateTime = now;
 
-  const channel = process.env.SLACK_NOTIFICATION_CHANNEL;
+  const channel = env.SLACK_NOTIFICATION_CHANNEL;
   if (!channel) {
     console.error(
       "[Execution Log] SLACK_NOTIFICATION_CHANNEL not set, skipping",
@@ -212,7 +213,7 @@ export async function postOrUpdateExecutionLog(): Promise<void> {
     return;
   }
 
-  const token = process.env.SLACK_BOT_TOKEN;
+  const token = env.SLACK_BOT_TOKEN;
   if (!token) {
     console.error("[Execution Log] SLACK_BOT_TOKEN not set, skipping");
     return;

@@ -21,8 +21,9 @@ import {
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { notifySlack, uploadFileToSlack } from "./slack-notifier.js";
-import { updateExecutionCanvas } from "./canvas/execution-canvas.js";
+import { postOrUpdateExecutionLog } from "./canvas/execution-canvas.js";
 import * as path from "node:path";
+import { env } from "./env.js";
 
 const agentConfigSchema = z
   .object({
@@ -81,7 +82,7 @@ export async function executeAgent(agentId: string): Promise<void> {
   }
 
   // Transient error — retry once
-  const envDelay = process.env.AGENT_RETRY_DELAY_MS;
+  const envDelay = env.AGENT_RETRY_DELAY_MS;
   const retryDelayMs = envDelay !== undefined ? Number(envDelay) : 30_000;
   console.log(`[Agent Executor] Retrying in ${retryDelayMs / 1000}s...`);
   await new Promise((r) => setTimeout(r, retryDelayMs));
@@ -205,8 +206,8 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
 
       // Update execution canvas (fire-and-forget)
       fireAndForget(
-        updateExecutionCanvas(),
-        "execution canvas update on error",
+        postOrUpdateExecutionLog(),
+        "execution log update on error",
       );
 
       return errorMessage;
@@ -238,7 +239,7 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     const snapshotAfter = scanOutputDir(outputDir);
     const newArtifacts = findNewArtifacts(snapshotBefore, snapshotAfter);
     if (newArtifacts.length > 0) {
-      const NOTIFICATION_CHANNEL = process.env.SLACK_NOTIFICATION_CHANNEL;
+      const NOTIFICATION_CHANNEL = env.SLACK_NOTIFICATION_CHANNEL;
       if (NOTIFICATION_CHANNEL) {
         console.log(
           `[Agent Executor] Uploading ${newArtifacts.length} artifact(s) to Slack`,
@@ -251,8 +252,8 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
 
     // Update execution canvas (fire-and-forget)
     fireAndForget(
-      updateExecutionCanvas(),
-      "execution canvas update on success",
+      postOrUpdateExecutionLog(),
+      "execution log update on success",
     );
 
     return null; // success
@@ -280,7 +281,7 @@ async function executeAgentOnce(agentId: string): Promise<string | null> {
     console.error(`[Agent Executor] Error: ${errorMessage}`);
 
     // Update execution canvas (fire-and-forget)
-    fireAndForget(updateExecutionCanvas(), "execution canvas update on catch");
+    fireAndForget(postOrUpdateExecutionLog(), "execution log update on catch");
 
     return errorMessage;
   }

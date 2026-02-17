@@ -10,6 +10,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
     exclude: [".next/**", "node_modules/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["json", "text"],
+    },
   },
   resolve: {
     alias: {

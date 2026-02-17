@@ -22,11 +22,22 @@ export async function fetchUnreadMessages(): Promise<
       return { success: true, data: [] };
     }
 
+    // Filter messages with valid IDs
+    const validMessages = res.data.messages.filter(
+      (msg): msg is { id: string; threadId?: string | null } => !!msg.id,
+    );
+
+    // Batch fetch in chunks of 10 to avoid overwhelming the API
+    const BATCH_SIZE = 10;
     const messages: GmailMessage[] = [];
-    for (const msg of res.data.messages) {
-      if (!msg.id) continue;
-      const detail = await getMessage(gmail, msg.id);
-      if (detail) messages.push(detail);
+    for (let i = 0; i < validMessages.length; i += BATCH_SIZE) {
+      const batch = validMessages.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map((msg) => getMessage(gmail, msg.id)),
+      );
+      for (const detail of results) {
+        if (detail) messages.push(detail);
+      }
     }
 
     return { success: true, data: messages };

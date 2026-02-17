@@ -36,6 +36,7 @@ import {
   buildReportBlocks,
   postPatrolReport,
 } from "./report-builder.js";
+import { env } from "../env.js";
 
 const execAsync = promisify(exec);
 
@@ -235,22 +236,25 @@ export function fallbackAnalysis(
  * Gather static analysis data for AI quality review.
  */
 export async function buildQualityInput(): Promise<string> {
-  const env = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
+  const shellEnv = {
+    ...process.env,
+    PATH: `/opt/homebrew/bin:${process.env.PATH}`,
+  };
   const parts: string[] = [];
 
   const [eslintResult, anyResult, nodePrefixResult] = await Promise.allSettled([
     execAsync("pnpm lint 2>&1 | tail -20 || true", {
       cwd: REPO_ROOT,
       timeout: 120_000,
-      env,
+      env: shellEnv,
     }),
     execAsync(
       `grep -rnc ": any" packages/ apps/ --include="*.ts" --exclude="*.test.ts" --exclude="*.d.ts" || true`,
-      { cwd: REPO_ROOT, timeout: 30_000, env },
+      { cwd: REPO_ROOT, timeout: 30_000, env: shellEnv },
     ),
     execAsync(
       `grep -rn "from ['\\"]\\(fs\\|path\\|child_process\\|util\\|crypto\\|os\\|http\\|https\\|stream\\|url\\|events\\)['\\"]" packages/ apps/ --include="*.ts" --exclude="*.test.ts" || true`,
-      { cwd: REPO_ROOT, timeout: 30_000, env },
+      { cwd: REPO_ROOT, timeout: 30_000, env: shellEnv },
     ),
   ]);
 
@@ -424,7 +428,7 @@ Cost: $${report.costUsd.toFixed(2)}
  * 4. Git stash pop → Report → Knowledge save
  */
 export async function runCodePatrol(): Promise<void> {
-  const channel = process.env.CODE_PATROL_CHANNEL;
+  const channel = env.CODE_PATROL_CHANNEL;
   if (!channel) {
     console.log(
       "[Code Patrol] CODE_PATROL_CHANNEL not set. Skipping code patrol.",

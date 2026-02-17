@@ -7,6 +7,7 @@ import { formatDate, collectDailyData } from "./collectors.js";
 import { buildBlocks } from "./block-builders.js";
 import { postDailyPlan } from "./slack-poster.js";
 import { saveDailyPlan } from "./db-saver.js";
+import { env } from "../env.js";
 
 // --- Re-exports for backward compatibility ---
 export { buildBlocks } from "./block-builders.js";
@@ -20,7 +21,7 @@ export { saveDailyPlan } from "./db-saver.js";
  * Called by the scheduler cron job.
  */
 export async function generateDailyPlan(): Promise<void> {
-  const channel = process.env.DAILY_PLAN_CHANNEL;
+  const channel = env.DAILY_PLAN_CHANNEL;
   if (!channel) {
     console.log(
       "[Daily Planner] DAILY_PLAN_CHANNEL not set. Skipping daily plan.",

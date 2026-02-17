@@ -110,7 +110,7 @@ function createMockClient() {
       add: vi.fn().mockResolvedValue({}),
       remove: vi.fn().mockResolvedValue({}),
     },
-  } as any;
+  };
 }
 
 // DB クエリチェーンのセットアップ

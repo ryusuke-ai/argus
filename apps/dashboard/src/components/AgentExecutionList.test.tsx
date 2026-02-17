@@ -2,8 +2,23 @@ import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import AgentExecutionList from "./AgentExecutionList";
+import type { AgentExecution } from "@argus/db/schema";
 
 vi.mock("@argus/db/schema", () => ({}));
+
+function makeExecution(
+  overrides: Partial<AgentExecution> &
+    Pick<AgentExecution, "id" | "agentId" | "status" | "startedAt">,
+): AgentExecution {
+  return {
+    sessionId: null,
+    completedAt: null,
+    durationMs: null,
+    errorMessage: null,
+    output: null,
+    ...overrides,
+  };
+}
 
 describe("AgentExecutionList", () => {
   it("should display empty message when executions is empty", () => {
@@ -12,8 +27,8 @@ describe("AgentExecutionList", () => {
   });
 
   it("should display executions when provided", () => {
-    const executions = [
-      {
+    const executions: AgentExecution[] = [
+      makeExecution({
         id: "1",
         agentId: "agent-001",
         sessionId: "session-1",
@@ -23,8 +38,8 @@ describe("AgentExecutionList", () => {
         durationMs: 60000,
         errorMessage: null,
         output: null,
-      },
-      {
+      }),
+      makeExecution({
         id: "2",
         agentId: "agent-002",
         sessionId: "session-2",
@@ -34,10 +49,10 @@ describe("AgentExecutionList", () => {
         durationMs: 30000,
         errorMessage: "Something went wrong",
         output: null,
-      },
+      }),
     ];
 
-    render(<AgentExecutionList executions={executions as any} />);
+    render(<AgentExecutionList executions={executions} />);
 
     expect(screen.getByText("agent-001")).toBeInTheDocument();
     expect(screen.getByText("agent-002")).toBeInTheDocument();
@@ -48,21 +63,18 @@ describe("AgentExecutionList", () => {
   });
 
   it("should apply green style for success status", () => {
-    const executions = [
-      {
+    const executions: AgentExecution[] = [
+      makeExecution({
         id: "1",
         agentId: "agent-001",
-        sessionId: null,
         status: "success",
         startedAt: new Date("2024-01-01T00:00:00Z"),
         completedAt: new Date("2024-01-01T00:01:00Z"),
         durationMs: 60000,
-        errorMessage: null,
-        output: null,
-      },
+      }),
     ];
 
-    render(<AgentExecutionList executions={executions as any} />);
+    render(<AgentExecutionList executions={executions} />);
 
     const statusBadge = screen.getByText("success");
     expect(statusBadge.className).toContain("bg-emerald-50");
@@ -70,21 +82,17 @@ describe("AgentExecutionList", () => {
   });
 
   it("should apply red style for error status", () => {
-    const executions = [
-      {
+    const executions: AgentExecution[] = [
+      makeExecution({
         id: "1",
         agentId: "agent-001",
-        sessionId: null,
         status: "error",
         startedAt: new Date("2024-01-01T00:00:00Z"),
-        completedAt: null,
-        durationMs: null,
         errorMessage: "Failed",
-        output: null,
-      },
+      }),
     ];
 
-    render(<AgentExecutionList executions={executions as any} />);
+    render(<AgentExecutionList executions={executions} />);
 
     const statusBadge = screen.getByText("error");
     expect(statusBadge.className).toContain("bg-red-50");
@@ -92,21 +100,16 @@ describe("AgentExecutionList", () => {
   });
 
   it("should apply yellow style for other statuses", () => {
-    const executions = [
-      {
+    const executions: AgentExecution[] = [
+      makeExecution({
         id: "1",
         agentId: "agent-001",
-        sessionId: null,
         status: "running",
         startedAt: new Date("2024-01-01T00:00:00Z"),
-        completedAt: null,
-        durationMs: null,
-        errorMessage: null,
-        output: null,
-      },
+      }),
     ];
 
-    render(<AgentExecutionList executions={executions as any} />);
+    render(<AgentExecutionList executions={executions} />);
 
     const statusBadge = screen.getByText("running");
     expect(statusBadge.className).toContain("bg-amber-50");
@@ -114,21 +117,16 @@ describe("AgentExecutionList", () => {
   });
 
   it("should not display completed time when completedAt is null", () => {
-    const executions = [
-      {
+    const executions: AgentExecution[] = [
+      makeExecution({
         id: "1",
         agentId: "agent-001",
-        sessionId: null,
         status: "running",
         startedAt: new Date("2024-01-01T00:00:00Z"),
-        completedAt: null,
-        durationMs: null,
-        errorMessage: null,
-        output: null,
-      },
+      }),
     ];
 
-    render(<AgentExecutionList executions={executions as any} />);
+    render(<AgentExecutionList executions={executions} />);
 
     expect(screen.queryByText(/Completed:/)).not.toBeInTheDocument();
   });

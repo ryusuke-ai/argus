@@ -7,7 +7,8 @@ import { checkGmail } from "./gmail-checker.js";
 import { generateDailyPlan } from "./daily-planner/index.js";
 import { runCodePatrol } from "./code-patrol/index.js";
 import { runConsistencyCheck } from "./consistency-checker/index.js";
-import { updateDailyNewsCanvas } from "./canvas/daily-news-canvas.js";
+import { postDailyNews } from "./canvas/daily-news-canvas.js";
+import { env } from "./env.js";
 
 /**
  * AgentScheduler - manages cron-based scheduling for agents
@@ -24,7 +25,7 @@ export class AgentScheduler {
   private dailyPlanTask: ScheduledTask | null = null;
   private codePatrolTask: ScheduledTask | null = null;
   private consistencyCheckTask: ScheduledTask | null = null;
-  private dailyNewsCanvasTask: ScheduledTask | null = null;
+  private dailyNewsTask: ScheduledTask | null = null;
 
   /**
    * Initialize scheduler by loading all enabled agents from database
@@ -47,7 +48,7 @@ export class AgentScheduler {
     this.scheduleDailyPlanner();
     this.scheduleCodePatrol();
     this.scheduleConsistencyCheck();
-    this.scheduleDailyNewsCanvas();
+    this.scheduleDailyNews();
 
     console.log("[Scheduler] Initialization complete");
   }
@@ -94,7 +95,7 @@ export class AgentScheduler {
    * Only activates when GMAIL_ADDRESS environment variable is set.
    */
   private scheduleGmailChecker(): void {
-    if (!process.env.GMAIL_ADDRESS) {
+    if (!env.GMAIL_ADDRESS) {
       console.log("[Scheduler] Gmail checker disabled: GMAIL_ADDRESS not set");
       return;
     }
@@ -115,7 +116,7 @@ export class AgentScheduler {
    * Only activates when DAILY_PLAN_CHANNEL environment variable is set.
    */
   private scheduleDailyPlanner(): void {
-    if (!process.env.DAILY_PLAN_CHANNEL) {
+    if (!env.DAILY_PLAN_CHANNEL) {
       console.log(
         "[Scheduler] Daily planner disabled: DAILY_PLAN_CHANNEL not set",
       );
@@ -143,7 +144,7 @@ export class AgentScheduler {
    * Only activates when CODE_PATROL_CHANNEL environment variable is set.
    */
   private scheduleCodePatrol(): void {
-    if (!process.env.CODE_PATROL_CHANNEL) {
+    if (!env.CODE_PATROL_CHANNEL) {
       console.log(
         "[Scheduler] Code Patrol disabled: CODE_PATROL_CHANNEL not set",
       );
@@ -171,7 +172,7 @@ export class AgentScheduler {
    * Only activates when CONSISTENCY_CHECK_CHANNEL environment variable is set.
    */
   private scheduleConsistencyCheck(): void {
-    if (!process.env.CONSISTENCY_CHECK_CHANNEL) {
+    if (!env.CONSISTENCY_CHECK_CHANNEL) {
       console.log(
         "[Scheduler] Consistency Check disabled: CONSISTENCY_CHECK_CHANNEL not set",
       );
@@ -196,32 +197,29 @@ export class AgentScheduler {
   }
 
   /**
-   * Schedule Daily News Canvas update cron job (5:00 AM JST daily).
+   * Schedule Daily News post cron job (5:00 AM JST daily).
    * Only activates when DAILY_NEWS_CHANNEL or SLACK_NOTIFICATION_CHANNEL is set.
    */
-  private scheduleDailyNewsCanvas(): void {
-    const channel =
-      process.env.DAILY_NEWS_CHANNEL || process.env.SLACK_NOTIFICATION_CHANNEL;
+  private scheduleDailyNews(): void {
+    const channel = env.DAILY_NEWS_CHANNEL || env.SLACK_NOTIFICATION_CHANNEL;
     if (!channel) {
-      console.log(
-        "[Scheduler] Daily News Canvas disabled: no channel configured",
-      );
+      console.log("[Scheduler] Daily News disabled: no channel configured");
       return;
     }
-    this.dailyNewsCanvasTask = cron.schedule(
+    this.dailyNewsTask = cron.schedule(
       "0 5 * * *",
       async () => {
-        console.log("[Scheduler] Running Daily News Canvas update...");
+        console.log("[Scheduler] Running Daily News post...");
         try {
-          await updateDailyNewsCanvas();
-          console.log("[Scheduler] Daily News Canvas update complete");
+          await postDailyNews();
+          console.log("[Scheduler] Daily News post complete");
         } catch (error) {
-          console.error("[Scheduler] Daily News Canvas error:", error);
+          console.error("[Scheduler] Daily News error:", error);
         }
       },
       { timezone: "Asia/Tokyo" },
     );
-    console.log("[Scheduler] Daily News Canvas scheduled (5:00 AM JST daily)");
+    console.log("[Scheduler] Daily News scheduled (5:00 AM JST daily)");
   }
 
   /**
@@ -263,8 +261,8 @@ export class AgentScheduler {
     this.codePatrolTask = null;
     this.consistencyCheckTask?.stop();
     this.consistencyCheckTask = null;
-    this.dailyNewsCanvasTask?.stop();
-    this.dailyNewsCanvasTask = null;
+    this.dailyNewsTask?.stop();
+    this.dailyNewsTask = null;
     for (const [agentId, task] of this.tasks) {
       task.stop();
       console.log(`[Scheduler] Stopped task for agent: ${agentId}`);

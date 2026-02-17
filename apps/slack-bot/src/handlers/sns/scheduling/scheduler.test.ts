@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Platform } from "./optimal-time.js";
 
 // Mock node-cron
 const mockStop = vi.fn();
@@ -620,7 +621,7 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-threads-1" }]),
       }),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -632,7 +633,8 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     // PhasedGenerator.run should have been called for Threads (2 times since POSTS_PER_DAY.threads = 2)
     expect(mockPhasedRun).toHaveBeenCalled();
     const threadsCalls = mockPhasedRun.mock.calls.filter(
-      (call: any[]) => call[0]?.platform === "threads",
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>)?.platform === "threads",
     );
     expect(threadsCalls).toHaveLength(2);
   });
@@ -640,7 +642,7 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
   it("should use PhasedGenerator with githubConfig for GitHub suggestions", async () => {
     // Enable GitHub in POSTS_PER_DAY for this test
     const optimalTime = await import("./optimal-time.js");
-    (optimalTime as any).POSTS_PER_DAY.github = 1;
+    (optimalTime.POSTS_PER_DAY as Record<Platform, number>).github = 1;
 
     const { generateXPost } = await import("../generation/generator.js");
     vi.mocked(generateXPost).mockResolvedValue({
@@ -680,7 +682,7 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-github-1" }]),
       }),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -694,18 +696,19 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     vi.useRealTimers();
 
     const githubCalls = mockPhasedRun.mock.calls.filter(
-      (call: any[]) => call[0]?.platform === "github",
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>)?.platform === "github",
     );
     expect(githubCalls).toHaveLength(1);
 
     // Restore
-    (optimalTime as any).POSTS_PER_DAY.github = 0;
+    (optimalTime.POSTS_PER_DAY as Record<Platform, number>).github = 0;
   });
 
   it("should use PhasedGenerator with podcastConfig for Podcast suggestions", async () => {
     // Enable Podcast in POSTS_PER_DAY for this test
     const optimalTime = await import("./optimal-time.js");
-    (optimalTime as any).POSTS_PER_DAY.podcast = 1;
+    (optimalTime.POSTS_PER_DAY as Record<Platform, number>).podcast = 1;
 
     const { generateXPost } = await import("../generation/generator.js");
     vi.mocked(generateXPost).mockResolvedValue({
@@ -744,7 +747,7 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-podcast-1" }]),
       }),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -758,12 +761,13 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
     vi.useRealTimers();
 
     const podcastCalls = mockPhasedRun.mock.calls.filter(
-      (call: any[]) => call[0]?.platform === "podcast",
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>)?.platform === "podcast",
     );
     expect(podcastCalls).toHaveLength(1);
 
     // Restore
-    (optimalTime as any).POSTS_PER_DAY.podcast = 0;
+    (optimalTime.POSTS_PER_DAY as Record<Platform, number>).podcast = 0;
   });
 
   it("should handle PhasedGenerator failure for Threads gracefully", async () => {
@@ -800,7 +804,7 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-1" }]),
       }),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
@@ -814,9 +818,13 @@ describe("generateAllPlatformSuggestions — PhasedGenerator integration", () =>
 
     // Should have posted error messages for the Threads failures
     const errorCalls = mockClient.chat.postMessage.mock.calls.filter(
-      (call: any[]) =>
-        typeof call[0]?.text === "string" &&
-        call[0].text.includes("Threads 投稿案の生成に失敗しました"),
+      (call: unknown[]) => {
+        const arg = call[0] as Record<string, unknown> | undefined;
+        return (
+          typeof arg?.text === "string" &&
+          arg.text.includes("Threads 投稿案の生成に失敗しました")
+        );
+      },
     );
     expect(errorCalls.length).toBeGreaterThanOrEqual(1);
   });
@@ -903,7 +911,7 @@ describe("catchUpIfNeeded", () => {
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-catchup-1" }]),
       }),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const { catchUpIfNeeded } = await import("./scheduler.js");
     const mockClient = {
@@ -914,9 +922,13 @@ describe("catchUpIfNeeded", () => {
 
     // Should have posted catch-up notification
     const catchUpCalls = mockClient.chat.postMessage.mock.calls.filter(
-      (call: any[]) =>
-        typeof call[0]?.text === "string" &&
-        call[0].text.includes("起動時キャッチアップ"),
+      (call: unknown[]) => {
+        const arg = call[0] as Record<string, unknown> | undefined;
+        return (
+          typeof arg?.text === "string" &&
+          arg.text.includes("起動時キャッチアップ")
+        );
+      },
     );
     expect(catchUpCalls).toHaveLength(1);
     vi.useRealTimers();
@@ -969,7 +981,7 @@ describe("generateAllPlatformSuggestions — CLI health check", () => {
       values: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: "post-test" }]),
       }),
-    } as any);
+    } as ReturnType<typeof db.insert>);
 
     const { generateAllPlatformSuggestions } = await import("./scheduler.js");
     const mockClient = {
