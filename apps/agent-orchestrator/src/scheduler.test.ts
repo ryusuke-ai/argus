@@ -61,7 +61,7 @@ describe("AgentScheduler", () => {
     id: "agent-1",
     name: "Test Agent 1",
     type: "collector",
-    schedule: "*/5 * * * *",
+    schedule: "0 */3 * * *",
     config: { prompt: "Test prompt 1" },
     enabled: true,
     createdAt: new Date(),
