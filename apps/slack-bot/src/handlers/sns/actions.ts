@@ -285,14 +285,15 @@ export function setupSnsActions(): void {
     const ba = body as BlockAction;
     const channelId = ba.channel?.id;
     const messageTs = ba.message?.ts;
-    if (channelId && messageTs) {
-      await addReaction(client, channelId, messageTs, "eyes");
-    }
 
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
+    if (!(await validatePostId(postId, client, channelId, messageTs))) return;
+
+    if (channelId && messageTs) {
+      await addReaction(client, channelId, messageTs, "eyes");
+    }
 
     try {
       await db
@@ -335,6 +336,20 @@ export function setupSnsActions(): void {
     const ba = body as BlockAction;
     const channelIdForReaction = ba.channel?.id;
     const messageTsForReaction = ba.message?.ts;
+
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
+    if (
+      !(await validatePostId(
+        postId,
+        client,
+        channelIdForReaction,
+        messageTsForReaction,
+      ))
+    )
+      return;
+
     if (channelIdForReaction && messageTsForReaction) {
       await addReaction(
         client,
@@ -343,11 +358,6 @@ export function setupSnsActions(): void {
         "eyes",
       );
     }
-
-    const action = ba.actions?.[0];
-    const postId =
-      action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
 
     const [post] = await db
       .select()
@@ -412,14 +422,15 @@ export function setupSnsActions(): void {
     const ba = body as BlockAction;
     const channelId = ba.channel?.id;
     const messageTs = ba.message?.ts;
-    if (channelId && messageTs) {
-      await addReaction(client, channelId, messageTs, "eyes");
-    }
 
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
+    if (!(await validatePostId(postId, client, channelId, messageTs))) return;
+
+    if (channelId && messageTs) {
+      await addReaction(client, channelId, messageTs, "eyes");
+    }
 
     try {
       await db
@@ -462,7 +473,8 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
+    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
+      return;
 
     try {
       await db
@@ -496,10 +508,8 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) {
-      console.error("[sns] sns_schedule: postId not found in action value");
+    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
       return;
-    }
 
     const channelId = ba.channel?.id;
     const messageTs = ba.message?.ts;
