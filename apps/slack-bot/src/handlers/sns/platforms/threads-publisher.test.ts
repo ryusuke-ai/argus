@@ -157,34 +157,98 @@ describe("publishToThreads", () => {
     expect(result.error).toContain("500");
   });
 
-  it("should use original token when refresh fails", async () => {
+  it("should fail immediately when token refresh fails", async () => {
     const mockFetch = vi
       .fn()
       // Token refresh fails
       .mockResolvedValueOnce({
         ok: false,
-        status: 401,
-      })
-      // Container creation succeeds with original token
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: "container-999" }),
-      })
-      // Publish succeeds
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: "published-888" }),
+        status: 400,
       });
     vi.stubGlobal("fetch", mockFetch);
 
     const { publishToThreads } = await import("./threads-publisher.js");
     const result = await publishToThreads({ text: "Fallback test" });
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("トークンのリフレッシュに失敗");
+    expect(result.error).toContain("Meta Developer Console");
+    // Should NOT attempt to call the API with an invalid token
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 
-    // Should use original token when refresh fails
-    const [, containerOpts] = mockFetch.mock.calls[1];
-    const containerParams = new URLSearchParams(containerOpts.body);
-    expect(containerParams.get("access_token")).toBe("test-access-token");
+  it("should fail immediately when token refresh throws network error", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Network unreachable"));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { publishToThreads } = await import("./threads-publisher.js");
+    const result = await publishToThreads({ text: "Network fail test" });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("トークンのリフレッシュに失敗");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("should handle 'API access blocked' error on container creation", async () => {
+    const mockFetch = vi
+      .fn()
+      // Token refresh succeeds
+      .mockResolvedValueOnce(refreshResponse)
+      // Container creation fails with API access blocked
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: {
+            message: "API access blocked.",
+            type: "OAuthException",
+            code: 200,
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { publishToThreads } = await import("./threads-publisher.js");
+    const result = await publishToThreads({ text: "Blocked test" });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("API access blocked");
+    expect(result.error).toContain("Meta Developer Console");
+    // Should NOT retry — only 2 calls (refresh + container)
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("should handle 'API access blocked' error on publish step", async () => {
+    const mockFetch = vi
+      .fn()
+      // Token refresh succeeds
+      .mockResolvedValueOnce(refreshResponse)
+      // Container creation succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "container-123" }),
+      })
+      // Publish fails with API access blocked
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: {
+            message: "API access blocked.",
+            type: "OAuthException",
+            code: 200,
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { publishToThreads } = await import("./threads-publisher.js");
+    const result = await publishToThreads({ text: "Blocked publish test" });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("API access blocked");
+    expect(result.error).toContain("Meta Developer Console");
   });
 });
