@@ -361,7 +361,7 @@ describe("Gmail Action Handlers", () => {
       expect(mockClient.views.open).not.toHaveBeenCalled();
     });
 
-    it("should do nothing if record not found", async () => {
+    it("should open modal with placeholder values if record not found", async () => {
       mockLimit.mockResolvedValue([]);
 
       const mockAck = vi.fn();
@@ -377,7 +377,20 @@ describe("Gmail Action Handlers", () => {
       });
 
       expect(mockAck).toHaveBeenCalled();
-      expect(mockClient.views.open).not.toHaveBeenCalled();
+      expect(mockClient.views.open).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trigger_id: "trigger-123",
+          view: expect.objectContaining({
+            blocks: expect.arrayContaining([
+              expect.objectContaining({
+                text: expect.objectContaining({
+                  text: expect.stringContaining("（不明）"),
+                }),
+              }),
+            ]),
+          }),
+        }),
+      );
     });
   });
 
@@ -490,7 +503,9 @@ describe("Gmail Action Handlers", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
       const mockAck = vi.fn();
-      const mockClient = { chat: { update: vi.fn() } };
+      const mockClient = {
+        chat: { update: vi.fn(), postMessage: vi.fn() },
+      };
 
       await viewHandlers["gmail_edit_submit"]({
         ack: mockAck,

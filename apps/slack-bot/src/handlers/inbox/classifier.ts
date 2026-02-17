@@ -910,7 +910,7 @@ export async function classifyMessage(
   messageText: string,
 ): Promise<ClassificationResult> {
   const client = getClient();
-  let result: ClassificationResult;
+  let result: ClassificationResult | undefined;
   let apiWorked = false;
 
   // 1. API 直接呼び出し（最速）
@@ -944,7 +944,7 @@ export async function classifyMessage(
   }
 
   // 2. Max Plan (Agent SDK) — API が使えない場合のフォールバック
-  if (!apiWorked) {
+  if (!result) {
     const maxPlanResult = await classifyWithMaxPlan(messageText);
     if (maxPlanResult) {
       result = maxPlanResult;

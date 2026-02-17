@@ -548,7 +548,7 @@ describe("Daily Plan Action Handlers", () => {
 
       expect(mockAck).toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[DailyPlanActions] Error:",
+        "[DailyPlanActions] DB update failed (continuing with UI update):",
         expect.any(Error),
       );
 
