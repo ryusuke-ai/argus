@@ -9,7 +9,7 @@ export default async function TikTokPage() {
   const isConnected = !!tokens;
 
   return (
-    <main className="p-8 max-w-3xl">
+    <main className="p-4 pt-16 md:p-8 md:pt-8 max-w-3xl">
       <h1 className="text-3xl font-bold text-slate-900 mb-6">Post to TikTok</h1>
       {isConnected ? <TikTokPostForm /> : <TikTokConnect />}
     </main>

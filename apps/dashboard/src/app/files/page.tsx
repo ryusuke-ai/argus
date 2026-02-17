@@ -54,7 +54,7 @@ export default async function FilesPage() {
   }
 
   return (
-    <main className="p-8 max-w-5xl">
+    <main className="p-4 pt-16 md:p-8 md:pt-8 max-w-5xl">
       <h1 className="text-3xl font-bold text-slate-900 mb-6">
         Generated Files
       </h1>
