@@ -15,56 +15,56 @@ ON CONFLICT DO NOTHING;
 -- ===== Sessions =====
 INSERT INTO sessions (id, session_id, slack_channel, slack_thread_ts, created_at, updated_at)
 VALUES
-  ('s0000000-0000-0000-0000-000000000001', 'sess_daily_plan_001', '#argus-daily', '1700000001.000001', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'),
-  ('s0000000-0000-0000-0000-000000000002', 'sess_inbox_task_001', '#argus-inbox', '1700000002.000001', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
-  ('s0000000-0000-0000-0000-000000000003', 'sess_research_001', '#argus-general', '1700000003.000001', NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
-  ('s0000000-0000-0000-0000-000000000004', 'sess_sns_gen_001', '#argus-sns', '1700000004.000001', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours'),
-  ('s0000000-0000-0000-0000-000000000005', 'sess_gmail_check_001', '#argus-gmail', '1700000005.000001', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours'),
-  ('s0000000-0000-0000-0000-000000000006', 'sess_knowledge_001', '#argus-knowledge', '1700000006.000001', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour')
+  ('50000000-0000-0000-0000-000000000001', 'sess_daily_plan_001', '#argus-daily', '1700000001.000001', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'),
+  ('50000000-0000-0000-0000-000000000002', 'sess_inbox_task_001', '#argus-inbox', '1700000002.000001', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+  ('50000000-0000-0000-0000-000000000003', 'sess_research_001', '#argus-general', '1700000003.000001', NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
+  ('50000000-0000-0000-0000-000000000004', 'sess_sns_gen_001', '#argus-sns', '1700000004.000001', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours'),
+  ('50000000-0000-0000-0000-000000000005', 'sess_gmail_check_001', '#argus-gmail', '1700000005.000001', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours'),
+  ('50000000-0000-0000-0000-000000000006', 'sess_knowledge_001', '#argus-knowledge', '1700000006.000001', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour')
 ON CONFLICT DO NOTHING;
 
 -- ===== Messages =====
 INSERT INTO messages (id, session_id, content, role, created_at)
 VALUES
   -- Daily Plan session
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000001', 'Today''s morning briefing: 3 calendar events, 5 pending inbox tasks, 2 unread emails classified as important.', 'assistant', NOW() - INTERVAL '2 days'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000001', 'Please also include the weather forecast for Tokyo.', 'human', NOW() - INTERVAL '2 days' + INTERVAL '5 minutes'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000001', 'Updated briefing with weather: Sunny, 18C high. Your 10:00 meeting with Design Team is in 2 hours.', 'assistant', NOW() - INTERVAL '2 days' + INTERVAL '6 minutes'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000001', 'Today''s morning briefing: 3 calendar events, 5 pending inbox tasks, 2 unread emails classified as important.', 'assistant', NOW() - INTERVAL '2 days'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000001', 'Please also include the weather forecast for Tokyo.', 'human', NOW() - INTERVAL '2 days' + INTERVAL '5 minutes'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000001', 'Updated briefing with weather: Sunny, 18C high. Your 10:00 meeting with Design Team is in 2 hours.', 'assistant', NOW() - INTERVAL '2 days' + INTERVAL '6 minutes'),
 
   -- Research session
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000003', 'Claude Agent SDK v0.2 migration guide research', 'human', NOW() - INTERVAL '12 hours'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000003', 'Starting deep research on Claude Agent SDK v0.2 changes. Investigating 4 sources...', 'assistant', NOW() - INTERVAL '12 hours' + INTERVAL '1 minute'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000003', 'Research complete. Key findings: 1) AsyncGenerator API replaces callbacks, 2) MCP server support built-in, 3) Session resume now supports cross-process state.', 'assistant', NOW() - INTERVAL '12 hours' + INTERVAL '10 minutes'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000003', 'Claude Agent SDK v0.2 migration guide research', 'human', NOW() - INTERVAL '12 hours'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000003', 'Starting deep research on Claude Agent SDK v0.2 changes. Investigating 4 sources...', 'assistant', NOW() - INTERVAL '12 hours' + INTERVAL '1 minute'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000003', 'Research complete. Key findings: 1) AsyncGenerator API replaces callbacks, 2) MCP server support built-in, 3) Session resume now supports cross-process state.', 'assistant', NOW() - INTERVAL '12 hours' + INTERVAL '10 minutes'),
 
   -- SNS session
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000004', 'Generate a technical blog post about Observation-First Architecture for Zenn.', 'human', NOW() - INTERVAL '6 hours'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000004', 'Draft generated: "AI Agent Observation-First Architecture" - 2,500 words covering hook-based monitoring, episodic memory, and full traceability.', 'assistant', NOW() - INTERVAL '6 hours' + INTERVAL '15 minutes')
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000004', 'Generate a technical blog post about Observation-First Architecture for Zenn.', 'human', NOW() - INTERVAL '6 hours'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000004', 'Draft generated: "AI Agent Observation-First Architecture" - 2,500 words covering hook-based monitoring, episodic memory, and full traceability.', 'assistant', NOW() - INTERVAL '6 hours' + INTERVAL '15 minutes')
 ON CONFLICT DO NOTHING;
 
 -- ===== Tasks (Tool Executions) =====
 INSERT INTO tasks (id, session_id, tool_name, tool_input, tool_result, duration_ms, status, created_at)
 VALUES
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000001', 'google_calendar_list_events', '{"date": "2026-02-15"}', '{"events": [{"title": "Design Team Sync", "time": "10:00"}, {"title": "Sprint Review", "time": "14:00"}, {"title": "1on1", "time": "16:00"}]}', 1250, 'success', NOW() - INTERVAL '2 days'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000001', 'knowledge_search', '{"query": "pending tasks"}', '{"results": 5}', 340, 'success', NOW() - INTERVAL '2 days' + INTERVAL '1 minute'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000003', 'web_search', '{"query": "Claude Agent SDK v0.2 migration"}', '{"results": 12}', 3200, 'success', NOW() - INTERVAL '12 hours' + INTERVAL '2 minutes'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000003', 'web_fetch', '{"url": "https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk"}', '{"content": "...documentation content..."}', 1800, 'success', NOW() - INTERVAL '12 hours' + INTERVAL '4 minutes'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000003', 'knowledge_add', '{"name": "Claude SDK v0.2 Migration Guide", "content": "..."}', '{"success": true}', 450, 'success', NOW() - INTERVAL '12 hours' + INTERVAL '9 minutes'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000004', 'knowledge_search', '{"query": "observation architecture"}', '{"results": 3}', 280, 'success', NOW() - INTERVAL '6 hours' + INTERVAL '1 minute'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000004', 'text_editor', '{"command": "create", "path": "blog-draft.md"}', '{"success": true}', 150, 'success', NOW() - INTERVAL '6 hours' + INTERVAL '10 minutes'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000005', 'gmail_check_inbox', '{}', '{"new_messages": 3}', 2100, 'success', NOW() - INTERVAL '3 hours'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000005', 'gmail_classify', '{"message_id": "msg_001"}', '{"classification": "important"}', 800, 'success', NOW() - INTERVAL '3 hours' + INTERVAL '1 minute'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000006', 'knowledge_search', '{"query": "all active knowledge"}', '{"results": 8}', 310, 'success', NOW() - INTERVAL '1 hour'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000001', 'google_calendar_list_events', '{"date": "2026-02-15"}', '{"events": [{"title": "Design Team Sync", "time": "10:00"}, {"title": "Sprint Review", "time": "14:00"}, {"title": "1on1", "time": "16:00"}]}', 1250, 'success', NOW() - INTERVAL '2 days'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000001', 'knowledge_search', '{"query": "pending tasks"}', '{"results": 5}', 340, 'success', NOW() - INTERVAL '2 days' + INTERVAL '1 minute'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000003', 'web_search', '{"query": "Claude Agent SDK v0.2 migration"}', '{"results": 12}', 3200, 'success', NOW() - INTERVAL '12 hours' + INTERVAL '2 minutes'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000003', 'web_fetch', '{"url": "https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk"}', '{"content": "...documentation content..."}', 1800, 'success', NOW() - INTERVAL '12 hours' + INTERVAL '4 minutes'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000003', 'knowledge_add', '{"name": "Claude SDK v0.2 Migration Guide", "content": "..."}', '{"success": true}', 450, 'success', NOW() - INTERVAL '12 hours' + INTERVAL '9 minutes'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000004', 'knowledge_search', '{"query": "observation architecture"}', '{"results": 3}', 280, 'success', NOW() - INTERVAL '6 hours' + INTERVAL '1 minute'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000004', 'text_editor', '{"command": "create", "path": "blog-draft.md"}', '{"success": true}', 150, 'success', NOW() - INTERVAL '6 hours' + INTERVAL '10 minutes'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000005', 'gmail_check_inbox', '{}', '{"new_messages": 3}', 2100, 'success', NOW() - INTERVAL '3 hours'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000005', 'gmail_classify', '{"message_id": "msg_001"}', '{"classification": "important"}', 800, 'success', NOW() - INTERVAL '3 hours' + INTERVAL '1 minute'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000006', 'knowledge_search', '{"query": "all active knowledge"}', '{"results": 8}', 310, 'success', NOW() - INTERVAL '1 hour'),
   -- Include an error example
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000002', 'bash', '{"command": "npm test"}', '{"error": "ENOENT: no such file or directory"}', 5000, 'error', NOW() - INTERVAL '1 day')
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000002', 'bash', '{"command": "npm test"}', '{"error": "ENOENT: no such file or directory"}', 5000, 'error', NOW() - INTERVAL '1 day')
 ON CONFLICT DO NOTHING;
 
 -- ===== Agent Executions =====
 INSERT INTO agent_executions (id, agent_id, session_id, status, started_at, completed_at, duration_ms, error_message, output)
 VALUES
-  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001', 's0000000-0000-0000-0000-000000000001', 'success', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '45 seconds', 45000, NULL, '{"briefing_sent": true, "items": 10}'),
-  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', 's0000000-0000-0000-0000-000000000005', 'success', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours' + INTERVAL '30 seconds', 30000, NULL, '{"emails_checked": 3, "classified": 3}'),
-  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000003', 's0000000-0000-0000-0000-000000000006', 'success', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour' + INTERVAL '20 seconds', 20000, NULL, '{"knowledge_updated": 2}'),
-  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000004', 's0000000-0000-0000-0000-000000000004', 'success', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours' + INTERVAL '120 seconds', 120000, NULL, '{"posts_generated": 1, "platform": "zenn"}'),
+  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'success', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '45 seconds', 45000, NULL, '{"briefing_sent": true, "items": 10}'),
+  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000005', 'success', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours' + INTERVAL '30 seconds', 30000, NULL, '{"emails_checked": 3, "classified": 3}'),
+  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000006', 'success', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour' + INTERVAL '20 seconds', 20000, NULL, '{"knowledge_updated": 2}'),
+  (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000004', 'success', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours' + INTERVAL '120 seconds', 120000, NULL, '{"posts_generated": 1, "platform": "zenn"}'),
   -- Error execution
   (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000005', NULL, 'error', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day' + INTERVAL '10 seconds', 10000, 'GitHub API rate limit exceeded', NULL),
   -- Recent successful executions for timeline
@@ -76,19 +76,19 @@ ON CONFLICT DO NOTHING;
 -- ===== Lessons (Episodic Memory) =====
 INSERT INTO lessons (id, session_id, tool_name, error_pattern, reflection, resolution, severity, tags, created_at)
 VALUES
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000002', 'bash', 'ENOENT: no such file or directory', 'Attempted to run npm test in a directory without package.json. Need to verify working directory before executing commands.', 'Added cwd validation before bash tool execution.', 'medium', '["bash", "file-system", "validation"]', NOW() - INTERVAL '1 day'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000003', 'web_fetch', 'Request timeout after 30s', 'Some documentation sites have aggressive rate limiting. Should implement retry with exponential backoff.', 'Added 3-retry logic with 1s/2s/4s backoff for web_fetch failures.', 'low', '["web", "timeout", "retry"]', NOW() - INTERVAL '12 hours'),
-  (gen_random_uuid(), 's0000000-0000-0000-0000-000000000004', 'knowledge_add', 'Duplicate key violation on name column', 'Tried to add knowledge with an existing name. Should use upsert pattern instead of insert.', 'Switched to INSERT ... ON CONFLICT DO UPDATE for knowledge operations.', 'high', '["database", "upsert", "knowledge"]', NOW() - INTERVAL '6 hours')
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000002', 'bash', 'ENOENT: no such file or directory', 'Attempted to run npm test in a directory without package.json. Need to verify working directory before executing commands.', 'Added cwd validation before bash tool execution.', 'medium', '["bash", "file-system", "validation"]', NOW() - INTERVAL '1 day'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000003', 'web_fetch', 'Request timeout after 30s', 'Some documentation sites have aggressive rate limiting. Should implement retry with exponential backoff.', 'Added 3-retry logic with 1s/2s/4s backoff for web_fetch failures.', 'low', '["web", "timeout", "retry"]', NOW() - INTERVAL '12 hours'),
+  (gen_random_uuid(), '50000000-0000-0000-0000-000000000004', 'knowledge_add', 'Duplicate key violation on name column', 'Tried to add knowledge with an existing name. Should use upsert pattern instead of insert.', 'Switched to INSERT ... ON CONFLICT DO UPDATE for knowledge operations.', 'high', '["database", "upsert", "knowledge"]', NOW() - INTERVAL '6 hours')
 ON CONFLICT DO NOTHING;
 
 -- ===== Knowledges =====
-INSERT INTO knowledges (id, name, description, content, status, updated_at)
+INSERT INTO knowledges (id, name, description, content, updated_at)
 VALUES
-  (gen_random_uuid(), 'Claude Agent SDK Migration Guide', 'Key changes and migration steps for SDK v0.2', 'The Claude Agent SDK v0.2 introduces AsyncGenerator-based execution via query(), replacing the previous callback model. Key changes: 1) Stream-based responses, 2) Built-in MCP support, 3) Cross-process session resume.', 'active', NOW() - INTERVAL '12 hours'),
-  (gen_random_uuid(), 'Observation-First Architecture', 'Design principles for AI agent monitoring', 'Every tool invocation must be recorded via PreToolUse/PostToolUse hooks. This enables: full execution replay, performance analysis, error pattern detection, and episodic memory formation.', 'active', NOW() - INTERVAL '5 days'),
-  (gen_random_uuid(), 'MCP Server Best Practices', 'Guidelines for implementing MCP tool servers', 'MCP servers should follow the Collector/Executor pattern: Collectors have full CRUD access, Executors have read-only access. This minimizes the blast radius of autonomous agent operations.', 'active', NOW() - INTERVAL '10 days'),
-  (gen_random_uuid(), 'Slack Block Kit Patterns', 'Reusable Block Kit UI patterns for Argus', 'Use section blocks for text content, actions blocks for buttons, and context blocks for metadata. Always include a fallback text for notifications. Maximum 50 blocks per message.', 'active', NOW() - INTERVAL '15 days'),
-  (gen_random_uuid(), 'Railway Deployment Notes', 'Production deployment configuration on Railway', 'Single Docker container with PM2 managing 3 processes. Memory limit: 2GB. Cloudflare Tunnel for HTTPS. Health check on /api/health endpoint.', 'archived', NOW() - INTERVAL '20 days')
+  (gen_random_uuid(), 'Claude Agent SDK Migration Guide', 'Key changes and migration steps for SDK v0.2', 'The Claude Agent SDK v0.2 introduces AsyncGenerator-based execution via query(), replacing the previous callback model. Key changes: 1) Stream-based responses, 2) Built-in MCP support, 3) Cross-process session resume.', NOW() - INTERVAL '12 hours'),
+  (gen_random_uuid(), 'Observation-First Architecture', 'Design principles for AI agent monitoring', 'Every tool invocation must be recorded via PreToolUse/PostToolUse hooks. This enables: full execution replay, performance analysis, error pattern detection, and episodic memory formation.', NOW() - INTERVAL '5 days'),
+  (gen_random_uuid(), 'MCP Server Best Practices', 'Guidelines for implementing MCP tool servers', 'MCP servers should follow the Collector/Executor pattern: Collectors have full CRUD access, Executors have read-only access. This minimizes the blast radius of autonomous agent operations.', NOW() - INTERVAL '10 days'),
+  (gen_random_uuid(), 'Slack Block Kit Patterns', 'Reusable Block Kit UI patterns for Argus', 'Use section blocks for text content, actions blocks for buttons, and context blocks for metadata. Always include a fallback text for notifications. Maximum 50 blocks per message.', NOW() - INTERVAL '15 days'),
+  (gen_random_uuid(), 'Railway Deployment Notes', 'Production deployment configuration on Railway', 'Single Docker container with PM2 managing 3 processes. Memory limit: 2GB. Cloudflare Tunnel for HTTPS. Health check on /api/health endpoint.', NOW() - INTERVAL '20 days')
 ON CONFLICT DO NOTHING;
 
 -- ===== Inbox Tasks =====

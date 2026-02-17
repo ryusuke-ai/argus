@@ -13,6 +13,19 @@
   <img src="docs/screenshots/dashboard-home.png" alt="Argus Dashboard" width="700" />
 </p>
 
+<details>
+<summary><strong>More Screenshots</strong></summary>
+
+|                                  Sessions List                                   |                                   Session Detail                                   |
+| :------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------: |
+| <img src="docs/screenshots/sessions-list.png" alt="Sessions List" width="400" /> | <img src="docs/screenshots/session-detail.png" alt="Session Detail" width="400" /> |
+
+|                                   Knowledge Base                                   |
+| :--------------------------------------------------------------------------------: |
+| <img src="docs/screenshots/knowledge-base.png" alt="Knowledge Base" width="400" /> |
+
+</details>
+
 ## Overview
 
 Argus is a production-ready AI agent platform built as a TypeScript monorepo. It wraps the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk) with a hook-based observation layer, enabling real-time monitoring and episodic memory across all agent executions. The system runs 24/7 on Railway VPS, processing Slack messages, managing emails, scheduling tasks, and generating multi-platform social media content — with every tool invocation recorded for full traceability.

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // --- Load .env manually ---
-const envPath = resolve(new URL(".", import.meta.url).pathname, "../.env");
+const envPath = resolve(new URL(".", import.meta.url).pathname, "../../.env");
 const envContent = readFileSync(envPath, "utf-8");
 for (const line of envContent.split("\n")) {
   const trimmed = line.trim();

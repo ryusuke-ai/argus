@@ -31,6 +31,46 @@ export function extractText(content: Block[]): string {
  * @param maxLen - 最大文字数（デフォルト: 30）
  * @returns 体言止めの要約文字列
  */
+/**
+ * 同じ核心語（漢字2文字以上 or カタカナ語）を含む句を重複排除する。
+ * 重複がある場合は先に出現した方を残す（元の語順を優先）。
+ * 例: ["スレッド内で中止", "すぐに中止"] → ["スレッド内で中止"]
+ */
+function deduplicateClauses(clauses: string[]): string[] {
+  if (clauses.length <= 1) return clauses;
+
+  // 各句から核心語（漢字2文字以上 or カタカナ3文字以上）を抽出
+  const extractCoreWords = (clause: string): string[] => {
+    const kanjiWords = clause.match(/[\u4e00-\u9fff]{2,}/g) || [];
+    const kataWords = clause.match(/[\u30a0-\u30ff]{3,}/g) || [];
+    return [...kanjiWords, ...kataWords];
+  };
+
+  const result: string[] = [];
+  const seenCoreWords = new Set<string>();
+
+  for (const clause of clauses) {
+    const coreWords = extractCoreWords(clause);
+    // この句の核心語がすでに登場済みなら重複としてスキップ
+    // 完全一致に加え、部分一致もチェック（「中止」∈「中止対応」等）
+    const isDuplicate = coreWords.some(
+      (w) =>
+        seenCoreWords.has(w) ||
+        [...seenCoreWords].some(
+          (seen) => w.length > seen.length && w.includes(seen),
+        ),
+    );
+    if (!isDuplicate) {
+      result.push(clause);
+      for (const w of coreWords) {
+        seenCoreWords.add(w);
+      }
+    }
+  }
+
+  return result;
+}
+
 export function summarizeJa(text: string, maxLen = 30): string {
   let s = text.trim();
   if (!s) return s;
@@ -43,6 +83,8 @@ export function summarizeJa(text: string, maxLen = 30): string {
   s = s.replace(/<(https?:\/\/[^>]+)>/g, "");
   s = s.replace(/[。、]\s*件名[はが]?[「『].*$/g, "");
   s = s.replace(/[。、]\s*本文[はが]?[「『].*$/g, "");
+  // 鍵括弧内の引用を除去（ユーザーが例として引用した文字列が要約に混入するのを防ぐ）
+  s = s.replace(/[「『][^」』]{0,30}[」』]/g, "");
   s = s.replace(/[。.!！？?\s]+$/g, "");
   // フィラー表現を先に除去（「では」が「で」+「は」と誤分割されるのを防ぐ）
   s = s.replace(
@@ -64,12 +106,17 @@ export function summarizeJa(text: string, maxLen = 30): string {
   s = s.replace(/^(そこは|それは|これは|あれは)\s*/g, "");
 
   // --- Phase 1.5: フィラーワード除去 ---
-  s = s.replace(/たくさん|いい感じに|ちゃんと|きちんと/g, "");
+  s = s.replace(
+    /たくさん|いい感じに|いい感じの|ちゃんと|きちんと|もうちょっと|ちょっと|なんか|みたいな感じで|みたいな感じ/g,
+    "",
+  );
+  // 指示代名詞の除去（「このAPI」→「API」、「その機能」→「機能」）
+  s = s.replace(/(?:この|その|あの|どの)(?=[^\s。、]{2,})/g, "");
 
   // --- Phase 2: 句に分割して各句を名詞形に変換 ---
   // 読点に加え、口語的接続表現も句境界として扱う
   const clauseSplitter = s.replace(
-    /(?:じゃなくて|ではなくて|じゃなく|ではなく|なので|だから|けど|けれど|けれども|のに|ところ|(?:てる|ている)ように|ように見える|ように思える|って言ったら|と言ったら|って言って|と言って)/g,
+    /(?:じゃなくて|ではなくて|じゃなく|ではなく|(?:な)?ので|だから|けど|けれど|けれども|のに|ところ|(?:てる|ている)ように|ように見える|ように思える|って言ったら|と言ったら|って言って|と言って)/g,
     "、",
   );
   const rawClauses = clauseSplitter
@@ -87,13 +134,19 @@ export function summarizeJa(text: string, maxLen = 30): string {
         !/^(全部|すぐ|確実|ちゃんと|すべて|全て|まず|もう|また|ずっと|いつも|あと)$/.test(
           c,
         ),
-    );
+    )
+    // 内容のない指示代名詞・修飾句の残骸を除外
+    .filter((c) => !/^(?:何回も|これ|それ|網羅的|確実)$/.test(c));
+
+  // 重複句の除去: 同じ核心語を含む句が複数ある場合、長い方だけ残す
+  // 例: 「スレッド内で中止」「すぐに中止」→「中止」が共通 → 長い方を残す
+  const deduped = deduplicateClauses(nounClauses);
 
   // アクション語を含む句を優先して選択（問題説明よりアクション指示が重要）
   const actionKeywords =
     /(?:調査|修正|改善|作成|削除|追加|送信|登録|確認|設定|整理|変更|更新|実装|導入|対応|強化|整備|検討|分析|購入|録音|録画|文字起こし)$/;
-  const actionClauses = nounClauses.filter((c) => actionKeywords.test(c));
-  const nonActionClauses = nounClauses.filter((c) => !actionKeywords.test(c));
+  const actionClauses = deduped.filter((c) => actionKeywords.test(c));
+  const nonActionClauses = deduped.filter((c) => !actionKeywords.test(c));
 
   // アクション句があればそれを優先、なければ従来通り先頭から
   let selectedClauses: string[];
@@ -108,8 +161,10 @@ export function summarizeJa(text: string, maxLen = 30): string {
         ...selectedClauses,
       ];
     }
+    // アクション句と非アクション句の再結合で核心語の重複が発生しうるので再除去
+    selectedClauses = deduplicateClauses(selectedClauses);
   } else {
-    selectedClauses = nounClauses.slice(0, 3);
+    selectedClauses = deduped.slice(0, 3);
   }
 
   // 最大3句まで「・」で結合
@@ -225,6 +280,37 @@ function clauseToNoun(clause: string): string {
     }
   }
 
+  // 複合依頼: 「〜できるようにしてほしい」「〜通るようにして」→ 名詞化
+  const complexAction = s.match(
+    /^(.+?)(?:が|を)(.{2,6}?)(?:できる|通る|動く|使える|見れる|行ける)(?:ように|よう)(?:してほしいです|してほしい|してください|して下さい|してくれ|して)$/,
+  );
+  if (complexAction?.[1] && complexAction?.[2]) {
+    let base = complexAction[1].replace(/(を|は|が|に|で|も|すぐに|すぐ)$/g, "");
+    // group[2] からアクション名詞を抽出（「自動で投稿」→「自動投稿」等）
+    const actionPart = complexAction[2].replace(/(を|は|が|に|で|も)$/g, "").replace(/(.+)で(.+)/, "$1$2");
+    if (base.length >= 2) {
+      // actionPart が意味のある動詞名詞を含む場合はそちらを使う
+      if (actionPart.length >= 2 && actionPart !== "対応") {
+        return base + actionPart;
+      }
+      return base + "対応";
+    }
+    // base が短すぎる場合は動作対象 + 「対応」を返す
+    return (actionPart.length >= 2 ? actionPart : complexAction[2]) + "対応";
+  }
+  // 助詞なし: 「ログインできるようにして」等
+  const complexActionNoParticle = s.match(
+    /^(.{2,}?)(?:できる|通る|動く|使える|見れる|行ける)(?:ように|よう)(?:してほしいです|してほしい|してください|して下さい|してくれ|して)?$/,
+  );
+  if (complexActionNoParticle?.[1]) {
+    let base = complexActionNoParticle[1].replace(/(を|は|が|に|で|も|すぐに|すぐ)$/g, "");
+    if (base.length >= 2) {
+      return base + "対応";
+    }
+  }
+  // 「〜も〜」の冗長パターンを除去（「テストも通る」→「テスト」）
+  s = s.replace(/も[^\s。、]{1,4}(?:通る|動く|できる|使える|行ける)(?:ように)?$/, "");
+
   // 汎用: 「〜して」「〜する」→ 除去
   s = s.replace(
     /(?:してほしいです|してほしい|してもらえますか?|してもらえる?|してください|して下さい|してくれ|しておいて|お願いします|お願い)$/,
@@ -270,6 +356,11 @@ function clauseToNoun(clause: string): string {
   s = s.replace(/(?:切れてる|切れている|れてる|れている)$/, "");
   // 「〜そのまま」「〜貼り付け」等の連用中止形・口語的接続
   s = s.replace(/(?:そのまま|のまま)$/, "");
+  // 口語的な形容表現・評価表現の除去（要約に不要な修飾句の残骸）
+  s = s.replace(
+    /(?:おかしい|おかしくない|おかしいの|みたいな|みたい|っぽい|感じ)$/,
+    "",
+  );
 
   // 末尾の助詞除去
   s = s.replace(/(を|は|が|に|で)$/g, "");
