@@ -1,4 +1,67 @@
-import type { KnownBlock, Button } from "@slack/types";
+import type { KnownBlock, Button, SectionBlock } from "@slack/types";
+
+/**
+ * Slack Block Kit の section ブロック text フィールドの最大文字数。
+ * 公式仕様では 3000 文字が上限。
+ */
+const SECTION_TEXT_LIMIT = 3000;
+
+/**
+ * 長いテキストを Slack section ブロックの text 上限（3000文字）以下のチャンクに分割する。
+ *
+ * - 改行位置で自然に分割する
+ * - 改行がない長い行は文字数で強制分割する
+ * - 空テキストの場合は空配列を返さず、1つの空文字列チャンクを返す
+ */
+export function splitTextForSection(
+  text: string,
+  limit: number = SECTION_TEXT_LIMIT,
+): string[] {
+  if (text.length <= limit) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= limit) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // limit 以内の最後の改行位置を探す
+    const searchRange = remaining.slice(0, limit);
+    const lastNewline = searchRange.lastIndexOf("\n");
+
+    if (lastNewline > 0) {
+      // 改行位置で分割（改行文字は含めない）
+      chunks.push(remaining.slice(0, lastNewline));
+      remaining = remaining.slice(lastNewline + 1);
+    } else {
+      // 改行が見つからない場合は文字数で強制分割
+      chunks.push(remaining.slice(0, limit));
+      remaining = remaining.slice(limit);
+    }
+  }
+
+  return chunks;
+}
+
+/**
+ * テキストを3000文字以下の section ブロック群に分割する。
+ * 長いテキストは複数の section ブロックになる。
+ */
+export function buildSectionBlocksFromText(
+  text: string,
+  format: "mrkdwn" | "plain_text" = "mrkdwn",
+): SectionBlock[] {
+  const chunks = splitTextForSection(text);
+  return chunks.map((chunk) => ({
+    type: "section" as const,
+    text: { type: format, text: chunk },
+  }));
+}
 
 interface XPostInput {
   id: string;
@@ -60,10 +123,7 @@ export function buildXPostBlocks(input: XPostInput): KnownBlock[] {
       ],
     },
     { type: "divider" },
-    {
-      type: "section",
-      text: { type: "mrkdwn", text: input.text },
-    },
+    ...buildSectionBlocksFromText(input.text),
     { type: "divider" },
   ];
 
@@ -1020,10 +1080,8 @@ export function buildScriptDetailBlocks(
         return `*${d.speaker}*${emotionTag}: ${d.text}${visualTag}`;
       });
       const dialogueText = dialogueLines.join("\n");
-      sectionBlocks.push({
-        type: "section",
-        text: { type: "mrkdwn", text: dialogueText },
-      });
+      const dialogueSections = buildSectionBlocksFromText(dialogueText);
+      sectionBlocks.push(...dialogueSections);
       sectionChars += dialogueText.length;
     }
 

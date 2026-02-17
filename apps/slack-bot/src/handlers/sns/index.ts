@@ -20,6 +20,7 @@ import {
   buildXPostBlocks,
   buildArticlePostBlocks,
   buildVideoPostBlocks,
+  buildSectionBlocksFromText,
 } from "./ui/reporter.js";
 import {
   startSnsScheduler,
@@ -421,41 +422,20 @@ async function generateArticleSuggestion(
 
   // 全文をスレッドに投稿（Slack が「もっと見る」で自動折り畳み）
   try {
-    const SECTION_LIMIT = 3000;
-    const body = content.body;
-    if (body.length <= SECTION_LIMIT) {
+    const fullText = `*${content.title}*\n\n${content.body}`;
+    const sectionBlocks = buildSectionBlocksFromText(fullText);
+    const total = sectionBlocks.length;
+
+    for (let i = 0; i < total; i++) {
       await client.chat.postMessage({
         channel,
         thread_ts: mainMsg.ts || threadTs,
-        blocks: [
-          {
-            type: "section",
-            text: { type: "mrkdwn", text: `*${content.title}*\n\n${body}` },
-          },
-        ],
-        text: `${content.title} (全文)`,
+        blocks: [sectionBlocks[i]],
+        text:
+          total === 1
+            ? `${content.title} (全文)`
+            : `${content.title} (${i + 1}/${total})`,
       });
-    } else {
-      // 3000文字超えは分割
-      for (let i = 0; i < body.length; i += SECTION_LIMIT) {
-        const chunk = body.slice(i, i + SECTION_LIMIT);
-        const part = Math.floor(i / SECTION_LIMIT) + 1;
-        const total = Math.ceil(body.length / SECTION_LIMIT);
-        await client.chat.postMessage({
-          channel,
-          thread_ts: mainMsg.ts || threadTs,
-          blocks: [
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: part === 1 ? `*${content.title}*\n\n${chunk}` : chunk,
-              },
-            },
-          ],
-          text: `${content.title} (${part}/${total})`,
-        });
-      }
     }
   } catch (err) {
     console.warn("[sns] Failed to post full article to thread:", err);
