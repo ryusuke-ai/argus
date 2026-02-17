@@ -22,7 +22,6 @@
     { "path": "./packages/gmail" },
     { "path": "./packages/google-calendar" },
     { "path": "./packages/r2-storage" },
-    { "path": "./packages/slack-canvas" },
     { "path": "./packages/tiktok" },
     { "path": "./apps/slack-bot" },
     { "path": "./apps/dashboard" },

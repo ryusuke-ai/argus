@@ -13,7 +13,7 @@
 4. [packages/db — データの永続化層](#4-packagesdb)
 5. [packages/knowledge & knowledge-personal — ナレッジ管理 MCP](#5-packagesknowledge--knowledge-personal)
 6. [packages/gmail & google-calendar — Google 連携](#6-packagesgmail--google-calendar)
-7. [packages/r2-storage, slack-canvas, tiktok — その他の連携](#7-packagesr2-storage-slack-canvas-tiktok)
+7. [packages/r2-storage, tiktok — その他の連携](#7-packagesr2-storage-tiktok)
 8. [apps/slack-bot — Slack ユーザーインターフェース](#8-appsslack-bot)
 9. [apps/agent-orchestrator — バックエンドオーケストレーター](#9-appsagent-orchestrator)
 10. [apps/dashboard — Web ダッシュボード](#10-appsdashboard)
@@ -89,7 +89,6 @@ argus/ ← 「会社」全体
 │   ├── gmail/           📧 メール配達人（Gmail API + OAuth2）
 │   ├── google-calendar/ 📅 予定管理人（Google Calendar 連携）
 │   ├── r2-storage/      📦 ファイル倉庫（クラウドストレージ）
-│   ├── slack-canvas/    🖼️ 掲示板係（Slack Canvas API）
 │   └── tiktok/          🎵 動画配信係（TikTok API + 認証）
 │
 ├── .claude/ ← 「AI 助手の設定書」
@@ -480,10 +479,8 @@ export function createDBObservationHooks(obsDB, dbSessionId): ArgusHooks {
 │  │ todos │                │ tiktok_tokens │             │
 │  └───────┘                └───────────────┘             │
 │  ┌─────────────┐                                        │
-│  │ daily_plans │          🖼️ 共通                       │
-│  └─────────────┘          ┌─────────────────┐           │
-│                           │ canvas_registry │           │
-│                           └─────────────────┘           │
+│  │ daily_plans │                                        │
+│  └─────────────┘                                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -521,7 +518,7 @@ packages/db/src/
     ├── 0002_...sql   🎵 TikTok トークン追加
     ├── 0003_...sql   📊 SNS フェーズ管理カラム追加
     ├── 0004_...sql   ✅ Todos テーブル追加
-    └── 0005_...sql   🖼️ Canvas Registry, Gmail Outgoing, Personal Notes 追加
+    └── 0005_...sql   📧 Gmail Outgoing, Personal Notes 追加
 ```
 
 #### Proxy パターンの 3 つの利点
@@ -861,16 +858,15 @@ CP1252（Windows で広く使われていた西欧文字の文字コード）→
 
 ---
 
-## 7. packages/r2-storage, slack-canvas, tiktok
+## 7. packages/r2-storage, tiktok
 
 ### ひとことまとめ
 
-> 外部サービスと連携するための 3 つのパッケージ。ファイル保存（R2）、Slack の掲示板（Canvas）、TikTok への動画投稿をそれぞれ担当する。いずれも MCP サーバーではなく、ライブラリとして直接利用される。
+> 外部サービスと連携するための 2 つのパッケージ。ファイル保存（R2）、TikTok への動画投稿をそれぞれ担当する。いずれも MCP サーバーではなく、ライブラリとして直接利用される。
 
 ### 身近なたとえ
 
 - **r2-storage** = レンタル倉庫（ファイルを預けて URL で取り出せる）
-- **slack-canvas** = 会社の掲示板（情報を貼り出す・更新する）
 - **tiktok** = 動画投稿代行サービス（URL を教えれば取りに来てくれる）
 
 ### 図で理解する
@@ -929,12 +925,6 @@ TikTok の PKCE:
 - 依存は `@aws-sdk/client-s3` のみ（Cloudflare R2 は Amazon S3 互換の API を使えるため）
 - `uploadVideo()` という名前だが、実装はファイル種別を問わない汎用アップローダー（歴史的経緯で名前だけが残っている）
 
-#### slack-canvas
-
-- **Slack SDK を使わない軽量設計**: Canvas API は 2 つのエンドポイント（create / edit）しか使わないため、`fetch()` で直接呼ぶ
-- `upsertCanvas()`（upsert = update + insert の造語。あれば更新、なければ新規作成）
-- `canvas-registry.ts`: 機能名 → Canvas ID の対応を DB で管理
-
 #### tiktok
 
 - **TikTok 固有仕様**: SHA256 のハッシュエンコードが `hex`（通常は Base64）
@@ -943,10 +933,9 @@ TikTok の PKCE:
 
 ### 理解度チェック
 
-1. slack-canvas が Slack SDK を使わない理由は？
-2. TikTok の PKCE 認証が Gmail の OAuth2 と異なる点は？
-3. PULL_FROM_URL 方式が FILE_UPLOAD 方式より優れている点を 2 つ挙げられるか？
-4. `publishVideoByUrl()` の処理フローを順番に説明できるか？
+1. TikTok の PKCE 認証が Gmail の OAuth2 と異なる点は？
+2. PULL_FROM_URL 方式が FILE_UPLOAD 方式より優れている点を 2 つ挙げられるか？
+3. `publishVideoByUrl()` の処理フローを順番に説明できるか？
 
 ---
 
@@ -1132,7 +1121,6 @@ apps/slack-bot/src/
 │       ├── scheduling/    🕐 cron + 最適投稿時間
 │       └── ui/            🖼️ Block Kit ビルダー + バリデーション
 │
-├── canvas/                🖼️ Slack Canvas 連携
 ├── prompts/               📝 システムプロンプト定義
 └── utils/                 🔧 ユーティリティ
     ├── mrkdwn.ts          📄 Markdown → Slack mrkdwn 変換
@@ -1196,7 +1184,7 @@ orchestrator は「ビルの管理人室」。夜間の警備巡回（Code Patro
 │  毎朝 3:50   📋 Daily Planner              │
 │              （今日の予定表を作成）          │
 │                                             │
-│  毎朝 5:00   📰 Daily News Canvas          │
+│  毎朝 5:00   📰 Daily News                  │
 │              （ニュースまとめ）              │
 │                                             │
 │  5 分毎      📧 Gmail チェッカー            │
@@ -1260,10 +1248,9 @@ apps/agent-orchestrator/src/
 ├── gmail-checker.ts       📧 Gmail 未読チェック + AI 分類 + Slack 通知
 ├── slack-notifier.ts      📢 Slack 通知（fetch() 直接）
 │
-├── canvas/                🖼️ Slack Canvas 連携
-│   ├── execution-canvas.ts    エージェント実行ログ（10 秒スロットル）
-│   ├── gmail-canvas.ts        未対応メール一覧
-│   └── daily-news-canvas.ts   デイリーニュース
+├── slack-posts/           📋 Slack 投稿連携
+│   ├── execution-log.ts       エージェント実行ログ（10 秒スロットル）
+│   └── daily-news.ts          デイリーニュース
 │
 ├── code-patrol/           🔍 週次コード品質巡回
 │   ├── scanners.ts        スキャナ（pnpm audit / シークレット / tsc 並列）
@@ -1277,7 +1264,7 @@ apps/agent-orchestrator/src/
 │
 ├── daily-planner/         📋 デイリープラン生成
 │   ├── collectors.ts      4 ソース並列収集（Calendar, Gmail, Tasks, Todos）
-│   └── builders.ts        Block Kit + Canvas Markdown 生成
+│   └── builders.ts        Block Kit メッセージ生成
 │
 └── demo/                  🎓 Collector/Executor パターンのデモ
 ```
@@ -1832,13 +1819,13 @@ const [audit, secrets, typeErrors] = await Promise.all([
 
 ### パターン 8: Fire-and-forget（撃ちっぱなし）
 
-**使用頻度**: UI 付加的更新（Canvas、リアクション等）
+**使用頻度**: UI 付加的更新（Slack 投稿更新、リアクション等）
 **なぜ重要か**: 主処理をブロックせず、非クリティカルな処理を効率的に実行
 
 ```typescript
 // fireAndForget() — agent-core 提供の共通ユーティリティ
 import { fireAndForget } from "@argus/agent-core";
-fireAndForget(updateExecutionCanvas(), "execution-canvas");
+fireAndForget(updateExecutionLog(), "execution-log");
 ```
 
 **判断基準**:
@@ -1846,7 +1833,7 @@ fireAndForget(updateExecutionCanvas(), "execution-canvas");
 ```
 その処理が失敗したら、ユーザーに直接影響する？
 ├── YES → await して結果を確認（DB 書き込み、課金、重要な通知）
-└── NO  → fireAndForget でOK（Canvas 更新、リアクション、SNS Canvas 表示）
+└── NO  → fireAndForget でOK（Slack 投稿更新、リアクション等）
 ```
 
 > **身近なたとえ**: レストランで「お冷やをお持ちしました」の声かけが失敗しても料理の提供には影響しない。しかし「注文の記録」が失敗したら料理が出てこないので、こちらは確実に成功させる必要がある。
@@ -1863,7 +1850,7 @@ fireAndForget(updateExecutionCanvas(), "execution-canvas");
                   10秒  10秒  10秒
 ```
 
-使用箇所: Canvas 更新（10 秒）、進捗通知（2-8 秒）、パトロールフック（15 秒）。
+使用箇所: Slack 投稿更新（10 秒）、進捗通知（2-8 秒）、パトロールフック（15 秒）。
 
 ### パターン 10: 型ガード付きフィルタ
 
@@ -1884,7 +1871,7 @@ const textBlocks = content.filter(
 
 1. `success: boolean` パターンにより、Slack Bot でどんな障害を防げるか？
 2. テストのコロケーション配置のメリットを 3 つ挙げられるか？
-3. Fire-and-forget パターンで Canvas 更新の失敗を許容できる理由は？
+3. Fire-and-forget パターンで Slack 投稿更新の失敗を許容できる理由は？
 4. `fireAndForget()` を使わずに Promise を放置すると何が起こるか？
 5. スロットリングが必要な理由は？
 

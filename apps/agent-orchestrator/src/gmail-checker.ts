@@ -206,7 +206,7 @@ export async function checkGmail(): Promise<void> {
       continue;
     }
 
-    // "other" 分類のメールは dismissed として記録し、Slack通知・Canvas表示をスキップ
+    // "other" 分類のメールは dismissed として記録し、Slack通知をスキップ
     const isActionable = classification.classification !== "other";
 
     // DB に先に insert して UUID を取得
@@ -246,7 +246,6 @@ export async function checkGmail(): Promise<void> {
       await new Promise((r) => setTimeout(r, 1500));
     }
   }
-
 }
 
 /**

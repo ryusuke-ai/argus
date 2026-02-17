@@ -20,7 +20,6 @@ import {
   formatScheduledTime,
 } from "./scheduling/optimal-time.js";
 import type { Platform } from "./scheduling/optimal-time.js";
-import { updateSnsCanvas } from "../../canvas/sns-canvas.js";
 import { handleSnsPublish } from "./platforms/publish-handlers.js";
 import {
   generateAndPostScript,
@@ -445,10 +444,6 @@ export function setupSnsActions(): void {
         });
         await addReaction(client, channelId, messageTs, "fast_forward");
       }
-      // Canvas 更新
-      updateSnsCanvas().catch((e) =>
-        console.error("[sns] Canvas update error:", e),
-      );
     } catch (error) {
       console.error("[sns] Skip error:", error);
     }
@@ -521,10 +516,6 @@ export function setupSnsActions(): void {
         });
         await addReaction(client, channelId, messageTs, "clock3");
       }
-      // Canvas 更新
-      updateSnsCanvas().catch((e) =>
-        console.error("[sns] Canvas update error:", e),
-      );
     } catch (error) {
       console.error("[sns] Schedule error:", error);
     }

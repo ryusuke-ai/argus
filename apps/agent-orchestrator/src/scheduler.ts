@@ -7,7 +7,7 @@ import { checkGmail } from "./gmail-checker.js";
 import { generateDailyPlan } from "./daily-planner/index.js";
 import { runCodePatrol } from "./code-patrol/index.js";
 import { runConsistencyCheck } from "./consistency-checker/index.js";
-import { postDailyNews } from "./canvas/daily-news-canvas.js";
+import { postDailyNews } from "./slack-posts/daily-news.js";
 import { env } from "./env.js";
 
 /**

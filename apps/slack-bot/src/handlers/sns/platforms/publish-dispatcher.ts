@@ -25,7 +25,6 @@ import {
   parseGitHubContent,
   parsePodcastContent,
 } from "../content-schemas.js";
-import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
 import { getPlatformLabel } from "../scheduling/scheduler-utils.js";
 import { normalizeMediaPath } from "../generation/artifact-extractors.js";
 
@@ -92,10 +91,6 @@ export async function pollScheduledPosts(client: WebClient): Promise<void> {
 
         console.log(
           `[sns-scheduler] Published scheduled post: ${post.id} (${post.platform})`,
-        );
-        // Canvas 更新
-        updateSnsCanvas().catch((e) =>
-          console.error("[sns-scheduler] Canvas update error:", e),
         );
       } else {
         // 失敗 → failed に変更（無限ループ防止）

@@ -56,9 +56,6 @@ importers:
       '@argus/knowledge':
         specifier: workspace:*
         version: link:../../packages/knowledge
-      '@argus/slack-canvas':
-        specifier: workspace:*
-        version: link:../../packages/slack-canvas
       drizzle-orm:
         specifier: ^0.45.0
         version: 0.45.1(postgres@3.4.8)
@@ -129,6 +126,9 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.0.0
@@ -187,9 +187,6 @@ importers:
       '@argus/r2-storage':
         specifier: workspace:*
         version: link:../../packages/r2-storage
-      '@argus/slack-canvas':
-        specifier: workspace:*
-        version: link:../../packages/slack-canvas
       '@argus/tiktok':
         specifier: workspace:*
         version: link:../../packages/tiktok
@@ -395,22 +392,6 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.700.0
         version: 3.987.0
-    devDependencies:
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.0
-        version: 4.0.18(@types/node@22.19.8)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
-
-  packages/slack-canvas:
-    dependencies:
-      '@argus/db':
-        specifier: workspace:*
-        version: link:../db
-      drizzle-orm:
-        specifier: ^0.45.0
-        version: 0.45.1(postgres@3.4.8)
     devDependencies:
       typescript:
         specifier: ^5.6.0

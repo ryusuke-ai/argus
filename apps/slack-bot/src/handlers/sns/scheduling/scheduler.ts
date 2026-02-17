@@ -6,7 +6,6 @@ import { db, snsPosts } from "@argus/db";
 import { gte, sql } from "drizzle-orm";
 import { CliUnavailableError } from "../generation/phased-generator.js";
 import { checkCliHealth } from "@argus/agent-core";
-import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
 import {
   getCategoryForDay,
   getCategoriesForDay,
@@ -307,9 +306,4 @@ export async function generateAllPlatformSuggestions(
   }
 
   // Instagram: TikTok動画生成完了時に actions.ts から自動作成されるため、スケジューラからは生成しない
-
-  // Canvas 更新
-  updateSnsCanvas().catch((e) =>
-    console.error("[sns-scheduler] Canvas update error:", e),
-  );
 }

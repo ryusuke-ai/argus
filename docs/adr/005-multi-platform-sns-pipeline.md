@@ -141,7 +141,7 @@ Each post stores `current_phase` and `phase_artifacts` (JSONB) for mid-pipeline 
 - **Quality control** — no content reaches any public platform without human approval via Slack buttons.
 - **Extensible** — adding an 11th platform requires only a new `PlatformConfig`, prompt files, a publisher, and a content type. The `PhasedGenerator`, approval workflow, and DB schema are reused.
 - **Resilient generation** — JSON extraction handles multiple code block formats, balanced brace extraction, and truncated JSON repair. Failed phases retry with exponential backoff and augmented prompts.
-- **Progress visibility** — Slack Canvas integration (`updateSnsCanvas()`) provides a dashboard view of all SNS posts and their statuses.
+- **Progress visibility** — Slack message updates provide real-time status tracking of all SNS posts during generation and publishing.
 
 ### Negative
 

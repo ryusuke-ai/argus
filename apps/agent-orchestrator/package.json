@@ -18,7 +18,6 @@
     "@argus/gmail": "workspace:*",
     "@argus/google-calendar": "workspace:*",
     "@argus/knowledge": "workspace:*",
-    "@argus/slack-canvas": "workspace:*",
     "drizzle-orm": "^0.45.0",
     "express": "^5.1.0",
     "node-cron": "^4.2.1",

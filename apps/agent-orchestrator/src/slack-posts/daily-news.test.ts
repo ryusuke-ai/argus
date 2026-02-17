@@ -33,7 +33,7 @@ import {
   buildDailyNewsBlocks,
   postDailyNews,
   type DailyNewsData,
-} from "./daily-news-canvas.js";
+} from "./daily-news.js";
 import { db } from "@argus/db";
 
 describe("daily-news-canvas", () => {

@@ -36,7 +36,7 @@ import {
   postOrUpdateExecutionLog,
   _resetThrottle,
   type ExecutionWithAgent,
-} from "./execution-canvas.js";
+} from "./execution-log.js";
 import { db } from "@argus/db";
 
 describe("formatDuration", () => {

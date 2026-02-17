@@ -18,7 +18,6 @@
     "@argus/gmail": "workspace:*",
     "@argus/google-calendar": "workspace:*",
     "@argus/r2-storage": "workspace:*",
-    "@argus/slack-canvas": "workspace:*",
     "@argus/tiktok": "workspace:*",
     "@slack/bolt": "^4.0.0",
     "@slack/socket-mode": "^2.0.0",

@@ -31,7 +31,6 @@ import {
   validateYouTubeMeta,
   validateGitHubRepo,
 } from "../ui/validator.js";
-import { updateSnsCanvas } from "../../../canvas/sns-canvas.js";
 import { normalizeMediaPath } from "../generation/artifact-extractors.js";
 
 export async function handleSnsPublish(
@@ -706,10 +705,6 @@ export async function handleSnsPublish(
         await swapReaction(client, channelId, messageTs, "eyes", "rocket");
       }
     }
-    // Canvas 更新
-    updateSnsCanvas().catch((e) =>
-      console.error("[sns] Canvas update error:", e),
-    );
   } catch (error) {
     console.error("[sns] Publish error:", error);
     const channelId = body.channel?.id;

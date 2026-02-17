@@ -438,23 +438,6 @@ export const gmailOutgoing = pgTable("gmail_outgoing", {
 export type GmailOutgoing = typeof gmailOutgoing.$inferSelect;
 export type NewGmailOutgoing = typeof gmailOutgoing.$inferInsert;
 
-// canvas_registry テーブル（Canvas ID 一元管理）
-export const canvasRegistry = pgTable("canvas_registry", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  feature: varchar("feature", { length: 50 }).notNull().unique(),
-  canvasId: varchar("canvas_id", { length: 255 }).notNull(),
-  channel: varchar("channel", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-export type CanvasRegistry = typeof canvasRegistry.$inferSelect;
-export type NewCanvasRegistry = typeof canvasRegistry.$inferInsert;
-
 // ===== Relations =====
 
 export const sessionsRelations = relations(sessions, ({ many }) => ({
