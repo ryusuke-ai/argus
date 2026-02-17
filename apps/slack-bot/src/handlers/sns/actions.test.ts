@@ -183,7 +183,7 @@ describe("SNS Action Handlers", () => {
   let app: { action: Mock; view: Mock };
 
   const mockPost = {
-    id: "post-uuid-1",
+    id: "a0000000-0000-4000-a000-000000000001",
     platform: "x",
     postType: "single",
     content: { text: "Hello world!", category: "tips" },
@@ -295,7 +295,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -336,7 +336,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -378,7 +378,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-nonexistent" }],
+          actions: [{ value: "a0000000-0000-4000-a000-ffffffffffff" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -398,7 +398,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_edit"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           trigger_id: "trigger-123",
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
@@ -448,7 +448,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_edit"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           trigger_id: "trigger-123",
         },
         client: mockClient,
@@ -468,7 +468,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_skip"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -513,7 +513,7 @@ describe("SNS Action Handlers", () => {
         ack: mockAck,
         view: {
           private_metadata: JSON.stringify({
-            postId: "post-uuid-1",
+            postId: "a0000000-0000-4000-a000-000000000001",
             channelId: "C123",
             messageTs: "1234567890.123456",
           }),
@@ -554,7 +554,7 @@ describe("SNS Action Handlers", () => {
         ack: mockAck,
         view: {
           private_metadata: JSON.stringify({
-            postId: "post-uuid-1",
+            postId: "a0000000-0000-4000-a000-000000000001",
             channelId: "C123",
             messageTs: "1234567890.123456",
           }),
@@ -589,7 +589,7 @@ describe("SNS Action Handlers", () => {
         ack: mockAck,
         view: {
           private_metadata: JSON.stringify({
-            postId: "post-uuid-1",
+            postId: "a0000000-0000-4000-a000-000000000001",
             channelId: "C123",
             messageTs: "1234567890.123456",
           }),
@@ -666,7 +666,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -715,7 +715,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -770,7 +770,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -785,7 +785,7 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_publish for YouTube", () => {
     const youtubePost = {
-      id: "post-uuid-yt",
+      id: "a0000000-0000-4000-a000-000000000002",
       platform: "youtube",
       postType: "single",
       content: {
@@ -827,7 +827,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-yt" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000002" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -881,7 +881,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-yt" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000002" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -908,7 +908,7 @@ describe("SNS Action Handlers", () => {
       };
 
       await actionHandlers["sns_edit_thread"]({
-        action: { value: "post-uuid-1" },
+        action: { value: "a0000000-0000-4000-a000-000000000001" },
         ack: mockAck,
         body: {
           channel: { id: "C123" },
@@ -972,7 +972,7 @@ describe("SNS Action Handlers", () => {
         ack: mockAck,
         view: {
           private_metadata: JSON.stringify({
-            postId: "post-uuid-1",
+            postId: "a0000000-0000-4000-a000-000000000001",
             channelId: "C123",
             messageTs: "1234567890.123456",
           }),
@@ -1008,7 +1008,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1052,7 +1052,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-1" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000001" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1103,7 +1103,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_schedule"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-nonexistent" }],
+          actions: [{ value: "a0000000-0000-4000-a000-ffffffffffff" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1123,7 +1123,7 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_approve_ig_content action", () => {
     const instagramPost = {
-      id: "post-uuid-ig",
+      id: "a0000000-0000-4000-a000-000000000003",
       platform: "instagram",
       postType: "single",
       content: {
@@ -1157,7 +1157,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_approve_ig_content"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-ig" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000003" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1180,7 +1180,7 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_publish for Instagram", () => {
     const instagramPublishPost = {
-      id: "post-uuid-ig-pub",
+      id: "a0000000-0000-4000-a000-000000000004",
       platform: "instagram",
       postType: "single",
       content: {
@@ -1222,7 +1222,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_publish"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-ig-pub" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000004" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1252,7 +1252,7 @@ describe("SNS Action Handlers", () => {
 
   describe("sns_approve_script action", () => {
     const scriptPost = {
-      id: "post-uuid-script",
+      id: "a0000000-0000-4000-a000-000000000005",
       platform: "youtube",
       postType: "single",
       content: {
@@ -1284,7 +1284,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_approve_script"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-script" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000005" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1334,7 +1334,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_approve_script"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-script" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000005" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1350,7 +1350,7 @@ describe("SNS Action Handlers", () => {
       );
       expect(buildRenderedBlocks).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: "post-uuid-script",
+          id: "a0000000-0000-4000-a000-000000000005",
           title: "テスト動画",
           videoPath: "/path/to/agent-output/video-20260210-test/output.mp4",
         }),
@@ -1390,7 +1390,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_approve_script"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-script" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000005" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
@@ -1424,7 +1424,7 @@ describe("SNS Action Handlers", () => {
       await actionHandlers["sns_approve_script"]({
         ack: mockAck,
         body: {
-          actions: [{ value: "post-uuid-script" }],
+          actions: [{ value: "a0000000-0000-4000-a000-000000000005" }],
           channel: { id: "C123" },
           message: { ts: "1234567890.123456" },
         },
