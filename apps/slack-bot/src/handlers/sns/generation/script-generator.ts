@@ -12,6 +12,9 @@ import type { AgentResult } from "@argus/agent-core";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/** Argus プロジェクトルート */
+const PROJECT_ROOT = resolve(__dirname, "../../../../../..");
+
 export interface VideoScript {
   title: string;
   theme: string;
@@ -62,7 +65,10 @@ export interface GenerateVideoScriptResult {
   error?: string;
 }
 
-const PROMPT_PATH = resolve(__dirname, "../prompts/script-generator-prompt.md");
+const PROMPT_PATH = resolve(
+  PROJECT_ROOT,
+  "apps/slack-bot/src/handlers/sns/prompts/script-generator-prompt.md",
+);
 
 /**
  * プロンプトファイルの内容を読み込む。
