@@ -136,10 +136,6 @@ vi.mock("../../utils/reactions.js", () => ({
   swapReaction: vi.fn(),
 }));
 
-vi.mock("../../canvas/sns-canvas.js", () => ({
-  updateSnsCanvas: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock("./generation/artifact-extractors.js", () => ({
   normalizeMediaPath: vi.fn((p: string) => p),
   extractVideoPath: vi.fn((result: Record<string, unknown>) => {

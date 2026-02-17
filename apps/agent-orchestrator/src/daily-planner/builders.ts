@@ -1,5 +1,5 @@
 // Daily Planner - Main entry point
-// Orchestrates data collection, block building, canvas creation, and DB save.
+// Orchestrates data collection, block building, Slack posting, and DB save.
 // Re-exports all public APIs from sub-modules for backward compatibility.
 
 import { formatDate, collectDailyData } from "./collectors.js";

@@ -21,7 +21,7 @@ import {
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { notifySlack, uploadFileToSlack } from "./slack-notifier.js";
-import { postOrUpdateExecutionLog } from "./canvas/execution-canvas.js";
+import { postOrUpdateExecutionLog } from "./slack-posts/execution-log.js";
 import * as path from "node:path";
 import { env } from "./env.js";
 

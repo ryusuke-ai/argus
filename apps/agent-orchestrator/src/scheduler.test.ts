@@ -45,7 +45,7 @@ vi.mock("./code-patrol/index.js", () => ({
 vi.mock("./consistency-checker/index.js", () => ({
   runConsistencyCheck: vi.fn(),
 }));
-vi.mock("./canvas/daily-news-canvas.js", () => ({
+vi.mock("./slack-posts/daily-news.js", () => ({
   postDailyNews: vi.fn(),
 }));
 

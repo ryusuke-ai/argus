@@ -26,11 +26,10 @@ pnpm monorepo (`@argus/` スコープ):
 | Integration | `packages/gmail`                         | Google API（OAuth2 + Gmail）                        |
 | Integration | `packages/google-calendar`               | Google Calendar MCP Server                          |
 | Integration | `packages/r2-storage`                    | Cloudflare R2 ストレージクライアント                |
-| Integration | `packages/slack-canvas`                  | Slack Canvas API クライアント                       |
 | Integration | `packages/tiktok`                        | TikTok API + PKCE 認証                              |
 | Config      | `.claude/`                               | ルール / skills / permissions                       |
 
-依存: `slack-bot` → `agent-core`, `db`, `gmail`, `google-calendar`, `knowledge-personal`, `r2-storage`, `slack-canvas`, `tiktok` / `dashboard` → `agent-core`, `db` / `orchestrator` → `agent-core`, `db`, `knowledge`, `gmail`, `google-calendar`, `slack-canvas` / `knowledge` → `db` / `knowledge-personal` → `db` / `google-calendar` → `gmail` / `slack-canvas` → `db` / `tiktok` → `db`, `gmail` / `gmail` → `db`
+依存: `slack-bot` → `agent-core`, `db`, `gmail`, `google-calendar`, `knowledge-personal`, `r2-storage`, `tiktok` / `dashboard` → `agent-core`, `db` / `orchestrator` → `agent-core`, `db`, `knowledge`, `gmail`, `google-calendar` / `knowledge` → `db` / `knowledge-personal` → `db` / `google-calendar` → `gmail` / `tiktok` → `db`, `gmail` / `gmail` → `db`
 
 セッション設計・実行ループ・観測・Memory中心設計・権限分離の詳細は .claude/rules/architecture.md を参照
 
