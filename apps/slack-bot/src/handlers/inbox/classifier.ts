@@ -223,6 +223,8 @@ export async function resummarize(
 - 読点「、」を含めない
 - 句点「。」を含めない
 - 元メッセージの文頭からそのまま切り取らない
+- 同じ単語を繰り返さない（❌「中止・即時中止」→ ✅「即時中止機能」）
+- 「・」で意味の薄い並列をしない（❌「調査・確認・修正」→ ✅「調査修正」）
 
 ## 例
 入力「最新のAI動向について調べてください」→ AI動向の調査
@@ -231,7 +233,12 @@ export async function resummarize(
 入力「classifierのテスト書いて、全部通るようにして」→ classifierテスト整備
 入力「来週のチームミーティングの資料をまとめておいて」→ MTG資料整理
 入力「このAPIのレスポンス形式ってどうなってる？」→ APIレスポンス確認
-入力「メールの判定基準がわからないから調べて教えてほしい」→ メール判定基準の調査${feedbackLine}`,
+入力「メールの判定基準がわからないから調べて教えてほしい」→ メール判定基準の調査
+入力「スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けて途中で切れてる」→ タイトル要約改善
+入力「一回リアクションが❌になってそこから戻らないバグがある」→ リアクション❌バグ修正
+入力「ビルドがエラーになっているので直してほしい」→ ビルドエラー修正
+入力「私がスレッド内で中止してって言ったらすぐに中止できるようにしてほしいです」→ 即時中止機能の実装
+入力「タイトルが「スレッド内で中止・すぐに中止」みたいな感じでおかしい」→ タイトル要約品質改善${feedbackLine}`,
       messages: [{ role: "user", content: messageText }],
     });
 
@@ -307,10 +314,27 @@ export function isProperNounPhrase(summary: string): boolean {
     return false;
   }
 
-  // 長い summary に格助詞「が」「を」が含まれる（文断片の可能性大）
-  // 短い名詞句（「エラーが出る問題」等）は許容、12文字以上で厳格チェック
-  if (summary.length >= 12 && /[がを]/.test(summary)) {
-    return false;
+  // 「が」「を」を含む文断片の検出（ただし名詞句パターンは許容）
+  // 「〜が〜問題」「〜を〜修正」等のパターンは有効な名詞句
+  // 「〜が要約じゃなくて」「〜を貼り付けて」等の述語を含む文断片は不可
+  if (/[がを]/.test(summary)) {
+    // 「が」「を」の後に動詞・口語表現が続く場合は文断片
+    if (
+      /[がを](?:[^がを]*(?:して|する|した|てる|ている|ていた|なくて|じゃなく|ではなく|ように|ため))/.test(
+        summary,
+      )
+    ) {
+      return false;
+    }
+    // 「が」の後が名詞1-4文字で終わる場合（「〜が要約」「〜がエラー」等）は文断片
+    // 体言止め名詞句なら「が」ではなく「の」で接続するはず（「〜の要約」「〜のエラー」）
+    if (/が[^\sがを]{1,4}$/.test(summary)) {
+      return false;
+    }
+    // 12文字以上で「が」「を」を含む場合は文断片の可能性大
+    if (summary.length >= 12) {
+      return false;
+    }
   }
 
   // 「・」区切りで3つ以上のセグメントがある（summarizeJa の句結合が冗長）
@@ -392,6 +416,68 @@ function truncateToNounPhrase(text: string, max: number): string {
 }
 
 /**
+ * 元メッセージからアクション句（「〜の調査」「〜改善」等）を直接抽出する。
+ * summarizeJa が失敗した場合の追加フォールバック。
+ *
+ * 戦略: メッセージ内の「〜して」「〜してほしい」等のアクション動詞を見つけ、
+ *        その直前のトピック＋アクション名詞に変換する。
+ */
+function extractActionPhrase(message: string): string | null {
+  // アクション動詞 → 名詞のマッピング
+  const actionMap: Array<{ re: RegExp; noun: string }> = [
+    { re: /(?:調べて|調査して|リサーチして)/, noun: "調査" },
+    { re: /(?:修正して|直して|変更して|改善して)/, noun: "改善" },
+    { re: /(?:作って|作成して|生成して|書いて)/, noun: "作成" },
+    { re: /(?:追加して|実装して|入れて)/, noun: "追加" },
+    { re: /(?:削除して|消して|除去して)/, noun: "削除" },
+    { re: /(?:送って|送信して)/, noun: "送信" },
+    { re: /(?:整理して|まとめて)/, noun: "整理" },
+    { re: /(?:確認して|チェックして|見て|見せて)/, noun: "確認" },
+    { re: /(?:設定して|セットして)/, noun: "設定" },
+    { re: /(?:更新して|アップデートして)/, noun: "更新" },
+    { re: /(?:対応して|対処して)/, noun: "対応" },
+    { re: /(?:登録して)/, noun: "登録" },
+    { re: /(?:導入して)/, noun: "導入" },
+    { re: /(?:強化して)/, noun: "強化" },
+    { re: /(?:テスト|テストして)/, noun: "テスト整備" },
+  ];
+
+  // メッセージを文に分割（句点・改行）
+  const sentences = message.split(/[。.！!\n]+/).filter((s) => s.trim());
+
+  // 最後のアクション文を優先（「〜してほしい」「〜ようにして」等）
+  for (let i = sentences.length - 1; i >= 0; i--) {
+    const sent = sentences[i].trim();
+    for (const { re, noun } of actionMap) {
+      if (re.test(sent)) {
+        // アクション動詞の直前のトピックを抽出
+        // 例: 「わかりやすいタイトルになるようにして」→「タイトル」+「改善」
+        const topicMatch = sent.match(
+          /(?:の|を|が)?([^\s。、]{2,8}?)(?:を|が|に|は)?(?:なる|する)?(?:ように)?(?:して|する|した|してほしい|してください|してくれ|してね|お願い)/,
+        );
+        if (topicMatch?.[1]) {
+          const topic = topicMatch[1]
+            .replace(/(?:わかりやすい|確実に|網羅的に|ちゃんと|きちんと)/g, "")
+            .trim();
+          if (topic.length >= 2) {
+            return `${topic}${noun}`;
+          }
+        }
+        // トピック抽出失敗: メッセージ全体から主要名詞を探す
+        const nounMatch = message.match(
+          /(?:の|「)([^\s。、「」]{2,10}?)(?:」|が|を|は|の|って)/,
+        );
+        if (nounMatch?.[1]) {
+          return `${nounMatch[1]}${noun}`;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * summary の品質を保証する。コピペや長すぎる場合は AI再要約 → summarizeJa の順でフォールバック。
  */
 export async function ensureQualitySummary(
@@ -451,6 +537,20 @@ export async function ensureQualitySummary(
     return fallback;
   }
 
+  // summarizeJa も不十分な場合: 元メッセージからアクション句を直接抽出
+  const extracted = extractActionPhrase(originalMessage);
+  if (
+    extracted &&
+    extracted.length <= 30 &&
+    isProperNounPhrase(extracted) &&
+    !isCopyPaste(extracted, originalMessage)
+  ) {
+    console.log(
+      `[inbox/classifier] Extracted action phrase: "${extracted}"`,
+    );
+    return extracted;
+  }
+
   // それでもダメなら末尾クリーンアップ＋助詞境界で切り詰め
   let final = cleanupSummaryEnding(fallback);
   if (final.length > 30) {
@@ -463,6 +563,17 @@ export async function ensureQualitySummary(
   if (final.length > 30) {
     final = truncateToNounPhrase(final, 30);
     final = cleanupSummaryEnding(final);
+  }
+
+  // 「が」を含む文断片を名詞句に変換: 「〜が〜」→「〜の〜」
+  if (!isProperNounPhrase(final) && /が/.test(final)) {
+    const gaFixed = final.replace(/が/, "の");
+    if (isProperNounPhrase(gaFixed)) {
+      console.log(
+        `[inbox/classifier] Fixed 'が' → 'の': "${final}" → "${gaFixed}"`,
+      );
+      final = gaFixed;
+    }
   }
 
   // 最終防衛ライン: それでも体言止めでない場合、積極的に動詞形を除去
@@ -522,6 +633,41 @@ export async function ensureQualitySummary(
     aggressive = aggressive.replace(/[をはがにでのとも、]$/, "");
     if (aggressive.length > 0 && isProperNounPhrase(aggressive)) {
       final = aggressive;
+    }
+    // 「が」+名詞1-4文字で終わる文断片 → 「が」を除去して名詞句化
+    // 例: 「ビルドがエラー」→「ビルドエラー」、「リアクションが❌」→「リアクション❌」
+    // ただし結果が5文字未満（汎用的すぎる）になる場合はスキップ
+    if (!isProperNounPhrase(final) && /が[^\sがを]{1,4}$/.test(final)) {
+      const gaRemoved = final.replace(/が([^\sがを]{1,4})$/, "$1");
+      if (gaRemoved.length >= 5 && isProperNounPhrase(gaRemoved)) {
+        final = gaRemoved;
+      }
+    }
+    // 「が」「を」で分割して後半または前半の名詞句を取る（12文字以上で「・」なし）
+    if (
+      !isProperNounPhrase(final) &&
+      !final.includes("・") &&
+      final.length >= 12 &&
+      /[がを]/.test(final)
+    ) {
+      // 「が」で分割: 前半（主語）を取る
+      const gaIdx = final.indexOf("が");
+      if (gaIdx >= 3) {
+        const beforeGa = cleanupSummaryEnding(final.slice(0, gaIdx));
+        if (beforeGa.length >= 3 && isProperNounPhrase(beforeGa)) {
+          final = beforeGa;
+        }
+      }
+      // 「を」で分割: 前半（目的語）を取る
+      if (!isProperNounPhrase(final)) {
+        const woIdx = final.indexOf("を");
+        if (woIdx >= 3) {
+          const beforeWo = cleanupSummaryEnding(final.slice(0, woIdx));
+          if (beforeWo.length >= 3 && isProperNounPhrase(beforeWo)) {
+            final = beforeWo;
+          }
+        }
+      }
     }
 
     // ・区切りの複合名詞句の場合、個別セグメントでリトライ

@@ -4,7 +4,7 @@
 //
 import { registerInboxListeners } from "./message-handler.js";
 import { recoverAndResumeQueue } from "./queue-processor.js";
-import { INBOX_CHANNEL } from "./types.js";
+import { getInboxChannel } from "./types.js";
 
 /**
  * Inbox ハンドラを登録する。
@@ -12,7 +12,7 @@ import { INBOX_CHANNEL } from "./types.js";
  * - リアクションリスナー: 👎(却下) でタスク制御
  */
 export function setupInboxHandler(): void {
-  if (!INBOX_CHANNEL) {
+  if (!getInboxChannel()) {
     console.warn("[inbox] SLACK_INBOX_CHANNEL not set, inbox handler disabled");
     return;
   }
@@ -42,7 +42,7 @@ export {
 } from "./thread-handler.js";
 
 // 定数・型
-export { INBOX_CHANNEL, MAX_CONCURRENT } from "./types.js";
+export { getInboxChannel, MAX_CONCURRENT } from "./types.js";
 export type { InboxTask } from "./types.js";
 
 // フェーズ検出

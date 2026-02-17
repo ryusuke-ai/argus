@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { middleware } from "./middleware";
+import { resetEnvCache } from "./env";
 
 // cf-access モジュールをモック
 vi.mock("./lib/cf-access.js", () => ({
@@ -18,6 +19,7 @@ describe("Cloudflare Access JWT middleware", () => {
 
   beforeEach(() => {
     vi.unstubAllEnvs();
+    resetEnvCache();
     mockGetCfAccessConfig.mockReset();
     mockVerifyCfAccessJwt.mockReset();
   });

@@ -4,6 +4,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { fireAndForget, type ArgusHooks } from "@argus/agent-core";
 import { z } from "zod";
+import { getExecEnv } from "../env.js";
 import type {
   ScanResult,
   RemediationAction,
@@ -152,7 +153,7 @@ export function parseRemediationResult(text: string): {
  * Run `pnpm build && pnpm test` to verify changes.
  */
 export async function runVerification(): Promise<VerificationResult> {
-  const env = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
+  const env = getExecEnv();
 
   try {
     await execAsync("pnpm build", {
@@ -195,7 +196,7 @@ export async function captureGitDiff(): Promise<FileDiff[]> {
     const { stdout } = await execAsync("git diff --numstat", {
       cwd: REPO_ROOT,
       timeout: 10_000,
-      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+      env: getExecEnv(),
     });
 
     if (!stdout.trim()) return [];
@@ -236,7 +237,7 @@ export async function rollbackChanges(): Promise<void> {
     await execAsync("git checkout .", {
       cwd: REPO_ROOT,
       timeout: 10_000,
-      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+      env: getExecEnv(),
     });
     console.log("[Code Patrol] Changes rolled back");
   } catch (error) {
@@ -252,7 +253,7 @@ export async function gitStash(): Promise<boolean> {
     const { stdout } = await execAsync("git stash --include-untracked", {
       cwd: REPO_ROOT,
       timeout: 10_000,
-      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+      env: getExecEnv(),
     });
     const stashed = !stdout.includes("No local changes to save");
     if (stashed) console.log("[Code Patrol] Working directory stashed");
@@ -271,7 +272,7 @@ export async function gitStashPop(): Promise<void> {
     await execAsync("git stash pop", {
       cwd: REPO_ROOT,
       timeout: 10_000,
-      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+      env: getExecEnv(),
     });
     console.log("[Code Patrol] Stash restored");
   } catch (error) {

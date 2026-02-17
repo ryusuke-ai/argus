@@ -39,4 +39,6 @@ export interface QueryOptions {
   allowedTools?: string[];
   allowedCommands?: string[];
   allowedSkills?: string[];
+  /** 外部から渡す AbortController。abort() で実行を中断できる。 */
+  abortController?: AbortController;
 }

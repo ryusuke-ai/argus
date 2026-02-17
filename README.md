@@ -144,7 +144,8 @@ argus/
 │   ├── gmail/                  # Google API (OAuth2 + Gmail MCP)
 │   ├── google-calendar/        # Google Calendar MCP server
 │   ├── tiktok/                 # TikTok Content Posting API
-│   └── r2-storage/             # Cloudflare R2 client
+│   ├── r2-storage/             # Cloudflare R2 client
+│   └── slack-canvas/           # Slack Canvas API client
 ├── docs/
 │   ├── adr/                    # Architecture Decision Records
 │   └── diagrams/               # Mermaid architecture diagrams
@@ -161,6 +162,7 @@ argus/
 | `@argus/google-calendar`    | Google Calendar MCP server (reuses Gmail OAuth2 infrastructure)                                     |
 | `@argus/tiktok`             | TikTok Content Posting API v2 with OAuth2 and chunked file upload                                   |
 | `@argus/r2-storage`         | Cloudflare R2 object storage via S3-compatible API                                                  |
+| `@argus/slack-canvas`       | Slack Canvas API client for creating and updating canvases                                          |
 
 ## Quick Start
 
@@ -230,6 +232,11 @@ Key architectural decisions are documented as ADRs:
 | [ADR-005](docs/adr/005-multi-platform-sns-pipeline.md)     | Multi-platform SNS publishing with phased generation and Slack approval workflow      |
 
 For a complete list of all REST API endpoints and MCP server tools, see the [API Reference](./docs/API.md).
+
+For deeper technical documentation:
+
+- [Project Structure and Codebase Guide](./docs/PROJECT_STRUCTURE_AND_CODEBASE_GUIDE.md) — Comprehensive walkthrough of the monorepo structure, package responsibilities, and code organization
+- [Tech Stack and Architecture](./docs/TECH_STACK_AND_ARCHITECTURE.md) — Detailed explanation of technology choices, architectural patterns, and system design rationale
 
 ## Deployment
 

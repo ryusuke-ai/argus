@@ -1,4 +1,5 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
+import { env } from "../env";
 
 export interface CfAccessConfig {
   teamName: string;
@@ -16,8 +17,8 @@ export interface VerifyResult {
  * 未設定の場合は null を返す（ローカル開発用スキップ）。
  */
 export function getCfAccessConfig(): CfAccessConfig | null {
-  const teamName = process.env.CF_ACCESS_TEAM_NAME;
-  const aud = process.env.CF_ACCESS_AUD;
+  const teamName = env.CF_ACCESS_TEAM_NAME;
+  const aud = env.CF_ACCESS_AUD;
 
   if (!teamName || !aud) {
     return null;

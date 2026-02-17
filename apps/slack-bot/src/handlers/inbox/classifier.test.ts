@@ -414,4 +414,51 @@ describe("ensureQualitySummary（APIなしフォールバック経路）", () =>
     // 動詞形で終わらない
     expect(result).not.toMatch(/(?:てる|てた|して|する|ている)$/);
   });
+
+  it("条件文「〜って言ったら」を含む長文を適切に要約する", async () => {
+    const original =
+      "私がスレッド内で中止してって言ったらすぐに中止できるようにしてほしいです。";
+    const badSummary =
+      "私がスレッド内で中止してって言ったらすぐに中止できるよう";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary result: "${result}" (${result.length} chars)`,
+    );
+    // 生メッセージのコピペではないこと
+    expect(result).not.toContain("って言ったら");
+    expect(result).not.toContain("してほしい");
+    // 30文字以内の体言止め
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(isProperNounPhrase(result)).toBe(true);
+  });
+
+  it("今回の実メッセージ: タイトル要約品質の改善依頼", async () => {
+    const original =
+      "スレッドのタイトルが要約じゃなくて、私の発言そのまま貼り付けて途中で文字数制限かなんかで切れてるように見える。ちゃんと〇〇の調査とか、、〇〇の削除とかわかりやすいタイトルになるようにして。これ何回もなってるから網羅的に調査して確実にできるようにして";
+    const badSummary = "スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けて途中で文字数制限";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary (実メッセージ) result: "${result}" (${result.length} chars)`,
+    );
+    // 「が」を含む文断片ではなく、体言止めの名詞句であること
+    expect(result).not.toContain("じゃなくて");
+    expect(result).not.toContain("そのまま");
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(isProperNounPhrase(result)).toBe(true);
+    // 「スレッドのタイトルが要約」のような文断片ではないこと
+    expect(result).not.toMatch(/が要約$/);
+  });
+
+  it("summarizeJa の結果が「・」付きで不自然にならない", async () => {
+    const original = "classifierのテスト書いて、全部通るようにして";
+    const badSummary = "classifierのテスト書いて全部通るようにして";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary (・結合) result: "${result}" (${result.length} chars)`,
+    );
+    // 「・全部」のような意味不明な断片を含まない
+    expect(result).not.toMatch(/・全部/);
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(isProperNounPhrase(result)).toBe(true);
+  });
 });

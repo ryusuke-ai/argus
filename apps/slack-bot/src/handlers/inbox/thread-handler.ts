@@ -5,14 +5,25 @@ import type { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";
 import { addReaction, removeReaction } from "../../utils/reactions.js";
 import { buildResultBlocks } from "./reporter.js";
-import { fireAndForget } from "@argus/agent-core";
 import { processQueue, executor } from "./queue-processor.js";
-import { INBOX_CHANNEL, type InboxTask } from "./types.js";
+import { ProgressReporter } from "../../utils/progress-reporter.js";
+import { getInboxChannel, type InboxTask } from "./types.js";
+
+/** スレッド内でフォローアップ実行中のタスク ID セット（resume/newQuery） */
+const activeFollowUps = new Set<string>();
+
+/** 中止リクエストかどうかを判定する */
+function isAbortRequest(text: string): boolean {
+  const normalized = text.trim().replace(/[。、.!！？?\s]+$/g, "");
+  return /(?:中止|キャンセル|やめて|止めて|ストップ|中断|abort|cancel|stop)/.test(
+    normalized,
+  );
+}
 
 /**
  * スレッド返信を処理する。
  * 1. pending タスク → clarify への回答（executionPrompt に追記してキュー投入）
- * 2. running タスク → 実行中の旨を通知
+ * 2. running タスク → 中止キーワードなら abort、それ以外は実行中通知
  * 3. completed/failed/waiting タスク → session resume で会話継続
  */
 export async function handleThreadReply(
@@ -31,13 +42,40 @@ export async function handleThreadReply(
           eq(inboxTasks.slackThreadTs, parentThreadTs),
           eq(inboxTasks.slackMessageTs, parentThreadTs),
         ),
-        eq(inboxTasks.slackChannel, INBOX_CHANNEL),
+        eq(inboxTasks.slackChannel, getInboxChannel()),
         eq(inboxTasks.status, "pending"),
       ),
     )
     .limit(1);
 
   if (pendingTask) {
+    // pending タスクへの中止キーワード → 即 rejected
+    if (isAbortRequest(replyText)) {
+      console.log(`[inbox] Pending task ${pendingTask.id} aborted by user`);
+      await db
+        .update(inboxTasks)
+        .set({ status: "rejected", completedAt: new Date() })
+        .where(eq(inboxTasks.id, pendingTask.id));
+      await removeReaction(
+        client,
+        getInboxChannel(),
+        pendingTask.slackMessageTs,
+        "bell",
+      );
+      await addReaction(
+        client,
+        getInboxChannel(),
+        pendingTask.slackMessageTs,
+        "octagonal_sign",
+      );
+      await client.chat.postMessage({
+        channel: getInboxChannel(),
+        thread_ts: parentThreadTs,
+        text: "🛑 タスクを中止しました。",
+      });
+      return;
+    }
+
     console.log(
       `[inbox] Thread reply for task ${pendingTask.id}: "${replyText.slice(0, 80)}"`,
     );
@@ -54,18 +92,18 @@ export async function handleThreadReply(
 
     await removeReaction(
       client,
-      INBOX_CHANNEL,
+      getInboxChannel(),
       pendingTask.slackMessageTs,
       "bell",
     );
     await addReaction(
       client,
-      INBOX_CHANNEL,
+      getInboxChannel(),
       pendingTask.slackMessageTs,
       "eyes",
     );
     await client.chat.postMessage({
-      channel: INBOX_CHANNEL,
+      channel: getInboxChannel(),
       thread_ts: parentThreadTs,
       text: "✏️ 了解しました。実行を開始します。",
     });
@@ -76,7 +114,59 @@ export async function handleThreadReply(
     return;
   }
 
-  // 2. running タスク → 実行中通知
+  // 2. queued タスク → 中止キーワードなら即 rejected
+  const [queuedTask] = await db
+    .select()
+    .from(inboxTasks)
+    .where(
+      and(
+        or(
+          eq(inboxTasks.slackThreadTs, parentThreadTs),
+          eq(inboxTasks.slackMessageTs, parentThreadTs),
+        ),
+        eq(inboxTasks.slackChannel, getInboxChannel()),
+        eq(inboxTasks.status, "queued"),
+      ),
+    )
+    .limit(1);
+
+  if (queuedTask) {
+    if (isAbortRequest(replyText)) {
+      console.log(`[inbox] Queued task ${queuedTask.id} aborted by user`);
+      await db
+        .update(inboxTasks)
+        .set({ status: "rejected", completedAt: new Date() })
+        .where(eq(inboxTasks.id, queuedTask.id));
+      await removeReaction(
+        client,
+        getInboxChannel(),
+        queuedTask.slackMessageTs,
+        "eyes",
+      );
+      await addReaction(
+        client,
+        getInboxChannel(),
+        queuedTask.slackMessageTs,
+        "octagonal_sign",
+      );
+      await client.chat.postMessage({
+        channel: getInboxChannel(),
+        thread_ts: parentThreadTs,
+        text: "🛑 タスクを中止しました。",
+      });
+      return;
+    }
+
+    // 中止でなければキュー待ち中と通知
+    await client.chat.postMessage({
+      channel: getInboxChannel(),
+      thread_ts: parentThreadTs,
+      text: "⏳ タスクはキューで実行待ちです。中止したい場合は「中止して」と送信してください。",
+    });
+    return;
+  }
+
+  // 3. running タスク → 中止キーワードなら abort、それ以外は実行中通知
   const [runningTask] = await db
     .select()
     .from(inboxTasks)
@@ -86,22 +176,92 @@ export async function handleThreadReply(
           eq(inboxTasks.slackThreadTs, parentThreadTs),
           eq(inboxTasks.slackMessageTs, parentThreadTs),
         ),
-        eq(inboxTasks.slackChannel, INBOX_CHANNEL),
+        eq(inboxTasks.slackChannel, getInboxChannel()),
         eq(inboxTasks.status, "running"),
       ),
     )
     .limit(1);
 
   if (runningTask) {
+    // 中止キーワード検出
+    if (isAbortRequest(replyText)) {
+      const aborted = executor.abortTask(runningTask.id);
+      if (aborted) {
+        console.log(`[inbox] Task ${runningTask.id} aborted by user`);
+        await client.chat.postMessage({
+          channel: getInboxChannel(),
+          thread_ts: parentThreadTs,
+          text: "🛑 タスクを中止しました。",
+        });
+      } else {
+        // AbortController が見つからない（既に完了間際等）
+        await client.chat.postMessage({
+          channel: getInboxChannel(),
+          thread_ts: parentThreadTs,
+          text: "⏳ タスクは完了間際のため中止できませんでした。もう少しお待ちください。",
+        });
+      }
+      return;
+    }
+
     await client.chat.postMessage({
-      channel: INBOX_CHANNEL,
+      channel: getInboxChannel(),
       thread_ts: parentThreadTs,
-      text: "⏳ タスクを実行中です。完了後にもう一度お試しください。",
+      text: "⏳ タスクを実行中です。中止したい場合は「中止して」と送信してください。",
     });
     return;
   }
 
-  // 3. completed/failed/waiting/rejected タスク → session resume で会話継続
+  // 3.5. フォローアップ（resume/newQuery）実行中のタスクへの中止
+  if (isAbortRequest(replyText)) {
+    // activeFollowUps に登録されているタスクを threadTs で探す
+    const [followUpTask] = await db
+      .select()
+      .from(inboxTasks)
+      .where(
+        and(
+          or(
+            eq(inboxTasks.slackThreadTs, parentThreadTs),
+            eq(inboxTasks.slackMessageTs, parentThreadTs),
+          ),
+          eq(inboxTasks.slackChannel, getInboxChannel()),
+        ),
+      )
+      .orderBy(desc(inboxTasks.createdAt))
+      .limit(1);
+
+    if (followUpTask && activeFollowUps.has(followUpTask.id)) {
+      const aborted = executor.abortTask(followUpTask.id);
+      if (aborted) {
+        console.log(
+          `[inbox] Follow-up task ${followUpTask.id} aborted by user`,
+        );
+        await client.chat.postMessage({
+          channel: getInboxChannel(),
+          thread_ts: parentThreadTs,
+          text: "🛑 タスクを中止しました。",
+        });
+      } else {
+        await client.chat.postMessage({
+          channel: getInboxChannel(),
+          thread_ts: parentThreadTs,
+          text: "⏳ タスクは完了間際のため中止できませんでした。もう少しお待ちください。",
+        });
+      }
+      return;
+    }
+
+    // activeFollowUps にないが中止リクエスト → completed/failed/waiting に対する中止
+    // 新規実行を開始せずにメッセージだけ返す
+    await client.chat.postMessage({
+      channel: getInboxChannel(),
+      thread_ts: parentThreadTs,
+      text: "🛑 了解しました。実行中のタスクはありませんでした。",
+    });
+    return;
+  }
+
+  // 4. completed/failed/waiting/rejected タスク → session resume で会話継続
   const [existingTask] = await db
     .select()
     .from(inboxTasks)
@@ -111,7 +271,7 @@ export async function handleThreadReply(
           eq(inboxTasks.slackThreadTs, parentThreadTs),
           eq(inboxTasks.slackMessageTs, parentThreadTs),
         ),
-        eq(inboxTasks.slackChannel, INBOX_CHANNEL),
+        eq(inboxTasks.slackChannel, getInboxChannel()),
         or(
           eq(inboxTasks.status, "completed"),
           eq(inboxTasks.status, "failed"),
@@ -136,14 +296,14 @@ export async function handleThreadReply(
     if (prevReaction) {
       await removeReaction(
         client,
-        INBOX_CHANNEL,
+        getInboxChannel(),
         existingTask.slackMessageTs,
         prevReaction,
       );
     }
     await addReaction(
       client,
-      INBOX_CHANNEL,
+      getInboxChannel(),
       existingTask.slackMessageTs,
       "eyes",
     );
@@ -187,28 +347,43 @@ export async function resumeInThread(
 
   // フォローアップ質問に 👀 リアクションを付けて「見ました」を伝える
   const reactionTarget = replyTs || task.slackMessageTs;
-  await addReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
+  await addReaction(client, getInboxChannel(), reactionTarget, "eyes");
 
-  // シンプルな「処理中」メッセージ（ステップ詳細は不要）
-  const typingMsg = await client.chat.postMessage({
-    channel: INBOX_CHANNEL,
-    thread_ts: threadTs,
-    text: "⏳ 回答を準備しています...",
+  // 進捗レポーター: スレッド内の既存メッセージを再利用（1行更新方式）
+  const reporter = new ProgressReporter({
+    client,
+    channel: getInboxChannel(),
+    threadTs: threadTs,
+    taskLabel: "回答を準備しています",
   });
+  await reporter.start();
 
+  activeFollowUps.add(task.id);
   try {
-    const result = await executor.resumeTask(task.sessionId!, replyText);
+    const result = await executor.resumeTask(
+      task.sessionId!,
+      replyText,
+      reporter,
+      task.id,
+    );
 
+    activeFollowUps.delete(task.id);
     const durationSec = (result.durationMs / 1000).toFixed(1);
 
-    // 処理中メッセージを削除
-    if (typingMsg.ts) {
-      fireAndForget(
-        client.chat.delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts }),
-        "delete typing message after resume",
+    // 進捗メッセージを削除
+    await reporter.finish();
+    await removeReaction(client, getInboxChannel(), reactionTarget, "eyes");
+
+    // 中止された場合は早期リターン（中止メッセージは handleThreadReply 側で投稿済み）
+    if (result.aborted) {
+      await removeReaction(
+        client,
+        getInboxChannel(),
+        task.slackMessageTs,
+        "eyes",
       );
+      return;
     }
-    await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
 
     // sessionId が変わった場合は DB を更新（resume 失敗 → 新規 query のケース）
     if (result.sessionId && result.sessionId !== task.sessionId) {
@@ -226,7 +401,12 @@ export async function resumeInThread(
         : "failed";
 
     // 親メッセージのリアクションを結果に応じて更新
-    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
+    await removeReaction(
+      client,
+      getInboxChannel(),
+      task.slackMessageTs,
+      "eyes",
+    );
     const parentReaction = result.needsInput
       ? "bell"
       : result.success
@@ -234,7 +414,7 @@ export async function resumeInThread(
         : "x";
     await addReaction(
       client,
-      INBOX_CHANNEL,
+      getInboxChannel(),
       task.slackMessageTs,
       parentReaction,
     );
@@ -253,7 +433,7 @@ export async function resumeInThread(
     const blocks = buildResultBlocks(result.resultText);
 
     await client.chat.postMessage({
-      channel: INBOX_CHANNEL,
+      channel: getInboxChannel(),
       thread_ts: threadTs,
       text: result.resultText.slice(0, 200),
       blocks: blocks as unknown as KnownBlock[],
@@ -263,19 +443,25 @@ export async function resumeInThread(
       `[inbox] Resume done for task ${task.id} (${durationSec}s, $${result.costUsd.toFixed(4)})`,
     );
   } catch (error) {
+    activeFollowUps.delete(task.id);
     console.error(`[inbox] Resume failed for task ${task.id}:`, error);
     if (typingMsg.ts) {
       fireAndForget(
-        client.chat.delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts }),
+        client.chat.delete({ channel: getInboxChannel(), ts: typingMsg.ts }),
         "delete typing message on resume failure",
       );
     }
-    await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
+    await removeReaction(client, getInboxChannel(), reactionTarget, "eyes");
     // 親メッセージのリアクションを :x: に戻す
-    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
-    await addReaction(client, INBOX_CHANNEL, task.slackMessageTs, "x");
+    await removeReaction(
+      client,
+      getInboxChannel(),
+      task.slackMessageTs,
+      "eyes",
+    );
+    await addReaction(client, getInboxChannel(), task.slackMessageTs, "x");
     await client.chat.postMessage({
-      channel: INBOX_CHANNEL,
+      channel: getInboxChannel(),
       thread_ts: threadTs,
       text: "❌ 回答の生成に失敗しました。もう一度お試しください。",
     });
@@ -298,14 +484,15 @@ export async function newQueryInThread(
   );
 
   const reactionTarget = replyTs || task.slackMessageTs;
-  await addReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
+  await addReaction(client, getInboxChannel(), reactionTarget, "eyes");
 
   const typingMsg = await client.chat.postMessage({
-    channel: INBOX_CHANNEL,
+    channel: getInboxChannel(),
     thread_ts: threadTs,
     text: "⏳ 回答を準備しています...",
   });
 
+  activeFollowUps.add(task.id);
   try {
     // 元のメッセージをコンテキストとして含めて新規 query を実行
     const contextPrompt = task.originalMessage
@@ -319,12 +506,25 @@ export async function newQueryInThread(
       originalMessage: task.originalMessage,
     });
 
+    activeFollowUps.delete(task.id);
+
     if (typingMsg.ts) {
       await client.chat
-        .delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts })
+        .delete({ channel: getInboxChannel(), ts: typingMsg.ts })
         .catch(() => {});
     }
-    await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
+    await removeReaction(client, getInboxChannel(), reactionTarget, "eyes");
+
+    // 中止された場合は早期リターン
+    if (result.aborted) {
+      await removeReaction(
+        client,
+        getInboxChannel(),
+        task.slackMessageTs,
+        "eyes",
+      );
+      return;
+    }
 
     // sessionId を DB に保存（次回は resume できるように）
     const updates: Record<string, unknown> = {
@@ -338,18 +538,23 @@ export async function newQueryInThread(
     await db.update(inboxTasks).set(updates).where(eq(inboxTasks.id, task.id));
 
     // 親メッセージのリアクションを結果に応じて更新
-    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
+    await removeReaction(
+      client,
+      getInboxChannel(),
+      task.slackMessageTs,
+      "eyes",
+    );
     const parentReaction = result.success ? "white_check_mark" : "x";
     await addReaction(
       client,
-      INBOX_CHANNEL,
+      getInboxChannel(),
       task.slackMessageTs,
       parentReaction,
     );
 
     const blocks = buildResultBlocks(result.resultText);
     await client.chat.postMessage({
-      channel: INBOX_CHANNEL,
+      channel: getInboxChannel(),
       thread_ts: threadTs,
       text: result.resultText.slice(0, 200),
       blocks: blocks as unknown as KnownBlock[],
@@ -357,21 +562,27 @@ export async function newQueryInThread(
 
     console.log(`[inbox] New query in thread done for task ${task.id}`);
   } catch (error) {
+    activeFollowUps.delete(task.id);
     console.error(
       `[inbox] New query in thread failed for task ${task.id}:`,
       error,
     );
     if (typingMsg.ts) {
       await client.chat
-        .delete({ channel: INBOX_CHANNEL, ts: typingMsg.ts })
+        .delete({ channel: getInboxChannel(), ts: typingMsg.ts })
         .catch(() => {});
     }
-    await removeReaction(client, INBOX_CHANNEL, reactionTarget, "eyes");
+    await removeReaction(client, getInboxChannel(), reactionTarget, "eyes");
     // 親メッセージのリアクションを :x: に戻す
-    await removeReaction(client, INBOX_CHANNEL, task.slackMessageTs, "eyes");
-    await addReaction(client, INBOX_CHANNEL, task.slackMessageTs, "x");
+    await removeReaction(
+      client,
+      getInboxChannel(),
+      task.slackMessageTs,
+      "eyes",
+    );
+    await addReaction(client, getInboxChannel(), task.slackMessageTs, "x");
     await client.chat.postMessage({
-      channel: INBOX_CHANNEL,
+      channel: getInboxChannel(),
       thread_ts: threadTs,
       text: "❌ 回答の生成に失敗しました。もう一度お試しください。",
     });

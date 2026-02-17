@@ -51,7 +51,10 @@ export function summarizeJa(text: string, maxLen = 30): string {
   );
   // フィラー除去後に残った先頭助詞を除去
   s = s.replace(/^[にをはがで]\s*/g, "");
-  s = s.replace(/^(私の|自分の|僕の|俺の|うちの|わたしの)\s*/g, "");
+  s = s.replace(
+    /^(私[のが]|自分[のが]|僕[のが]|俺[のが]|うちの|わたしの)\s*/g,
+    "",
+  );
   // 冒頭の質問文・前置き文を除去（「〜？」の後に指示が続く場合）
   const questionSplit = s.match(/^([^？?]+[？?])\s*(.+)$/);
   if (questionSplit?.[2] && questionSplit[2].length > 5) {
@@ -66,7 +69,7 @@ export function summarizeJa(text: string, maxLen = 30): string {
   // --- Phase 2: 句に分割して各句を名詞形に変換 ---
   // 読点に加え、口語的接続表現も句境界として扱う
   const clauseSplitter = s.replace(
-    /(?:じゃなくて|ではなくて|じゃなく|ではなく|なので|だから|けど|けれど|けれども|のに|ところ|(?:てる|ている)ように|ように見える|ように思える)/g,
+    /(?:じゃなくて|ではなくて|じゃなく|ではなく|なので|だから|けど|けれど|けれども|のに|ところ|(?:てる|ている)ように|ように見える|ように思える|って言ったら|と言ったら|って言って|と言って)/g,
     "、",
   );
   const rawClauses = clauseSplitter
@@ -76,10 +79,41 @@ export function summarizeJa(text: string, maxLen = 30): string {
     .map((c) => clauseToNoun(c.trim()))
     .filter((c) => c.length > 1)
     // clauseToNoun で名詞化できなかった句（修飾句の残骸）を除外
-    .filter((c) => c.length > 2 || !/[ぁ-ん]$/.test(c));
+    .filter((c) => c.length > 2 || !/[ぁ-ん]$/.test(c))
+    // 汎用的すぎる短い断片を除外（「全部」「すぐ」「確実」等）
+    .filter(
+      (c) =>
+        c.length > 3 ||
+        !/^(全部|すぐ|確実|ちゃんと|すべて|全て|まず|もう|また|ずっと|いつも|あと)$/.test(
+          c,
+        ),
+    );
+
+  // アクション語を含む句を優先して選択（問題説明よりアクション指示が重要）
+  const actionKeywords =
+    /(?:調査|修正|改善|作成|削除|追加|送信|登録|確認|設定|整理|変更|更新|実装|導入|対応|強化|整備|検討|分析|購入|録音|録画|文字起こし)$/;
+  const actionClauses = nounClauses.filter((c) => actionKeywords.test(c));
+  const nonActionClauses = nounClauses.filter((c) => !actionKeywords.test(c));
+
+  // アクション句があればそれを優先、なければ従来通り先頭から
+  let selectedClauses: string[];
+  if (actionClauses.length > 0) {
+    // アクション句を優先し、残りのスロットに非アクション句を前から埋める
+    const maxClauses = 3;
+    selectedClauses = actionClauses.slice(0, maxClauses);
+    const remaining = maxClauses - selectedClauses.length;
+    if (remaining > 0) {
+      selectedClauses = [
+        ...nonActionClauses.slice(0, remaining),
+        ...selectedClauses,
+      ];
+    }
+  } else {
+    selectedClauses = nounClauses.slice(0, 3);
+  }
 
   // 最大3句まで「・」で結合
-  let joined = nounClauses.slice(0, 3).join("・");
+  let joined = selectedClauses.slice(0, 3).join("・");
 
   // 「〜する」形の連体修飾を短縮
   joined = joined.replace(/する([^\s・])/g, "$1");

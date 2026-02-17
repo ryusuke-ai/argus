@@ -150,8 +150,8 @@ describe("handleThreadReply", () => {
       executionPrompt: "prompt",
     };
 
-    // pending=なし, running=なし, completed=あり(sessionId付き)
-    setupDbChain([[], [], [task]]);
+    // pending=なし, queued=なし, running=なし, completed=あり(sessionId付き)
+    setupDbChain([[], [], [], [task]]);
 
     mockResumeTask.mockResolvedValue({
       success: true,
@@ -172,6 +172,8 @@ describe("handleThreadReply", () => {
     expect(mockResumeTask).toHaveBeenCalledWith(
       "session-abc",
       "フォローアップ質問",
+      undefined,
+      "task-1",
     );
     expect(client.chat.postMessage).toHaveBeenCalledTimes(2); // typing + result
   });
@@ -190,8 +192,8 @@ describe("handleThreadReply", () => {
       executionPrompt: "prompt",
     };
 
-    // pending=なし, running=なし, completed=あり(sessionIdなし)
-    setupDbChain([[], [], [task]]);
+    // pending=なし, queued=なし, running=なし, completed=あり(sessionIdなし)
+    setupDbChain([[], [], [], [task]]);
 
     mockExecuteTask.mockResolvedValue({
       success: true,
@@ -219,8 +221,8 @@ describe("handleThreadReply", () => {
       slackMessageTs: "msg-ts",
     };
 
-    // pending=なし, running=あり
-    setupDbChain([[], [task]]);
+    // pending=なし, queued=なし, running=あり
+    setupDbChain([[], [], [task]]);
 
     await handleThreadReply(client, "thread-ts", "まだ？", "reply-ts");
 
@@ -233,11 +235,89 @@ describe("handleThreadReply", () => {
     expect(mockExecuteTask).not.toHaveBeenCalled();
   });
 
+  it("queued タスクに中止リクエスト → rejected に変更される", async () => {
+    const client = createMockClient();
+    const task = {
+      id: "task-queued",
+      status: "queued",
+      slackMessageTs: "msg-ts",
+      slackChannel: "C123",
+    };
+
+    // pending=なし, queued=あり
+    setupDbChain([[], [task]]);
+
+    await handleThreadReply(client, "thread-ts", "中止して", "reply-ts");
+
+    expect(mockSet).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "rejected" }),
+    );
+    expect(client.chat.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("中止"),
+      }),
+    );
+    expect(mockResumeTask).not.toHaveBeenCalled();
+    expect(mockExecuteTask).not.toHaveBeenCalled();
+  });
+
+  it("queued タスクに通常メッセージ → キュー待ち通知を返す", async () => {
+    const client = createMockClient();
+    const task = {
+      id: "task-queued-2",
+      status: "queued",
+      slackMessageTs: "msg-ts",
+      slackChannel: "C123",
+    };
+
+    // pending=なし, queued=あり
+    setupDbChain([[], [task]]);
+
+    await handleThreadReply(client, "thread-ts", "まだ？", "reply-ts");
+
+    expect(client.chat.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("キューで実行待ち"),
+      }),
+    );
+    expect(mockResumeTask).not.toHaveBeenCalled();
+    expect(mockExecuteTask).not.toHaveBeenCalled();
+  });
+
+  it("completed タスクに中止リクエスト → resume/newQuery を開始しない", async () => {
+    const client = createMockClient();
+    const task = {
+      id: "task-completed",
+      status: "completed",
+      sessionId: "session-abc",
+      slackMessageTs: "msg-ts",
+      slackChannel: "C123",
+      originalMessage: "元のメッセージ",
+      result: "前回の結果",
+      intent: "question",
+      executionPrompt: "prompt",
+    };
+
+    // pending=なし, queued=なし, running=なし, followUp=あり(activeFollowUpsにはない), completed=あり
+    setupDbChain([[], [], [], [task], [task]]);
+
+    await handleThreadReply(client, "thread-ts", "やめて", "reply-ts");
+
+    // 中止メッセージが送られ、resume/newQuery は呼ばれない
+    expect(client.chat.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("実行中のタスクはありません"),
+      }),
+    );
+    expect(mockResumeTask).not.toHaveBeenCalled();
+    expect(mockExecuteTask).not.toHaveBeenCalled();
+  });
+
   it("どのステータスにも該当しない場合 → 何も送らない", async () => {
     const client = createMockClient();
 
-    // pending=なし, running=なし, completed=なし
-    setupDbChain([[], [], []]);
+    // pending=なし, queued=なし, running=なし, completed=なし
+    setupDbChain([[], [], [], []]);
 
     await handleThreadReply(
       client,

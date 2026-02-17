@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { generateCodeVerifier, generateCodeChallenge } from "@argus/tiktok";
+import { env } from "../../../../../env";
 
 const TIKTOK_AUTH_BASE = "https://www.tiktok.com/v2/auth/authorize";
 const DEFAULT_SCOPES = "video.upload,video.publish,user.info.basic";
 
 function getRedirectUri(): string {
-  const baseUrl = process.env.DASHBOARD_BASE_URL || "http://localhost:3150";
-  return `${baseUrl}/api/tiktok/auth/callback`;
+  return `${env.DASHBOARD_BASE_URL}/api/tiktok/auth/callback`;
 }
 
 /**
@@ -17,7 +17,7 @@ function getRedirectUri(): string {
  */
 export async function GET() {
   try {
-    const clientKey = process.env.TIKTOK_CLIENT_KEY;
+    const clientKey = env.TIKTOK_CLIENT_KEY;
     if (!clientKey) {
       return NextResponse.json(
         { success: false, error: "TIKTOK_CLIENT_KEY is not configured" },

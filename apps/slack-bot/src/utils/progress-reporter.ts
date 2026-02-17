@@ -29,6 +29,13 @@ const UPDATE_THROTTLE_MS = 2000;
 const COUNTDOWN_INTERVAL_MS = 5000;
 
 export class ProgressReporter {
+  /**
+   * スレッドごとに1つの進捗メッセージを共有する。
+   * 同じスレッドで複数の ProgressReporter が作られても、
+   * 常に同じメッセージを chat.update で上書きする。
+   */
+  private static threadMessages = new Map<string, string>();
+
   private client: WebClient;
   private channel: string;
   private threadTs: string;
@@ -96,18 +103,44 @@ export class ProgressReporter {
   }
 
   /**
-   * 進捗メッセージを投稿して追跡を開始する。
+   * 進捗メッセージを投稿（または既存メッセージを再利用）して追跡を開始する。
+   * 同じスレッドに既存の進捗メッセージがあれば chat.update で再利用し、
+   * なければ chat.postMessage で新規投稿する。
    * カウントダウンタイマーも開始し、5秒ごとに経過・残り時間を更新する。
    */
   async start(): Promise<void> {
     try {
-      const result = await this.client.chat.postMessage({
-        channel: this.channel,
-        thread_ts: this.threadTs,
-        text: `⏳ ${this.taskLabel}`,
-        blocks: this.buildBlocks() as unknown as KnownBlock[],
-      });
-      this.messageTs = result.ts as string;
+      // 同じスレッドに既存メッセージがあれば再利用
+      const existingTs = ProgressReporter.threadMessages.get(this.threadTs);
+      if (existingTs) {
+        try {
+          await this.client.chat.update({
+            channel: this.channel,
+            ts: existingTs,
+            text: `⏳ ${this.taskLabel}`,
+            blocks: this.buildBlocks() as unknown as KnownBlock[],
+          });
+          this.messageTs = existingTs;
+        } catch {
+          // 既存メッセージが削除されていた場合は新規投稿にフォールバック
+          ProgressReporter.threadMessages.delete(this.threadTs);
+          this.messageTs = null;
+        }
+      }
+
+      // 既存メッセージが使えなかった場合は新規投稿
+      if (!this.messageTs) {
+        const result = await this.client.chat.postMessage({
+          channel: this.channel,
+          thread_ts: this.threadTs,
+          text: `⏳ ${this.taskLabel}`,
+          blocks: this.buildBlocks() as unknown as KnownBlock[],
+        });
+        this.messageTs = result.ts as string;
+      }
+
+      // スレッド → メッセージ ts のマッピングを保存
+      ProgressReporter.threadMessages.set(this.threadTs, this.messageTs);
 
       // カウントダウンタイマー: 5秒ごとに表示を更新
       this.countdownTimer = setInterval(() => {
@@ -171,6 +204,9 @@ export class ProgressReporter {
     }
 
     if (!this.messageTs) return;
+
+    // スレッド → メッセージ ts のマッピングを削除
+    ProgressReporter.threadMessages.delete(this.threadTs);
 
     try {
       await this.client.chat.delete({
