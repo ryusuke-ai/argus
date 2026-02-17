@@ -2,11 +2,11 @@
 
 ## 前提条件
 
-- `work/content.json` が存在すること（Phase 3 の出力）
+- 前フェーズ (content) の JSON 出力が入力として提供されること
 
 ## 目的
 
-content.json を入力に、Zenn 固有の最適化を行い最終成果物を出力する。
+content フェーズの出力を入力に、Zenn 固有の最適化を行い最終成果物を JSON で出力する。
 
 ## 手順
 
@@ -25,36 +25,32 @@ content.json を入力に、Zenn 固有の最適化を行い最終成果物を�
 ### Step 3: 品質チェック
 
 - 文字数が 3,000〜10,000文字の範囲内か
-- フロントマターが正しいか（emoji, type, topics, published）
 - コードブロックの品質
 - Zenn 独自記法の正しい使用
+- 必要に応じて本文を修正・改善
 
-### Step 4: GitHub 配置指示
+## 出力形式
 
-articles/ ディレクトリへの配置パスを生成:
+以下の JSON オブジェクトを出力すること（ファイル保存は不要）:
 
+```json
+{
+  "title": "最適化済みタイトル",
+  "body": "最適化済み本文（Markdown）",
+  "tags": ["topic1", "topic2", "topic3"],
+  "type": "tech",
+  "metadata": {
+    "wordCount": 5000,
+    "category": "tutorial",
+    "platform": "zenn",
+    "recommendedPostTime": "平日朝8-9時"
+  }
+}
 ```
-articles/{slug}.md
-```
 
-- slug は英数字とハイフンで構成
-- ファイル名がそのまま URL パスになる
+## バリデーション
 
-### Step 5: 最終出力
-
-- `output/article.md`: Zenn フロントマター付き Markdown
-- `output/metadata.json`: slug、topics、推奨投稿時間
-
-### Step 6: ユーザー承認（BLOCKER）
-
-`AskUserQuestion` で以下を提示して承認を得る。
-
-## 入力
-
-- ファイル: `work/content.json`
-- ファイル: `work/strategy.json`
-
-## 出力
-
-- ファイル: `output/article.md`
-- ファイル: `output/metadata.json`
+- タイトルに技術名が含まれていること
+- タグが 3〜5個であること（文字列の配列）
+- body が有効な Markdown であること
+- metadata に必須フィールドが全て存在すること
