@@ -1,7 +1,7 @@
 import type { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";
 import { db, snsPosts } from "@argus/db";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { addReaction, swapReaction } from "../../../utils/reactions.js";
 import {
   parseYouTubeContent,
@@ -83,6 +83,55 @@ export async function handleSnsPublish(
     .limit(1);
 
   if (!post) return;
+
+  // 重複投稿防止: 投稿可能な status かチェック
+  const publishableStatuses = [
+    "approved",
+    "scheduled",
+    "content_approved",
+    "metadata_approved",
+    "rendered",
+    "image_ready",
+  ] as const;
+  if (
+    !publishableStatuses.includes(
+      post.status as (typeof publishableStatuses)[number],
+    )
+  ) {
+    // 既に処理済み
+    if (body.channel?.id && body.message?.ts) {
+      await client.chat.postMessage({
+        channel: body.channel.id,
+        thread_ts: body.message.ts,
+        text: `この投稿は既に処理済みです (status: ${post.status})`,
+      });
+    }
+    return;
+  }
+
+  // CAS パターン: 投稿前に status を "publishing" に更新（ボタン連打防止）
+  const [locked] = await db
+    .update(snsPosts)
+    .set({ status: "publishing", updatedAt: new Date() })
+    .where(
+      and(
+        eq(snsPosts.id, post.id),
+        inArray(snsPosts.status, [...publishableStatuses]),
+      ),
+    )
+    .returning({ id: snsPosts.id });
+
+  if (!locked) {
+    // 別のリクエストが先に処理中（ボタン連打）
+    if (body.channel?.id && body.message?.ts) {
+      await client.chat.postMessage({
+        channel: body.channel.id,
+        thread_ts: body.message.ts,
+        text: "この投稿は現在処理中です。しばらくお待ちください。",
+      });
+    }
+    return;
+  }
 
   try {
     if (post.platform === "youtube") {
@@ -723,6 +772,12 @@ export async function handleSnsPublish(
     }
   } catch (error) {
     console.error("[sns] Publish error:", error);
+    // publishing 状態のまま放置されないよう failed に更新
+    await db
+      .update(snsPosts)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(snsPosts.id, postIdStr))
+      .catch(() => {}); // DB エラーは握りつぶす（元のエラーを優先）
     const channelId = body.channel?.id;
     const messageTs = body.message?.ts;
     if (channelId && messageTs) {
