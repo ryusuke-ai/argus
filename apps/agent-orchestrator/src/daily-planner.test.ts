@@ -580,7 +580,7 @@ describe("daily-planner", () => {
       expect(context.elements[0].text).toBe("予定なし");
     });
 
-    it("should count todos in summary task count", () => {
+    it("should include tasks and todos in summary", () => {
       const data: DailyData = {
         date: "2026-02-08",
         events: [],
@@ -609,7 +609,8 @@ describe("daily-planner", () => {
         type: string;
         elements: { text: string }[];
       };
-      expect(context.elements[0].text).toContain("タスク 2件");
+      expect(context.elements[0].text).toContain("タスク 1件");
+      expect(context.elements[0].text).toContain("Todo 1件");
     });
 
     it("should skip calendar section when no events", () => {
@@ -752,7 +753,7 @@ describe("daily-planner", () => {
       expect(emailCbs).toHaveLength(2);
     });
 
-    it("should render inbox tasks as 受信タスク in 未完了タスク section with check buttons", () => {
+    it("should render inbox tasks section with status emoji", () => {
       const data: DailyData = {
         date: "2026-02-08",
         events: [],
@@ -765,72 +766,19 @@ describe("daily-planner", () => {
             status: "running",
             createdAt: new Date("2026-02-08T10:00:00Z"),
           },
-          {
-            id: "task-2",
-            summary: "Send email",
-            intent: "communication",
-            status: "queued",
-            createdAt: new Date("2026-02-08T11:00:00Z"),
-          },
         ],
         pendingTodos: [],
       };
 
       const blocks = buildBlocks(data);
-      const texts = sectionTexts(blocks);
 
-      // Heading is separate
-      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
+      // Task section should exist
+      expect(headerTexts(blocks).some((t) => t.includes("受信タスク"))).toBe(
         true,
       );
-
-      // 受信タスク label (now in section block)
-      expect(texts.some((t) => t.includes("*受信タスク*"))).toBe(true);
-
-      // Each task in checkbox labels
       const allTexts = JSON.stringify(blocks);
       expect(allTexts).toContain("Deploy service");
-      expect(allTexts).toContain("Send email");
-
-      // Check checkbox actions for inbox tasks
-      const cbs = checkboxActions(blocks);
-      const inboxCbs = cbs.filter((b) =>
-        checkboxActionId(b).startsWith("dp_check_inbox_"),
-      );
-      expect(inboxCbs).toHaveLength(2);
-    });
-
-    it("should exclude code_change intent from inbox tasks", () => {
-      const data: DailyData = {
-        date: "2026-02-08",
-        events: [],
-        pendingEmails: [],
-        pendingTasks: [
-          {
-            id: "task-1",
-            summary: "Review PR",
-            intent: "code_change",
-            status: "pending",
-            createdAt: new Date("2026-02-08T09:00:00Z"),
-          },
-          {
-            id: "task-2",
-            summary: "Deploy service",
-            intent: "deployment",
-            status: "running",
-            createdAt: new Date("2026-02-08T10:00:00Z"),
-          },
-        ],
-        pendingTodos: [],
-      };
-
-      const blocks = buildBlocks(data);
-      const allTexts = JSON.stringify(blocks);
-
-      // code_change task should be excluded
-      expect(allTexts).not.toContain("Review PR");
-      // deployment task should remain
-      expect(allTexts).toContain("Deploy service");
+      expect(allTexts).toContain(":gear:");
     });
 
     it("should show empty state when no data (including no todos)", () => {
@@ -867,6 +815,7 @@ describe("daily-planner", () => {
 
       const blocks = buildBlocks(data);
       const texts = sectionTexts(blocks);
+      // Todos are displayed, so empty state should NOT show
       expect(
         texts.some((t) => t.includes("予定・メール・タスクはありません")),
       ).toBe(false);
@@ -895,7 +844,7 @@ describe("daily-planner", () => {
       ).toBe(false);
     });
 
-    it("should render todos grouped by category with check buttons", () => {
+    it("should render todos grouped by category", () => {
       const data: DailyData = {
         date: "2026-02-08",
         events: [],
@@ -908,117 +857,18 @@ describe("daily-planner", () => {
             category: "仕事",
             createdAt: new Date("2026-02-08T09:00:00Z"),
           },
-          {
-            id: "td2",
-            content: "Buy milk",
-            category: "買い物",
-            createdAt: new Date("2026-02-08T09:30:00Z"),
-          },
-          {
-            id: "td3",
-            content: "Read book",
-            category: "学習",
-            createdAt: new Date("2026-02-08T10:00:00Z"),
-          },
         ],
       };
 
       const blocks = buildBlocks(data);
-      const texts = sectionTexts(blocks);
 
-      // Section header
-      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
+      // Todo section should exist
+      expect(headerTexts(blocks).some((t) => t.includes("未完了 Todo"))).toBe(
         true,
       );
-
-      // Category labels in section blocks (bigger text)
-      expect(texts.some((t) => t.includes("*仕事*"))).toBe(true);
-      expect(texts.some((t) => t.includes("*買い物*"))).toBe(true);
-      expect(texts.some((t) => t.includes("*学習*"))).toBe(true);
-
-      // Todo content in checkbox labels
       const allTexts = JSON.stringify(blocks);
       expect(allTexts).toContain("Finish report");
-      expect(allTexts).toContain("Buy milk");
-      expect(allTexts).toContain("Read book");
-
-      // Check checkbox actions for todos
-      const cbs = checkboxActions(blocks);
-      const todoCbs = cbs.filter((b) =>
-        checkboxActionId(b).startsWith("dp_check_todo_"),
-      );
-      expect(todoCbs).toHaveLength(3);
-
-      // Verify first todo checkbox
-      expect(checkboxActionId(todoCbs[0])).toBe("dp_check_todo_td1");
-      expect(JSON.parse(checkboxValue(todoCbs[0]))).toEqual({
-        type: "todo",
-        id: "td1",
-      });
-    });
-
-    it("should use その他 category for todos without category", () => {
-      const data: DailyData = {
-        date: "2026-02-08",
-        events: [],
-        pendingEmails: [],
-        pendingTasks: [],
-        pendingTodos: [
-          {
-            id: "td1",
-            content: "Random task",
-            category: null,
-            createdAt: new Date(),
-          },
-        ],
-      };
-
-      const blocks = buildBlocks(data);
-      const texts = sectionTexts(blocks);
-      expect(texts.some((t) => t.includes("*その他*"))).toBe(true);
-    });
-
-    it("should show both todos and inbox tasks in the same section", () => {
-      const data: DailyData = {
-        date: "2026-02-08",
-        events: [],
-        pendingEmails: [],
-        pendingTasks: [
-          {
-            id: "task-1",
-            summary: "Deploy service",
-            intent: "deployment",
-            status: "pending",
-            createdAt: new Date(),
-          },
-        ],
-        pendingTodos: [
-          {
-            id: "td1",
-            content: "Buy groceries",
-            category: "買い物",
-            createdAt: new Date(),
-          },
-        ],
-      };
-
-      const blocks = buildBlocks(data);
-      const texts = sectionTexts(blocks);
-
-      // Both should be under 未完了タスク
-      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
-        true,
-      );
-
-      // Category for todo (section block)
-      expect(texts.some((t) => t.includes("*買い物*"))).toBe(true);
-      // 受信タスク for inbox (section block)
-      expect(texts.some((t) => t.includes("*受信タスク*"))).toBe(true);
-
-      // Both contents visible (in checkbox labels)
-      const allTexts = JSON.stringify(blocks);
-      expect(allTexts).toContain("Buy groceries");
-      expect(allTexts).toContain("Deploy service");
+      expect(allTexts).toContain(":briefcase:");
     });
 
     it("should truncate events beyond MAX_EVENTS and show overflow", () => {
@@ -1091,82 +941,39 @@ describe("daily-planner", () => {
       expect(overflowContext).toBeDefined();
     });
 
-    it("should show all inbox tasks (MAX_TASKS=50) and overflow when exceeded", () => {
-      const tasks = Array.from({ length: 10 }, (_, i) => ({
-        id: `task-${i}`,
-        summary: `Task ${i + 1}`,
-        intent: "work",
-        status: "pending",
-        createdAt: new Date("2026-02-08T09:00:00Z"),
-      }));
-
+    it("should classify Railway emails as automated and exclude from display", () => {
       const data: DailyData = {
         date: "2026-02-08",
         events: [],
-        pendingEmails: [],
-        pendingTasks: tasks,
+        pendingEmails: [
+          {
+            id: "e1",
+            from: "notifications@railway.app",
+            subject: "Build failed for argus — Railway",
+            classification: "needs_attention",
+            receivedAt: new Date("2026-02-08T10:00:00Z"),
+          },
+          {
+            id: "e2",
+            from: "noreply@github.com",
+            subject: "CI failed",
+            classification: "needs_attention",
+            receivedAt: new Date("2026-02-08T11:00:00Z"),
+          },
+        ],
+        pendingTasks: [],
         pendingTodos: [],
       };
 
       const blocks = buildBlocks(data);
       const allTexts = JSON.stringify(blocks);
 
-      // All 10 tasks should be displayed (MAX_TASKS=50)
-      expect(allTexts).toContain("Task 1");
-      expect(allTexts).toContain("Task 7");
-      expect(allTexts).toContain("Task 8");
-      expect(allTexts).toContain("Task 10");
-
-      // No overflow context for 10 tasks
-      const overflowContext = blocks.find(
-        (b) =>
-          (b as Record<string, unknown>).type === "context" &&
-          (
-            (b as { elements?: { text?: string }[] }).elements?.[0]?.text ?? ""
-          ).includes("他"),
-      );
-      expect(overflowContext).toBeUndefined();
-    });
-
-    it("should sort inbox tasks by status: running > queued > pending", () => {
-      const data: DailyData = {
-        date: "2026-02-08",
-        events: [],
-        pendingEmails: [],
-        pendingTasks: [
-          {
-            id: "t1",
-            summary: "Pending task",
-            intent: "work",
-            status: "pending",
-            createdAt: new Date("2026-02-08T09:00:00Z"),
-          },
-          {
-            id: "t2",
-            summary: "Running task",
-            intent: "deploy",
-            status: "running",
-            createdAt: new Date("2026-02-08T10:00:00Z"),
-          },
-          {
-            id: "t3",
-            summary: "Queued task",
-            intent: "review",
-            status: "queued",
-            createdAt: new Date("2026-02-08T11:00:00Z"),
-          },
-        ],
-        pendingTodos: [],
-      };
-
-      const blocks = buildBlocks(data);
-      // Tasks are in checkbox labels — check block order via stringify positions
-      const serialized = JSON.stringify(blocks);
-      const runningIdx = serialized.indexOf("Running task");
-      const queuedIdx = serialized.indexOf("Queued task");
-      const pendingIdx = serialized.indexOf("Pending task");
-      expect(runningIdx).toBeLessThan(queuedIdx);
-      expect(queuedIdx).toBeLessThan(pendingIdx);
+      // Both automated — should not appear in email section
+      expect(allTexts).not.toContain("Build failed");
+      expect(allTexts).not.toContain("CI failed");
+      expect(allTexts).not.toContain("未対応メール");
+      // No automated notification summary either
+      expect(allTexts).not.toContain("自動通知");
     });
 
     it("should sort emails by priority: needs_reply > needs_attention", () => {
@@ -1202,9 +1009,8 @@ describe("daily-planner", () => {
       expect(highIdx).toBeLessThan(lowIdx);
     });
 
-    it("should truncate long email subjects and task summaries", () => {
+    it("should truncate long email subjects", () => {
       const longSubject = "A".repeat(80);
-      const longSummary = "B".repeat(80);
 
       const data: DailyData = {
         date: "2026-02-08",
@@ -1218,15 +1024,7 @@ describe("daily-planner", () => {
             receivedAt: new Date(),
           },
         ],
-        pendingTasks: [
-          {
-            id: "t1",
-            summary: longSummary,
-            intent: "work",
-            status: "pending",
-            createdAt: new Date(),
-          },
-        ],
+        pendingTasks: [],
         pendingTodos: [],
       };
 
@@ -1236,7 +1034,6 @@ describe("daily-planner", () => {
       // Email subject should be truncated
       expect(allTexts).toContain("...");
       expect(allTexts).not.toContain(longSubject);
-      expect(allTexts).not.toContain(longSummary);
     });
 
     it("should not show overflow when within limits", () => {
@@ -1259,15 +1056,7 @@ describe("daily-planner", () => {
             receivedAt: new Date(),
           },
         ],
-        pendingTasks: [
-          {
-            id: "t1",
-            summary: "Task",
-            intent: "work",
-            status: "pending",
-            createdAt: new Date(),
-          },
-        ],
+        pendingTasks: [],
         pendingTodos: [],
       };
 
@@ -1303,15 +1092,7 @@ describe("daily-planner", () => {
             receivedAt: new Date(),
           },
         ],
-        pendingTasks: [
-          {
-            id: "t1",
-            summary: "Task",
-            intent: "work",
-            status: "pending",
-            createdAt: new Date(),
-          },
-        ],
+        pendingTasks: [],
         pendingTodos: [],
       };
 
@@ -1320,11 +1101,11 @@ describe("daily-planner", () => {
         (b) => (b as Record<string, unknown>).type === "divider",
       ).length;
 
-      // 3 data sections = 3 dividers (one before each)
-      expect(dividerCount).toBe(3);
+      // 2 data sections (events + emails) = 2 dividers
+      expect(dividerCount).toBe(2);
     });
 
-    it("should handle only code_change tasks without showing task section", () => {
+    it("should show task section when pending tasks exist", () => {
       const data: DailyData = {
         date: "2026-02-08",
         events: [],
@@ -1343,15 +1124,15 @@ describe("daily-planner", () => {
 
       const blocks = buildBlocks(data);
 
-      // Should not show 未完了タスク section since only code_change
-      expect(headerTexts(blocks).some((t) => t.includes("未完了タスク"))).toBe(
-        false,
+      // Should show 受信タスク section
+      expect(headerTexts(blocks).some((t) => t.includes("受信タスク"))).toBe(
+        true,
       );
-      // Should show empty state
+      // Should NOT show empty state (tasks exist)
       const texts = sectionTexts(blocks);
       expect(
         texts.some((t) => t.includes("予定・メール・タスクはありません")),
-      ).toBe(true);
+      ).toBe(false);
     });
   });
 

@@ -1,16 +1,14 @@
 // Daily Planner - Slack Block Kit block builders
 // Formats collected data into Slack Block Kit daily plan deterministically.
 
-import { summarizeJa } from "@argus/agent-core";
-
-import type { DailyData, TodoSummary } from "./collectors.js";
+import type { DailyData } from "./collectors.js";
 import { getDayOfWeek, formatTime } from "./collectors.js";
 
 import {
   MAX_EVENTS,
   MAX_EMAILS,
-  MAX_TASKS,
   MAX_TODOS,
+  MAX_TASKS,
   TASK_STATUS_ORDER,
   classifyEmails,
   emailSummaryParts,
@@ -20,14 +18,6 @@ import {
 } from "./types.js";
 
 // --- Block Kit building ---
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  仕事: ":briefcase:",
-  買い物: ":shopping_cart:",
-  学習: ":books:",
-  生活: ":house:",
-  その他: ":pushpin:",
-};
 
 /**
  * section + accessory ボタンのヘルパー。
@@ -56,21 +46,20 @@ function checkboxItem(
  * No Claude API call — fast, consistent, and reliable.
  *
  * Layout: Each item uses actions block with checkboxes (check on left, label on right).
- * Pending todos and inbox_tasks are merged into the "未完了タスク" section.
+ * Shows calendar events and human emails only (automated notifications and tasks excluded).
  */
 export function buildBlocks(data: DailyData): Record<string, unknown>[] {
   const dayOfWeek = getDayOfWeek(data.date);
   const blocks: Record<string, unknown>[] = [];
-  const pendingTodos = data.pendingTodos ?? [];
-  const inboxTasksFiltered = data.pendingTasks.filter(
-    (t) => t.intent !== "code_change",
-  );
-  const totalTaskCount = inboxTasksFiltered.length + pendingTodos.length;
   const emailBreakdown = classifyEmails(data.pendingEmails);
+  // 人間からのメールのみカウント（自動通知は除外）
+  const humanEmailCount =
+    emailBreakdown.needsReply.length + emailBreakdown.needsAttention.length;
   const hasAnyData =
     data.events.length > 0 ||
-    data.pendingEmails.length > 0 ||
-    totalTaskCount > 0;
+    humanEmailCount > 0 ||
+    data.pendingTodos.length > 0 ||
+    data.pendingTasks.length > 0;
 
   // --- Header ---
   blocks.push({
@@ -85,9 +74,12 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
   // --- Summary context ---
   const parts: string[] = [];
   if (data.events.length > 0) parts.push(`予定 ${data.events.length}件`);
-  if (data.pendingEmails.length > 0)
-    parts.push(emailSummaryParts(emailBreakdown));
-  if (totalTaskCount > 0) parts.push(`タスク ${totalTaskCount}件`);
+  const emailParts = emailSummaryParts(emailBreakdown);
+  if (emailParts) parts.push(emailParts);
+  if (data.pendingTodos.length > 0)
+    parts.push(`Todo ${data.pendingTodos.length}件`);
+  if (data.pendingTasks.length > 0)
+    parts.push(`タスク ${data.pendingTasks.length}件`);
   blocks.push({
     type: "context",
     elements: [
@@ -134,8 +126,8 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
     }
   }
 
-  // --- Pending emails (prioritized: 要返信 > 要確認 > 通知) ---
-  if (data.pendingEmails.length > 0) {
+  // --- Pending emails (prioritized: 要返信 > 要確認) ---
+  if (humanEmailCount > 0) {
     blocks.push({ type: "divider" });
     blocks.push({
       type: "header",
@@ -209,104 +201,113 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
         });
       }
     }
-
-    // 通知（自動メール — 折りたたみ表示）
-    if (emailBreakdown.notifications.length > 0) {
-      blocks.push({
-        type: "context",
-        elements: [
-          {
-            type: "mrkdwn",
-            text: `:bell: 自動通知 ${emailBreakdown.notifications.length}件（GitHub CI 等）`,
-          },
-        ],
-      });
-    }
   }
 
-  // --- Pending tasks: todos (by category) + inbox_tasks ---
-  const hasTasks = pendingTodos.length > 0 || inboxTasksFiltered.length > 0;
-
-  if (hasTasks) {
+  // --- Pending Todos ---
+  if (data.pendingTodos.length > 0) {
     blocks.push({ type: "divider" });
     blocks.push({
       type: "header",
       text: {
         type: "plain_text",
-        text: `:clipboard:  未完了タスク`,
+        text: `:clipboard:  未完了 Todo`,
         emoji: true,
       },
     });
 
-    // Group todos by category
-    const todosByCategory: Record<string, TodoSummary[]> = {};
-    for (const t of pendingTodos.slice(0, MAX_TODOS)) {
-      const cat = t.category ?? "その他";
-      (todosByCategory[cat] ??= []).push(t);
+    const CATEGORY_EMOJI: Record<string, string> = {
+      仕事: ":briefcase:",
+      買い物: ":shopping_trolley:",
+      学習: ":books:",
+    };
+
+    // カテゴリ別にグループ化
+    const grouped: Record<string, typeof data.pendingTodos> = {};
+    for (const t of data.pendingTodos) {
+      const cat = t.category || "その他";
+      (grouped[cat] ??= []).push(t);
     }
 
-    for (const [category, items] of Object.entries(todosByCategory)) {
-      const emoji = CATEGORY_EMOJI[category] ?? ":pushpin:";
+    let todoCount = 0;
+    for (const [cat, items] of Object.entries(grouped)) {
+      if (todoCount >= MAX_TODOS) break;
+      const emoji = CATEGORY_EMOJI[cat] || ":pushpin:";
       blocks.push({
-        type: "section",
-        text: { type: "mrkdwn", text: `${emoji} *${category}*` },
+        type: "context",
+        elements: [{ type: "mrkdwn", text: `${emoji} *${cat}*` }],
       });
       for (const t of items) {
+        if (todoCount >= MAX_TODOS) break;
         blocks.push(
           checkboxItem(truncateText(t.content), `dp_check_todo_${t.id}`, {
             type: "todo",
             id: t.id,
           }),
         );
+        todoCount++;
       }
     }
 
-    if (pendingTodos.length > MAX_TODOS) {
+    if (data.pendingTodos.length > MAX_TODOS) {
       blocks.push({
         type: "context",
         elements: [
           {
             type: "mrkdwn",
-            text: `_他 ${pendingTodos.length - MAX_TODOS} 件_`,
+            text: `_他 ${data.pendingTodos.length - MAX_TODOS} 件_`,
           },
         ],
       });
     }
+  }
 
-    // Inbox tasks (non-code_change)
-    if (inboxTasksFiltered.length > 0) {
-      const sorted = [...inboxTasksFiltered].sort(
-        (a, b) =>
-          (TASK_STATUS_ORDER[a.status] ?? 9) -
-          (TASK_STATUS_ORDER[b.status] ?? 9),
+  // --- Pending Tasks (inbox_tasks) ---
+  if (data.pendingTasks.length > 0) {
+    blocks.push({ type: "divider" });
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `:incoming_envelope:  受信タスク`,
+        emoji: true,
+      },
+    });
+
+    const STATUS_EMOJI: Record<string, string> = {
+      running: ":gear:",
+      queued: ":hourglass_flowing_sand:",
+      pending: ":inbox_tray:",
+    };
+
+    // ステータス順でソート (running > queued > pending)
+    const sorted = [...data.pendingTasks].sort(
+      (a, b) =>
+        (TASK_STATUS_ORDER[a.status] ?? 99) -
+        (TASK_STATUS_ORDER[b.status] ?? 99),
+    );
+
+    const display = sorted.slice(0, MAX_TASKS);
+    for (const t of display) {
+      const emoji = STATUS_EMOJI[t.status] || ":inbox_tray:";
+      blocks.push(
+        checkboxItem(
+          `${emoji} ${truncateText(t.summary)}`,
+          `dp_check_inbox_${t.id}`,
+          { type: "inbox", id: t.id },
+        ),
       );
-      const displayTasks = sorted.slice(0, MAX_TASKS);
+    }
 
+    if (data.pendingTasks.length > MAX_TASKS) {
       blocks.push({
-        type: "section",
-        text: { type: "mrkdwn", text: `:incoming_envelope: *受信タスク*` },
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `_他 ${data.pendingTasks.length - MAX_TASKS} 件_`,
+          },
+        ],
       });
-
-      for (const t of displayTasks) {
-        blocks.push(
-          checkboxItem(summarizeJa(t.summary), `dp_check_inbox_${t.id}`, {
-            type: "inbox",
-            id: t.id,
-          }),
-        );
-      }
-
-      if (inboxTasksFiltered.length > MAX_TASKS) {
-        blocks.push({
-          type: "context",
-          elements: [
-            {
-              type: "mrkdwn",
-              text: `_他 ${inboxTasksFiltered.length - MAX_TASKS} 件_`,
-            },
-          ],
-        });
-      }
     }
   }
 

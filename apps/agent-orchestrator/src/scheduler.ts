@@ -207,7 +207,7 @@ export class AgentScheduler {
       return;
     }
     this.dailyNewsTask = cron.schedule(
-      "0 5 * * *",
+      "0 4 * * *",
       async () => {
         console.log("[Scheduler] Running Daily News post...");
         try {
@@ -219,7 +219,7 @@ export class AgentScheduler {
       },
       { timezone: "Asia/Tokyo" },
     );
-    console.log("[Scheduler] Daily News scheduled (5:00 AM JST daily)");
+    console.log("[Scheduler] Daily News scheduled (4:00 AM JST daily)");
   }
 
   /**

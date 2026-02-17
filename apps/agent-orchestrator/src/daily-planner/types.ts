@@ -25,12 +25,38 @@ export const EMAIL_PRIORITY_ORDER: Record<string, number> = {
 // --- Automated notification detection ---
 
 const AUTOMATED_SENDERS = [
+  // GitHub
   "notifications@github.com",
   "noreply@github.com",
+  // CI/CD & Infrastructure
+  "railway.app",
+  "vercel.com",
+  "netlify.com",
+  "circleci.com",
+  "travis-ci.com",
+  // AWS
+  "@amazonaws.com",
+  "ses.amazonaws.com",
+  // Google Cloud / Firebase
+  "firebase.google.com",
+  "@cloudflare.com",
+  // General noreply patterns
   "no-reply@",
   "noreply@",
+  "do-not-reply@",
+  "donotreply@",
   "mailer-daemon@",
   "postmaster@",
+  // Package managers & dev tools
+  "npm-support@",
+  "security@",
+  "dependabot",
+  "renovate",
+  "snyk.io",
+  // Monitoring & alerts
+  "sentry.io",
+  "datadog.com",
+  "pagerduty.com",
 ];
 
 function isAutomatedNotification(from: string): boolean {
@@ -68,12 +94,9 @@ export function emailSummaryParts(breakdown: EmailBreakdown): string {
     parts.push(`要返信 ${breakdown.needsReply.length}件`);
   if (breakdown.needsAttention.length > 0)
     parts.push(`要確認 ${breakdown.needsAttention.length}件`);
-  if (breakdown.notifications.length > 0)
-    parts.push(`通知 ${breakdown.notifications.length}件`);
-  const total =
-    breakdown.needsReply.length +
-    breakdown.needsAttention.length +
-    breakdown.notifications.length;
+  // 自動通知はサマリーに含めない
+  const total = breakdown.needsReply.length + breakdown.needsAttention.length;
+  if (total === 0) return "";
   return `メール ${total}件（${parts.join("・")}）`;
 }
 
