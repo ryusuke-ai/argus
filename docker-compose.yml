@@ -1,0 +1,57 @@
+###############################################################################
+# Argus — Docker Compose (Demo)
+#
+# Starts a PostgreSQL database and the Next.js Dashboard for portfolio review.
+# No external API keys required — just `docker-compose up` and visit
+# http://localhost:3150
+#
+# Slack Bot and Agent Orchestrator are excluded because they depend on
+# external services (Slack API, Claude API, Google APIs, etc.).
+###############################################################################
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus
+      POSTGRES_DB: argus
+    ports:
+      - "5433:5432" # Host 5433 to avoid conflicts with local PostgreSQL
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U argus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Dashboard (Next.js 16) — the main demo target
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.demo
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://argus:argus@postgres:5432/argus
+      PORT: "3150"
+    ports:
+      - "3150:3150"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3150"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  pgdata:

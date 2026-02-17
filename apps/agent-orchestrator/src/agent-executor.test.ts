@@ -17,6 +17,14 @@ vi.mock("@argus/db", () => ({
 // Mock agent-core module
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
+  extractText: vi.fn((content: Array<{ type: string; text?: string }>) =>
+    content
+      .filter(
+        (block) => block.type === "text" && typeof block.text === "string",
+      )
+      .map((block) => block.text)
+      .join("\n"),
+  ),
   scanOutputDir: vi.fn(() => new Map()),
   findNewArtifacts: vi.fn(() => []),
   fireAndForget: vi.fn(),

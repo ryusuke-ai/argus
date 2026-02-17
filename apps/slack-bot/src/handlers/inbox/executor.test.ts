@@ -3,6 +3,14 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
   resume: vi.fn(),
+  extractText: vi.fn((content: Array<{ type: string; text?: string }>) =>
+    content
+      .filter(
+        (block) => block.type === "text" && typeof block.text === "string",
+      )
+      .map((block) => block.text)
+      .join("\n"),
+  ),
   createMcpServers: vi.fn().mockReturnValue({}),
 }));
 

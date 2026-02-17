@@ -30,6 +30,14 @@ vi.mock("@argus/db", () => {
 // Mock agent-core to avoid actual Claude CLI calls during tests
 vi.mock("@argus/agent-core", () => ({
   query: vi.fn(),
+  extractText: vi.fn((content: Array<{ type: string; text?: string }>) =>
+    content
+      .filter(
+        (block) => block.type === "text" && typeof block.text === "string",
+      )
+      .map((block) => block.text)
+      .join("\n"),
+  ),
   formatLessonsForPrompt: vi.fn(() => ""),
   scanOutputDir: vi.fn(() => new Map()),
   findNewArtifacts: vi.fn(() => []),

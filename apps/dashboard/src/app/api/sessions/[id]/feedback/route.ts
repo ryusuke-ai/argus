@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@argus/db/client";
 import { sessions, messages } from "@argus/db/schema";
 import { eq } from "drizzle-orm";
-import { resume } from "@argus/agent-core";
+import { resume, extractText } from "@argus/agent-core";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -49,13 +49,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       .insert(messages)
       .values({ sessionId: id, content: feedbackText, role: "user" });
 
-    const assistantText = result.message.content
-      .filter(
-        (b): b is { type: "text"; text: string } =>
-          b.type === "text" && typeof b.text === "string",
-      )
-      .map((b) => b.text)
-      .join("\n");
+    const assistantText = extractText(result.message.content);
 
     if (assistantText) {
       await db

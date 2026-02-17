@@ -10,11 +10,9 @@ import {
 import type { ClassificationResult } from "@argus/gmail";
 import { db, gmailMessages } from "@argus/db";
 import { eq } from "drizzle-orm";
+import { query as agentQuery, isMaxPlanAvailable } from "@argus/agent-core";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { updateGmailCanvas } from "./canvas/gmail-canvas.js";
-
-const anthropic = new Anthropic();
 
 const classificationSchema = z.object({
   classification: z.enum(["needs_reply", "needs_attention", "other"]),
@@ -249,8 +247,6 @@ export async function checkGmail(): Promise<void> {
     }
   }
 
-  // Canvas 更新
-  await updateGmailCanvas();
 }
 
 /**
@@ -258,12 +254,12 @@ export async function checkGmail(): Promise<void> {
  * Returns classification (needs_reply / needs_attention / other),
  * a summary, and optionally a draft reply.
  */
-export async function classifyEmail(
+function buildClassifyPrompt(
   from: string,
   subject: string,
   body: string,
-): Promise<ClassificationResult | null> {
-  const prompt = `以下のメールを分類してください。
+): string {
+  return `以下のメールを分類してください。
 
 From: ${from}
 Subject: ${subject}
@@ -289,38 +285,77 @@ Body: ${body.slice(0, 3000)}
 {"classification": "needs_reply|needs_attention|other", "summary": "要約", "draft_reply": "返信案またはnull"}
 
 needs_replyの場合のみdraft_replyに返信案を入れてください。他の場合はnullにしてください。`;
+}
+
+function parseClassification(text: string): ClassificationResult | null {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  const raw: unknown = JSON.parse(jsonMatch[0]);
+  const result = classificationSchema.safeParse(raw);
+  if (!result.success) {
+    console.error(
+      "[Gmail Checker] Classification schema validation failed:",
+      result.error.message,
+    );
+    return null;
+  }
+
+  return {
+    classification: result.data.classification,
+    summary: result.data.summary,
+    draftReply: result.data.draft_reply,
+  };
+}
+
+async function classifyViaMaxPlan(
+  prompt: string,
+): Promise<ClassificationResult | null> {
+  const result = await agentQuery(prompt, {
+    model: "claude-haiku-4-5-20251001",
+    timeout: 30_000,
+  });
+  if (!result.success) {
+    console.error("[Gmail Checker] Max Plan classification error");
+    return null;
+  }
+  const text = result.message.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("");
+  return parseClassification(text);
+}
+
+async function classifyViaApi(
+  prompt: string,
+): Promise<ClassificationResult | null> {
+  const anthropic = new Anthropic();
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 1024,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const text = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+
+  return parseClassification(text);
+}
+
+export async function classifyEmail(
+  from: string,
+  subject: string,
+  body: string,
+): Promise<ClassificationResult | null> {
+  const prompt = buildClassifyPrompt(from, subject, body);
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-
-    // JSON部分を抽出
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const raw: unknown = JSON.parse(jsonMatch[0]);
-    const result = classificationSchema.safeParse(raw);
-    if (!result.success) {
-      console.error(
-        "[Gmail Checker] Classification schema validation failed:",
-        result.error.message,
-      );
-      return null;
+    if (isMaxPlanAvailable()) {
+      return await classifyViaMaxPlan(prompt);
     }
-
-    return {
-      classification: result.data.classification,
-      summary: result.data.summary,
-      draftReply: result.data.draft_reply,
-    };
+    return await classifyViaApi(prompt);
   } catch (error) {
     console.error("[Gmail Checker] Classification error:", error);
     return null;

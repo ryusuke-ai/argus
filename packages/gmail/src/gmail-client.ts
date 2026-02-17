@@ -133,7 +133,7 @@ export function decodeHeader(value: string): string {
       );
       if (decoded !== value) return decoded;
     } catch {
-      // fall through to mojibake fix
+      // Intentionally ignored: MIME decoding may fail; fall through to mojibake fix
     }
   }
 

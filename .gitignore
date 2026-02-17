@@ -1,3 +1,11 @@
+# Career/Interview documents (private)
+docs/career-*
+docs/interview*
+docs/argus-interview-guide.md
+docs/final-ranking.md
+docs/job-hunting-best-practices.md
+docs/portfolio-strategy.md
+
 # Worktrees
 .worktrees/
 

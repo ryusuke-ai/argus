@@ -164,7 +164,7 @@ ${editInstruction}
       const result = blockKitArraySchema.safeParse(raw);
       if (result.success) return result.data;
     } catch {
-      // Fall back to regex extraction
+      // Intentionally ignored: JSON parse may fail; fall back to regex extraction
     }
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);

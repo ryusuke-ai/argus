@@ -1,10 +1,9 @@
 /**
- * Daily News Canvas - visualizes daily news generation status in a Slack Canvas.
+ * Daily News - visualizes daily news generation status as a Slack Block Kit message.
  * Reads from sns_posts table (youtube/podcast platform) and renders topics + media URLs.
  */
 import { db, snsPosts } from "@argus/db";
-import { eq, and, gte, lt } from "drizzle-orm";
-import { upsertCanvas, findCanvasId, saveCanvasId } from "@argus/slack-canvas";
+import { and, gte, lt } from "drizzle-orm";
 
 // --- Types ---
 
@@ -103,6 +102,106 @@ export function buildDailyNewsCanvasMarkdown(data: DailyNewsData): string {
   return lines.join("\n");
 }
 
+// --- Block Kit builder ---
+
+export function buildDailyNewsBlocks(
+  data: DailyNewsData,
+): Record<string, unknown>[] {
+  const blocks: Record<string, unknown>[] = [];
+
+  // Header
+  blocks.push({
+    type: "header",
+    text: {
+      type: "plain_text",
+      text: `📰 デイリーニュース — ${formatDateJa(data.date)}`,
+      emoji: true,
+    },
+  });
+
+  // Status
+  blocks.push({
+    type: "context",
+    elements: [
+      { type: "mrkdwn", text: `*ステータス*: ${statusLabel(data.status)}` },
+    ],
+  });
+
+  blocks.push({ type: "divider" });
+
+  // Topics section
+  blocks.push({
+    type: "header",
+    text: { type: "plain_text", text: "📋 今日のトピック", emoji: true },
+  });
+
+  if (data.topics.length === 0) {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: "トピック未定" },
+    });
+  } else {
+    const topicText = data.topics.map((t, i) => `${i + 1}. *${t}*`).join("\n");
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: topicText },
+    });
+  }
+
+  blocks.push({ type: "divider" });
+
+  // Video section
+  blocks.push({
+    type: "header",
+    text: { type: "plain_text", text: "🎬 動画", emoji: true },
+  });
+
+  if (data.videoUrl) {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `<${data.videoUrl}|▶️ クリックして再生>` },
+    });
+  } else if (data.status === "published") {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: "未生成" },
+    });
+  } else {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: "生成中..." },
+    });
+  }
+
+  // Podcast section
+  blocks.push({
+    type: "header",
+    text: { type: "plain_text", text: "🎧 ポッドキャスト", emoji: true },
+  });
+
+  if (data.podcastUrl) {
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `<${data.podcastUrl}|▶️ クリックして再生>`,
+      },
+    });
+  } else if (data.status === "published") {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: "未生成" },
+    });
+  } else {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: "生成中..." },
+    });
+  }
+
+  return blocks;
+}
+
 // --- Data extraction helpers ---
 
 function extractTopics(post: { content: unknown }): string[] {
@@ -168,15 +267,15 @@ function extractMediaUrl(
   return null;
 }
 
-// --- Canvas updater ---
+// --- Slack message poster ---
 
-export async function updateDailyNewsCanvas(): Promise<void> {
+export async function postDailyNews(): Promise<void> {
   const channel =
     process.env.DAILY_NEWS_CHANNEL || process.env.SLACK_NOTIFICATION_CHANNEL;
 
   if (!channel) {
     console.error(
-      "[Daily News Canvas] No channel configured (DAILY_NEWS_CHANNEL or SLACK_NOTIFICATION_CHANNEL)",
+      "[Daily News] No channel configured (DAILY_NEWS_CHANNEL or SLACK_NOTIFICATION_CHANNEL)",
     );
     return;
   }
@@ -250,25 +349,41 @@ export async function updateDailyNewsCanvas(): Promise<void> {
       status,
     };
 
-    const markdown = buildDailyNewsCanvasMarkdown(data);
+    const blocks = buildDailyNewsBlocks(data);
     const title = `📰 デイリーニュース — ${formatDateJa(now)}`;
 
-    const existingCanvasId = await findCanvasId("daily-news");
-    const result = await upsertCanvas(
-      channel,
-      title,
-      markdown,
-      existingCanvasId,
-    );
+    const token = process.env.SLACK_BOT_TOKEN;
+    if (!token) {
+      console.error("[Daily News] SLACK_BOT_TOKEN not set");
+      return;
+    }
 
-    if (result.success && result.canvasId) {
-      await saveCanvasId("daily-news", result.canvasId, channel);
+    const response = await fetch("https://slack.com/api/chat.postMessage", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channel,
+        text: title,
+        blocks,
+      }),
+    });
+
+    const result = (await response.json()) as {
+      ok: boolean;
+      error?: string;
+    };
+    if (!result.ok) {
+      console.error("[Daily News] Slack API error:", result.error);
+      return;
     }
 
     console.log(
-      `[Daily News Canvas] Updated (topics: ${topics.length}, video: ${!!videoUrl}, podcast: ${!!podcastUrl}, status: ${status})`,
+      `[Daily News] Posted (topics: ${topics.length}, video: ${!!videoUrl}, podcast: ${!!podcastUrl}, status: ${status})`,
     );
   } catch (error) {
-    console.error("[Daily News Canvas] Update error:", error);
+    console.error("[Daily News] Post error:", error);
   }
 }

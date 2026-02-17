@@ -66,7 +66,12 @@ export async function generateAndPostScript(
     });
 
     if (!result.success || !result.content) {
-      // 失敗: Slack にエラー投稿
+      // 失敗: DB ステータスを failed に更新
+      await db
+        .update(snsPosts)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(eq(snsPosts.id, postId));
+
       await client.chat.postMessage({
         channel: channelId,
         thread_ts: messageTs,
