@@ -12,6 +12,7 @@ import {
 } from "@argus/agent-core";
 import { executeDeepResearch } from "./deep-research.js";
 import { markdownToMrkdwn } from "../utils/mrkdwn.js";
+import { ProgressReporter } from "../utils/progress-reporter.js";
 
 import {
   channelModelOverrides,
@@ -125,8 +126,18 @@ export function setupMessageHandler(): void {
 
       // Pass model override if set for this channel
       const model = channelModelOverrides.get(channel);
+
+      // 進捗レポーター: 1メッセージを chat.update で更新（複数メッセージを投稿しない）
+      const reporter = new ProgressReporter({
+        client,
+        channel,
+        threadTs,
+        taskLabel: "処理中",
+      });
+      await reporter.start();
+
       const onProgress = async (progressMsg: string) => {
-        await say({ text: progressMsg, thread_ts: threadTs });
+        await reporter.addStep(progressMsg);
       };
       // 成果物スナップショット（実行前）
       const outputDir = resolve(process.cwd(), "../../.claude/agent-output");
@@ -141,6 +152,9 @@ export function setupMessageHandler(): void {
         onProgress,
       );
       const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
+
+      // 進捗メッセージを削除（結果は別途投稿する）
+      await reporter.finish();
 
       console.log(
         `[message] Query done: success=${result.success} cost=${result.message.total_cost_usd}`,

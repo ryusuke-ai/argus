@@ -1,8 +1,8 @@
 // apps/slack-bot/src/utils/progress-reporter.ts
 //
-// 単一メッセージを chat.update で累積更新する進捗レポーター。
-// スレッドに大量のメッセージを投稿する代わりに、1つのメッセージ内に
-// フェーズ＋ステップ一覧を表示し、完了・実行中・待機の状態を視覚的に示す。
+// 単一メッセージを chat.update で1行更新する進捗レポーター。
+// スレッドに大量のメッセージを投稿する代わりに、1つのメッセージを
+// chat.update で上書きし、常に最新のステップだけを1行で表示する。
 
 import type { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";

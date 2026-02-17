@@ -44,6 +44,8 @@ export interface ExecutionResult {
   costUsd: number;
   toolCount: number;
   durationMs: number;
+  /** ユーザーにより中止された場合 true */
+  aborted?: boolean;
 }
 
 /** executeTask に渡す最小限のタスク情報 */
@@ -137,11 +139,21 @@ ${PERSONAL_KNOWLEDGE_PROMPT}
 }
 
 export class InboxExecutor {
+  /** 実行中タスクの AbortController マップ (taskId → AbortController) */
+  private abortControllers = new Map<string, AbortController>();
+
   /**
-   * タスクを実行する。
-   * Agent SDK の query() で新規セッションを開始し、結果を返す。
-   * onProgress を渡すとツール使用時にリアルタイムで進捗を通知する。
+   * 実行中のタスクを中止する。
+   * @returns true: 中止成功、false: 該当タスクが実行中でない
    */
+  abortTask(taskId: string): boolean {
+    const controller = this.abortControllers.get(taskId);
+    if (!controller) return false;
+    controller.abort();
+    this.abortControllers.delete(taskId);
+    return true;
+  }
+
   /**
    * SDK オプションを構築する（query / resume 共通）。
    */
@@ -164,6 +176,8 @@ export class InboxExecutor {
     reporter?: ProgressReporter,
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
+    const abortController = new AbortController();
+    this.abortControllers.set(task.id, abortController);
 
     try {
       const sdkOptions = this.buildSdkOptions();
@@ -173,10 +187,27 @@ export class InboxExecutor {
       const result = await query(task.executionPrompt, {
         hooks,
         timeout,
+        abortController,
         sdkOptions,
       });
 
+      this.abortControllers.delete(task.id);
       const durationMs = Date.now() - startTime;
+
+      // abort された場合
+      if (abortController.signal.aborted) {
+        return {
+          success: false,
+          needsInput: false,
+          resultText: "ユーザーによりタスクが中止されました。",
+          sessionId: result.sessionId,
+          costUsd: result.message.total_cost_usd,
+          toolCount: result.toolCalls.length,
+          durationMs,
+          aborted: true,
+        };
+      }
+
       const resultText = this.extractText(result);
       const taskFailed = this.detectTaskFailure(resultText);
       const needsInput = this.detectPendingInput(resultText);
@@ -191,7 +222,22 @@ export class InboxExecutor {
         durationMs,
       };
     } catch (error) {
+      this.abortControllers.delete(task.id);
       const durationMs = Date.now() - startTime;
+
+      // abort による中断
+      if (abortController.signal.aborted) {
+        return {
+          success: false,
+          needsInput: false,
+          resultText: "ユーザーによりタスクが中止されました。",
+          costUsd: 0,
+          toolCount: 0,
+          durationMs,
+          aborted: true,
+        };
+      }
+
       console.error("[inbox/executor] Task execution failed:", error);
       return {
         success: false,
@@ -207,13 +253,19 @@ export class InboxExecutor {
   /**
    * 既存セッションを resume して会話を継続する。
    * resume 失敗時は新規 query にフォールバックする。
+   * taskId を指定すると AbortController で中止可能になる。
    */
   async resumeTask(
     sessionId: string,
     messageText: string,
     reporter?: ProgressReporter,
+    taskId?: string,
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
+    const abortController = taskId ? new AbortController() : undefined;
+    if (taskId && abortController) {
+      this.abortControllers.set(taskId, abortController);
+    }
 
     try {
       const sdkOptions = this.buildSdkOptions();
@@ -221,21 +273,39 @@ export class InboxExecutor {
 
       let result = await resume(sessionId, messageText, {
         hooks,
+        abortController,
         sdkOptions,
       });
 
       // resume 失敗 → 新規 query にフォールバック
-      if (!result.success) {
+      if (!result.success && !abortController?.signal.aborted) {
         console.warn(
           "[inbox/executor] Resume failed, falling back to new query",
         );
         result = await query(messageText, {
           hooks,
+          abortController,
           sdkOptions,
         });
       }
 
+      if (taskId) this.abortControllers.delete(taskId);
       const durationMs = Date.now() - startTime;
+
+      // abort された場合
+      if (abortController?.signal.aborted) {
+        return {
+          success: false,
+          needsInput: false,
+          resultText: "ユーザーによりタスクが中止されました。",
+          sessionId: result.sessionId,
+          costUsd: result.message.total_cost_usd,
+          toolCount: result.toolCalls.length,
+          durationMs,
+          aborted: true,
+        };
+      }
+
       const resultText = this.extractText(result);
 
       return {
@@ -248,7 +318,22 @@ export class InboxExecutor {
         durationMs,
       };
     } catch (error) {
+      if (taskId) this.abortControllers.delete(taskId);
       const durationMs = Date.now() - startTime;
+
+      // abort による中断
+      if (abortController?.signal.aborted) {
+        return {
+          success: false,
+          needsInput: false,
+          resultText: "ユーザーによりタスクが中止されました。",
+          costUsd: 0,
+          toolCount: 0,
+          durationMs,
+          aborted: true,
+        };
+      }
+
       console.error("[inbox/executor] Resume failed:", error);
       return {
         success: false,
@@ -377,40 +462,40 @@ function shortPath(input: Record<string, unknown>, key: string): string {
     : v.split("/").slice(-3).join("/");
 }
 
-/** 開始メッセージ（onPreToolUse）: 絵文字なし、テキストのみ */
+/** 開始メッセージ（onPreToolUse）: 絵文字付き1行テキスト */
 function formatStartMessage(
   toolName: string,
   toolInput: Record<string, unknown>,
 ): string | null {
   switch (toolName) {
     case "WebSearch":
-      return `「${str(toolInput, "query")}」を検索しています...`;
+      return `🌐 「${str(toolInput, "query")}」を検索しています`;
     case "WebFetch":
-      return `Webページを取得しています...`;
+      return `🌐 Webページを取得しています`;
     case "Bash": {
       const desc = str(toolInput, "description", 80);
-      return desc ? `${desc}...` : `コマンドを実行しています...`;
+      return desc ? `🔧 ${desc}` : `🔧 コマンドを実行しています`;
     }
     case "Read":
-      return `${fileName(toolInput, "file_path")} を読み込んでいます...`;
+      return `📁 ${fileName(toolInput, "file_path")} を読み込んでいます`;
     case "Edit":
-      return `${fileName(toolInput, "file_path")} を編集しています...`;
+      return `✏️ ${fileName(toolInput, "file_path")} を編集しています`;
     case "Write":
-      return `${fileName(toolInput, "file_path")} を作成しています...`;
+      return `📝 ${fileName(toolInput, "file_path")} を作成しています`;
     case "Grep":
-      return `コード内を検索しています...`;
+      return `🔍 コード内を検索しています`;
     case "Glob":
-      return `ファイルを探しています...`;
+      return `🔍 ファイルを探しています`;
     case "Skill":
-      return `${str(toolInput, "skill", 40)} スキルを実行しています...`;
+      return `⚡ ${str(toolInput, "skill", 40)} スキルを実行しています`;
     case "Task":
-      return `サブエージェントを起動しています...`;
+      return `🚀 サブエージェントを起動しています`;
     default:
       if (toolName.startsWith("mcp__")) {
         const parts = toolName.split("__");
         const server = parts[1] || "";
         const method = parts[2] || "";
-        return `${server}: ${method} を実行しています...`;
+        return `🔧 ${server}: ${method}`;
       }
       return null;
   }
