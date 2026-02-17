@@ -50,9 +50,17 @@ vi.mock("../../utils/reactions.js", () => ({
   removeReaction: vi.fn(),
 }));
 
-vi.mock("../../utils/progress-reporter.js", () => ({
-  ProgressReporter: vi.fn(),
-}));
+vi.mock("../../utils/progress-reporter.js", () => {
+  class MockProgressReporter {
+    start = vi.fn().mockResolvedValue(undefined);
+    finish = vi.fn().mockResolvedValue(undefined);
+    addStep = vi.fn().mockResolvedValue(undefined);
+    setPhases = vi.fn().mockResolvedValue(undefined);
+    advancePhase = vi.fn().mockResolvedValue(undefined);
+    completeCurrentStep = vi.fn().mockResolvedValue(undefined);
+  }
+  return { ProgressReporter: MockProgressReporter };
+});
 
 vi.mock("./classifier.js", () => ({
   classifyMessage: vi.fn(),
@@ -172,10 +180,10 @@ describe("handleThreadReply", () => {
     expect(mockResumeTask).toHaveBeenCalledWith(
       "session-abc",
       "フォローアップ質問",
-      undefined,
+      expect.objectContaining({ start: expect.any(Function) }),
       "task-1",
     );
-    expect(client.chat.postMessage).toHaveBeenCalledTimes(2); // typing + result
+    expect(client.chat.postMessage).toHaveBeenCalledTimes(1); // result only (typing is ProgressReporter)
   });
 
   it("completed タスクに sessionId がない場合 → executeTask で新規 query を実行する", async () => {
@@ -210,7 +218,7 @@ describe("handleThreadReply", () => {
     const callArg = mockExecuteTask.mock.calls[0][0];
     expect(callArg.executionPrompt).toContain("元のメッセージ");
     expect(callArg.executionPrompt).toContain("追加質問");
-    expect(client.chat.postMessage).toHaveBeenCalledTimes(2); // typing + result
+    expect(client.chat.postMessage).toHaveBeenCalledTimes(1); // result only (typing is ProgressReporter)
   });
 
   it("running タスクがある場合 → 実行中メッセージを返す", async () => {

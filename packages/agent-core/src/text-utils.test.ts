@@ -184,4 +184,14 @@ describe("summarizeJa", () => {
     expect(summarizeJa("お店に行って")).not.toMatch(/行って$/);
     expect(summarizeJa("ログを見て")).not.toMatch(/見て$/);
   });
+
+  it("deduplicates clauses with same core word", () => {
+    const result = summarizeJa(
+      "私がスレッド内で中止してって言ったらすぐに中止できるようにしてほしいです",
+    );
+    // 「中止」が重複して「スレッド内で中止・すぐに中止」になるのを防ぐ
+    expect(result).not.toContain("中止・");
+    expect(result).not.toContain("・中止");
+    expect(result.length).toBeLessThanOrEqual(30);
+  });
 });

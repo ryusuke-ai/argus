@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // --- Load .env manually ---
-const envPath = resolve(new URL(".", import.meta.url).pathname, "../.env");
+const envPath = resolve(new URL(".", import.meta.url).pathname, "../../.env");
 const envContent = readFileSync(envPath, "utf-8");
 for (const line of envContent.split("\n")) {
   const trimmed = line.trim();
@@ -34,10 +34,10 @@ if (!SLACK_BOT_TOKEN) {
 }
 
 // --- Channels ---
-const CODE_PATROL_CHANNEL = process.env.SLACK_CODE_PATROL_CHANNEL || "";
-const GMAIL_CHANNEL = process.env.SLACK_GMAIL_CHANNEL || "";
-const DAILY_PLAN_CHANNEL = process.env.SLACK_DAILY_PLAN_CHANNEL || "";
-const DAILY_NEWS_CHANNEL = process.env.SLACK_DAILY_NEWS_CHANNEL || "";
+const CODE_PATROL_CHANNEL = process.env.CODE_PATROL_CHANNEL || "";
+const GMAIL_CHANNEL = process.env.GMAIL_SLACK_CHANNEL || "";
+const DAILY_PLAN_CHANNEL = process.env.DAILY_PLAN_CHANNEL || "";
+const DAILY_NEWS_CHANNEL = process.env.DAILY_NEWS_CHANNEL || "";
 
 // --- Slack post helper ---
 async function postMessage(channel, text, blocks) {
@@ -509,308 +509,222 @@ function buildNeedsAttentionBlocks() {
 }
 
 // ============================================================
-// 5. Daily Plan
+// 5. Daily Plan (matching production block-builders.ts)
 // ============================================================
+
+function checkboxItem(text, actionId, value) {
+  return {
+    type: "section",
+    text: { type: "mrkdwn", text: `\u2610  ${text}` },
+    accessory: {
+      type: "button",
+      action_id: actionId,
+      text: { type: "plain_text", text: "\u2713", emoji: true },
+      style: "primary",
+      value: JSON.stringify(value),
+    },
+  };
+}
+
 function buildDailyPlanBlocks() {
   const today = new Date().toISOString().split("T")[0];
   const d = new Date(today + "T00:00:00");
-  const DAY_OF_WEEK_JA = ["日", "月", "火", "水", "木", "金", "土"];
+  const DAY_OF_WEEK_JA = ["\u65E5", "\u6708", "\u706B", "\u6C34", "\u6728", "\u91D1", "\u571F"];
   const dayOfWeek = DAY_OF_WEEK_JA[d.getDay()];
-  const dateJa = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  const dateJa = `${d.getFullYear()}\u5E74${d.getMonth() + 1}\u6708${d.getDate()}\u65E5`;
 
-  /** @type {import('../apps/agent-orchestrator/src/daily-planner.js').DailyData} */
-  const data = {
-    date: today,
-    events: [
-      {
-        title: "朝会スタンドアップ",
-        start: `${today}T09:30:00+09:00`,
-        end: `${today}T09:45:00+09:00`,
-        location: undefined,
-      },
-      {
-        title: "デザインレビュー",
-        start: `${today}T11:00:00+09:00`,
-        end: `${today}T12:00:00+09:00`,
-        location: "会議室A",
-      },
-      {
-        title: "ランチミーティング",
-        start: `${today}T12:30:00+09:00`,
-        end: `${today}T13:30:00+09:00`,
-        location: "カフェテリア",
-      },
-      {
-        title: "スプリント振り返り",
-        start: `${today}T15:00:00+09:00`,
-        end: `${today}T16:00:00+09:00`,
-        location: undefined,
-      },
-    ],
-    pendingEmails: [
-      {
-        id: "e1",
-        from: "tanaka@example.com",
-        subject: "プロジェクト進捗の確認",
-        classification: "needs_reply",
-        receivedAt: new Date(Date.now() - 3600000),
-      },
-      {
-        id: "e2",
-        from: "noreply@aws.amazon.com",
-        subject: "証明書更新通知",
-        classification: "needs_attention",
-        receivedAt: new Date(Date.now() - 7200000),
-      },
-    ],
-    pendingTasks: [
-      {
-        id: "t1",
-        summary: "Slack Bot のエラーハンドリング改善",
-        intent: "development",
-        status: "running",
-        createdAt: new Date(Date.now() - 86400000),
-      },
-      {
-        id: "t2",
-        summary: "ナレッジベースの検索精度向上",
-        intent: "improvement",
-        status: "queued",
-        createdAt: new Date(Date.now() - 43200000),
-      },
-      {
-        id: "t3",
-        summary: "デプロイスクリプトの修正",
-        intent: "bugfix",
-        status: "pending",
-        createdAt: new Date(Date.now() - 21600000),
-      },
-    ],
-  };
+  const events = [
+    { title: "\u671D\u4F1A\u30B9\u30BF\u30F3\u30C9\u30A2\u30C3\u30D7", start: `${today}T09:30:00+09:00`, end: `${today}T09:45:00+09:00`, location: undefined },
+    { title: "\u30C7\u30B6\u30A4\u30F3\u30EC\u30D3\u30E5\u30FC", start: `${today}T11:00:00+09:00`, end: `${today}T12:00:00+09:00`, location: "\u4F1A\u8B70\u5BA4A" },
+    { title: "\u30E9\u30F3\u30C1\u30DF\u30FC\u30C6\u30A3\u30F3\u30B0", start: `${today}T12:30:00+09:00`, end: `${today}T13:30:00+09:00`, location: "\u30AB\u30D5\u30A7\u30C6\u30EA\u30A2" },
+    { title: "\u30B9\u30D7\u30EA\u30F3\u30C8\u632F\u308A\u8FD4\u308A", start: `${today}T15:00:00+09:00`, end: `${today}T16:00:00+09:00`, location: undefined },
+  ];
 
-  // Inline buildBlocks logic from daily-planner.ts
-  const blocks = [];
-  const MAX_EVENTS = 8;
-  const MAX_EMAILS = 5;
-  const MAX_TASKS = 7;
+  const emails = [
+    { id: "e1", from: "tanaka@example.com", subject: "\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u9032\u6357\u306E\u78BA\u8A8D", classification: "needs_reply" },
+    { id: "e2", from: "suzuki@example.com", subject: "API\u8A2D\u8A08\u66F8\u306E\u30EC\u30D3\u30E5\u30FC\u4F9D\u983C", classification: "needs_reply" },
+    { id: "e3", from: "noreply@aws.amazon.com", subject: "\u8A3C\u660E\u66F8\u66F4\u65B0\u901A\u77E5", classification: "needs_attention" },
+    { id: "e4", from: "notifications@github.com", subject: "[argus] CI passed: main #142", classification: "notification" },
+  ];
+
+  const todos = [
+    { id: "todo1", text: "Q1 \u632F\u308A\u8FD4\u308A\u8CC7\u6599\u4F5C\u6210", category: "\u4ED5\u4E8B" },
+    { id: "todo2", text: "TypeScript 5.8 \u306E\u65B0\u6A5F\u80FD\u3092\u8ABF\u67FB", category: "\u5B66\u7FD2" },
+    { id: "todo3", text: "\u725B\u4E73\u3068\u5375\u3092\u8CB7\u3046", category: "\u8CB7\u3044\u7269" },
+  ];
+
+  const inboxTasks = [
+    { id: "t1", summary: "Slack Bot \u306E\u30A8\u30E9\u30FC\u30CF\u30F3\u30C9\u30EA\u30F3\u30B0\u6539\u5584", status: "running" },
+    { id: "t2", summary: "\u30CA\u30EC\u30C3\u30B8\u30D9\u30FC\u30B9\u306E\u691C\u7D22\u7CBE\u5EA6\u5411\u4E0A", status: "queued" },
+    { id: "t3", summary: "\u30C7\u30D7\u30ED\u30A4\u30B9\u30AF\u30EA\u30D7\u30C8\u306E\u4FEE\u6B63", status: "pending" },
+  ];
+
   const MAX_TEXT_LENGTH = 60;
-
   function truncateText(text, max = MAX_TEXT_LENGTH) {
     return text.length > max ? text.slice(0, max) + "..." : text;
   }
-
   function formatTime(isoString) {
     const dt = new Date(isoString);
-    const h = String(dt.getHours()).padStart(2, "0");
-    const m = String(dt.getMinutes()).padStart(2, "0");
-    return `${h}:${m}`;
+    return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
   }
 
-  // Header
+  const blocks = [];
+
+  // --- Header ---
   blocks.push({
     type: "header",
-    text: {
-      type: "plain_text",
-      text: `${dateJa}（${dayOfWeek}）`,
-      emoji: true,
-    },
+    text: { type: "plain_text", text: `${dateJa}\uFF08${dayOfWeek}\uFF09`, emoji: true },
   });
 
-  // Summary context
+  // --- Summary context ---
+  const needsReply = emails.filter((e) => e.classification === "needs_reply");
+  const needsAttention = emails.filter((e) => e.classification === "needs_attention");
+  const notifications = emails.filter((e) => e.classification === "notification");
+  const emailParts = [];
+  if (needsReply.length > 0) emailParts.push(`\u8981\u8FD4\u4FE1 ${needsReply.length}\u4EF6`);
+  if (needsAttention.length > 0) emailParts.push(`\u8981\u78BA\u8A8D ${needsAttention.length}\u4EF6`);
+  if (notifications.length > 0) emailParts.push(`\u901A\u77E5 ${notifications.length}\u4EF6`);
+  const emailSummary = emailParts.length > 0 ? `\u30E1\u30FC\u30EB ${emails.length}\u4EF6\uFF08${emailParts.join("\u30FB")}\uFF09` : "\u30E1\u30FC\u30EB\u306A\u3057";
   blocks.push({
     type: "context",
     elements: [
-      {
-        type: "mrkdwn",
-        text: `予定 ${data.events.length}件 \u00B7 メール ${data.pendingEmails.length}件 \u00B7 タスク ${data.pendingTasks.length}件`,
-      },
+      { type: "mrkdwn", text: `\u4E88\u5B9A ${events.length}\u4EF6 \u00B7 ${emailSummary} \u00B7 Todo ${todos.length}\u4EF6 \u00B7 \u30BF\u30B9\u30AF ${inboxTasks.length}\u4EF6` },
     ],
   });
 
-  // Calendar events (vertical list with bullets)
-  if (data.events.length > 0) {
+  // --- Calendar events (checkboxItem) ---
+  if (events.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({
-      type: "header",
-      text: { type: "plain_text", text: ":calendar:  今日の予定", emoji: true },
-    });
-
-    const displayEvents = data.events.slice(0, MAX_EVENTS);
-    const eventLines = displayEvents.map((e) => {
-      const start = e.start.includes("T") ? formatTime(e.start) : "終日";
+    blocks.push({ type: "header", text: { type: "plain_text", text: ":calendar:  \u4ECA\u65E5\u306E\u4E88\u5B9A", emoji: true } });
+    events.forEach((e, i) => {
+      const start = e.start.includes("T") ? formatTime(e.start) : "\u7D42\u65E5";
       const end = e.end && e.end.includes("T") ? ` - ${formatTime(e.end)}` : "";
       const loc = e.location ? `  _${e.location}_` : "";
-      return `\u2022 *${start}${end}*  ${e.title}${loc}`;
-    });
-    blocks.push({
-      type: "section",
-      text: { type: "mrkdwn", text: eventLines.join("\n") },
+      blocks.push(checkboxItem(`*${start}${end}*  ${e.title}${loc}`, `dp_check_event_${i}`, { type: "event", index: i }));
     });
   }
 
-  // Pending emails (grouped vertical list with bullets)
-  if (data.pendingEmails.length > 0) {
+  // --- Emails (checkboxItem, grouped) ---
+  if (emails.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: ":envelope:  未対応メール",
-        emoji: true,
-      },
-    });
+    blocks.push({ type: "header", text: { type: "plain_text", text: ":envelope:  \u672A\u5BFE\u5FDC\u30E1\u30FC\u30EB", emoji: true } });
 
-    const EMAIL_PRIORITY_ORDER = { needs_reply: 0, needs_attention: 1 };
-    const sortedEmails = [...data.pendingEmails].sort(
-      (a, b) =>
-        (EMAIL_PRIORITY_ORDER[a.classification] ?? 9) -
-        (EMAIL_PRIORITY_ORDER[b.classification] ?? 9),
-    );
-    const displayEmails = sortedEmails.slice(0, MAX_EMAILS);
-
-    const emailGroups = {};
-    for (const e of displayEmails) {
-      const key = e.classification === "needs_reply" ? "要返信" : "要確認";
-      (emailGroups[key] ??= []).push(e);
-    }
-
-    const emailLines = [];
-    let firstGroup = true;
-    for (const [label, items] of Object.entries(emailGroups)) {
-      if (!firstGroup) emailLines.push("");
-      firstGroup = false;
-      emailLines.push(`*${label}*`);
-      for (const e of items) {
-        emailLines.push(
-          `  \u2022 ${truncateText(e.subject)} \u2014 _${e.from}_`,
-        );
+    if (needsReply.length > 0) {
+      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `:rotating_light: *\u8981\u8FD4\u4FE1* (${needsReply.length}\u4EF6)` }] });
+      for (const e of needsReply) {
+        blocks.push(checkboxItem(`${truncateText(e.subject)} \u2014 _${e.from}_`, `dp_check_email_${e.id}`, { type: "email", id: e.id }));
       }
     }
-    blocks.push({
-      type: "section",
-      text: { type: "mrkdwn", text: emailLines.join("\n") },
-    });
+    if (needsAttention.length > 0) {
+      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `*\u8981\u78BA\u8A8D* (${needsAttention.length}\u4EF6)` }] });
+      for (const e of needsAttention) {
+        blocks.push(checkboxItem(`${truncateText(e.subject)} \u2014 _${e.from}_`, `dp_check_email_${e.id}`, { type: "email", id: e.id }));
+      }
+    }
+    if (notifications.length > 0) {
+      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `:bell: \u81EA\u52D5\u901A\u77E5 ${notifications.length}\u4EF6\uFF08GitHub CI \u7B49\uFF09` }] });
+    }
   }
 
-  // Pending tasks (grouped vertical list with bullets)
-  if (data.pendingTasks.length > 0) {
+  // --- Todos (checkboxItem, grouped by category) ---
+  if (todos.length > 0) {
     blocks.push({ type: "divider" });
-    blocks.push({
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: ":clipboard:  未完了タスク",
-        emoji: true,
-      },
-    });
+    blocks.push({ type: "header", text: { type: "plain_text", text: ":clipboard:  \u672A\u5B8C\u4E86\u30BF\u30B9\u30AF", emoji: true } });
+
+    const CATEGORY_EMOJI = { "\u4ED5\u4E8B": ":briefcase:", "\u8CB7\u3044\u7269": ":shopping_cart:", "\u5B66\u7FD2": ":books:", "\u751F\u6D3B": ":house:", "\u305D\u306E\u4ED6": ":pushpin:" };
+    const todoGroups = {};
+    for (const t of todos) {
+      (todoGroups[t.category] ??= []).push(t);
+    }
+    for (const [cat, items] of Object.entries(todoGroups)) {
+      const emoji = CATEGORY_EMOJI[cat] || ":pushpin:";
+      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `${emoji} *${cat}*` }] });
+      for (const t of items) {
+        blocks.push(checkboxItem(truncateText(t.text), `dp_check_todo_${t.id}`, { type: "todo", id: t.id }));
+      }
+    }
+  }
+
+  // --- Inbox tasks (checkboxItem, grouped by status) ---
+  if (inboxTasks.length > 0) {
+    blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: ":incoming_envelope: *\u53D7\u4FE1\u30BF\u30B9\u30AF*" }] });
 
     const TASK_STATUS_ORDER = { running: 0, queued: 1, pending: 2 };
-    const sortedTasks = [...data.pendingTasks].sort(
-      (a, b) =>
-        (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9),
-    );
-    const displayTasks = sortedTasks.slice(0, MAX_TASKS);
-
-    const statusLabels = {
-      running: "実行中",
-      queued: "待機中",
-      pending: "未着手",
-    };
-    const taskGroups = {};
-    for (const t of displayTasks) {
-      const key = statusLabels[t.status] ?? t.status;
-      (taskGroups[key] ??= []).push(t);
+    const sorted = [...inboxTasks].sort((a, b) => (TASK_STATUS_ORDER[a.status] ?? 9) - (TASK_STATUS_ORDER[b.status] ?? 9));
+    for (const t of sorted) {
+      blocks.push(checkboxItem(truncateText(t.summary), `dp_check_inbox_${t.id}`, { type: "inbox", id: t.id }));
     }
-
-    const taskLines = [];
-    let firstTaskGroup = true;
-    for (const [label, items] of Object.entries(taskGroups)) {
-      if (!firstTaskGroup) taskLines.push("");
-      firstTaskGroup = false;
-      taskLines.push(`*${label}*`);
-      for (const t of items) {
-        taskLines.push(`  \u2022 ${truncateText(t.summary)}`);
-      }
-    }
-    blocks.push({
-      type: "section",
-      text: { type: "mrkdwn", text: taskLines.join("\n") },
-    });
   }
 
-  return { blocks, text: `${dateJa}（${dayOfWeek}）` };
+  return { blocks, text: `${dateJa}\uFF08${dayOfWeek}\uFF09` };
 }
 
 // ============================================================
-// 6. Daily News
+// 6. Daily News (matching production daily-news.ts)
 // ============================================================
 function buildDailyNewsBlocks() {
   const today = new Date().toISOString().split("T")[0];
   const d = new Date(today + "T00:00:00");
-  const DAY_OF_WEEK_JA = ["日", "月", "火", "水", "木", "金", "土"];
+  const DAY_OF_WEEK_JA = ["\u65E5", "\u6708", "\u706B", "\u6C34", "\u6728", "\u91D1", "\u571F"];
   const dayOfWeek = DAY_OF_WEEK_JA[d.getDay()];
-  const titleDate = `${d.getMonth() + 1}月${d.getDate()}日（${dayOfWeek}）`;
+  const titleDate = `${d.getMonth() + 1}\u6708${d.getDate()}\u65E5\uFF08${dayOfWeek}\uFF09`;
 
-  const BASE_URL = "http://localhost:3150";
-  const outputDir = `video-${today.replace(/-/g, "")}-daily-news`;
+  const topics = [
+    "Claude Code \u306E\u65B0\u3057\u3044 Hooks API \u304C\u6B63\u5F0F\u30EA\u30EA\u30FC\u30B9",
+    "OpenClaw v2.0 \u304C\u30DE\u30EB\u30C1\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u5BFE\u5FDC\u306B",
+    "Google Gemini 3.0 \u306E\u30D9\u30F3\u30C1\u30DE\u30FC\u30AF\u7D50\u679C",
+    "GitHub Copilot \u304C\u30B3\u30FC\u30C9\u30EC\u30D3\u30E5\u30FC\u6A5F\u80FD\u3092\u8FFD\u52A0",
+    "AI \u30A8\u30FC\u30B8\u30A7\u30F3\u30C8\u958B\u767A\u306E\u30D9\u30B9\u30C8\u30D7\u30E9\u30AF\u30C6\u30A3\u30B9 2026",
+  ];
 
   const blocks = [];
 
+  // Header (production format)
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: titleDate, emoji: true },
+    text: { type: "plain_text", text: `\uD83D\uDCF0 \u30C7\u30A4\u30EA\u30FC\u30CB\u30E5\u30FC\u30B9 \u2014 ${titleDate}`, emoji: true },
   });
 
+  // Status context
+  blocks.push({
+    type: "context",
+    elements: [{ type: "mrkdwn", text: "*\u30B9\u30C6\u30FC\u30BF\u30B9*: \uD83D\uDCDD \u6E96\u5099\u4E2D" }],
+  });
+
+  // Topics (numbered list with bold)
   blocks.push({ type: "divider" });
   blocks.push({
     type: "header",
-    text: {
-      type: "plain_text",
-      text: ":clipboard:  今日のトピック",
-      emoji: true,
-    },
+    text: { type: "plain_text", text: ":clipboard:  \u4ECA\u65E5\u306E\u30C8\u30D4\u30C3\u30AF", emoji: true },
+  });
+  const topicLines = topics.map((t, i) => `${i + 1}. *${t}*`);
+  blocks.push({
+    type: "section",
+    text: { type: "mrkdwn", text: topicLines.join("\n") },
+  });
+
+  // Video (not yet generated)
+  blocks.push({ type: "divider" });
+  blocks.push({
+    type: "header",
+    text: { type: "plain_text", text: ":movie_camera:  \u52D5\u753B", emoji: true },
   });
   blocks.push({
     type: "section",
-    text: {
-      type: "mrkdwn",
-      text: "\u2022 Claude Code の新しい Hooks API が正式リリース\n\u2022 OpenClaw v2.0 がマルチエージェント対応に\n\u2022 Google Gemini 3.0 のベンチマーク結果\n\u2022 GitHub Copilot がコードレビュー機能を追加\n\u2022 AI エージェント開発のベストプラクティス 2026",
-    },
+    text: { type: "mrkdwn", text: "\u672A\u751F\u6210" },
   });
 
-  blocks.push({ type: "divider" });
+  // Podcast (not yet generated)
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: ":movie_camera:  動画", emoji: true },
+    text: { type: "plain_text", text: ":headphones:  \u30DD\u30C3\u30C9\u30AD\u30E3\u30B9\u30C8", emoji: true },
   });
   blocks.push({
     type: "section",
-    text: {
-      type: "mrkdwn",
-      text: `<${BASE_URL}/api/files/${outputDir}/output.mp4|:arrow_forward: クリックして再生>`,
-    },
+    text: { type: "mrkdwn", text: "\u672A\u751F\u6210" },
   });
 
-  blocks.push({ type: "divider" });
-  blocks.push({
-    type: "header",
-    text: {
-      type: "plain_text",
-      text: ":headphones:  ポッドキャスト",
-      emoji: true,
-    },
-  });
-  blocks.push({
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: `<${BASE_URL}/api/files/${outputDir}/podcast/podcast.mp3|:arrow_forward: クリックして再生>`,
-    },
-  });
-
-  blocks.push({ type: "divider" });
-
-  return { blocks, text: `${titleDate} デイリーダイジェスト` };
+  return { blocks, text: `${titleDate} \u30C7\u30A4\u30EA\u30FC\u30C0\u30A4\u30B8\u30A7\u30B9\u30C8` };
 }
 
 // ============================================================

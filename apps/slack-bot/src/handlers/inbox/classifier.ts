@@ -1,7 +1,11 @@
 // apps/slack-bot/src/handlers/inbox/classifier.ts
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { summarizeJa } from "@argus/agent-core";
+import {
+  summarizeJa,
+  query as agentQuery,
+  isMaxPlanAvailable,
+} from "@argus/agent-core";
 import {
   CLASSIFIER_SYSTEM_PROMPT,
   buildClassifierUserPrompt,
@@ -19,6 +23,7 @@ const classificationResultSchema = z.object({
 });
 
 const CLASSIFIER_MODEL = "claude-haiku-4-5-20251001";
+const MAX_PLAN_MODEL = "claude-sonnet-4-5-20250929";
 
 let _client: Anthropic | undefined;
 
@@ -210,21 +215,20 @@ export async function resummarize(
       system: `ユーザーのメッセージを短い体言止めの名詞句に要約してください。
 
 ## ルール
-- 8文字以内を目指す（最大15文字）
+- 5〜10文字を目指す（最大15文字）
 - 体言止め（名詞で終わる）: ✅「AI動向の調査」 ❌「AI動向を調べて」
 - 形式: [トピック] + [アクション種別]（調査/修正/改善/作成/削除/追加/送信/登録 等）
-- ユーザーの発言をそのままコピペしない。必ず抽象化・圧縮する
+- ユーザーの発言をそのままコピペしない。意味を圧縮して別の表現にする
 - 名詞句のみを出力（説明文や引用符は不要）
 
 ## 禁止事項
 - 動詞形で終わらない（〜して、〜する、〜ください、〜たい、〜ている）
 - 助詞で終わらない（を、は、が、に、で、の、と）
 - 丁寧語で終わらない（です、ます）
-- 読点「、」を含めない
-- 句点「。」を含めない
+- 「・」は絶対に使わない（❌「中止・即時中止」→ ✅「即時中止機能」）
+- 読点「、」句点「。」を含めない
 - 元メッセージの文頭からそのまま切り取らない
-- 同じ単語を繰り返さない（❌「中止・即時中止」→ ✅「即時中止機能」）
-- 「・」で意味の薄い並列をしない（❌「調査・確認・修正」→ ✅「調査修正」）
+- 鍵括弧「」内の引用をそのまま使わない
 
 ## 例
 入力「最新のAI動向について調べてください」→ AI動向の調査
@@ -233,12 +237,11 @@ export async function resummarize(
 入力「classifierのテスト書いて、全部通るようにして」→ classifierテスト整備
 入力「来週のチームミーティングの資料をまとめておいて」→ MTG資料整理
 入力「このAPIのレスポンス形式ってどうなってる？」→ APIレスポンス確認
-入力「メールの判定基準がわからないから調べて教えてほしい」→ メール判定基準の調査
-入力「スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けて途中で切れてる」→ タイトル要約改善
-入力「一回リアクションが❌になってそこから戻らないバグがある」→ リアクション❌バグ修正
+入力「一回リアクションが❌になってそこから戻らないバグがある」→ リアクション状態バグ修正
 入力「ビルドがエラーになっているので直してほしい」→ ビルドエラー修正
 入力「私がスレッド内で中止してって言ったらすぐに中止できるようにしてほしいです」→ 即時中止機能の実装
-入力「タイトルが「スレッド内で中止・すぐに中止」みたいな感じでおかしい」→ タイトル要約品質改善${feedbackLine}`,
+入力「タイトルが「スレッド内で中止・すぐに中止」みたいな感じでおかしい」→ タイトル要約品質改善
+入力「毎日のニュース記事を自動で投稿できるようにしてほしいです」→ ニュース自動投稿${feedbackLine}`,
       messages: [{ role: "user", content: messageText }],
     });
 
@@ -258,6 +261,108 @@ export async function resummarize(
     return null;
   } catch (error) {
     console.error("[inbox/classifier] Resummarize failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Max Plan (Claude Agent SDK) 経由でメッセージを分類する。
+ * CLI プロセス起動のオーバーヘッドがあるため、API 直接呼び出しが使えない場合に使用。
+ */
+async function classifyWithMaxPlan(
+  messageText: string,
+): Promise<ClassificationResult | null> {
+  if (!isMaxPlanAvailable()) return null;
+
+  try {
+    console.log("[inbox/classifier] Classifying via Max Plan (Agent SDK)");
+    const result = await agentQuery(buildClassifierUserPrompt(messageText), {
+      model: MAX_PLAN_MODEL,
+      timeout: 60_000,
+      sdkOptions: {
+        systemPrompt: CLASSIFIER_SYSTEM_PROMPT,
+        tools: [],
+        maxTurns: 1,
+      },
+    });
+
+    if (!result.success) return null;
+
+    const text = result.message.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text || "")
+      .join("");
+
+    if (!text) return null;
+    return parseClassificationResult(text, messageText);
+  } catch (error) {
+    console.error("[inbox/classifier] Max Plan classification failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Max Plan (Claude Agent SDK) 経由で再要約する。
+ * CLI プロセス起動のオーバーヘッドがあるため、1回のみ試行。
+ */
+async function resummarizeWithMaxPlan(
+  messageText: string,
+  failedSummary?: string,
+): Promise<string | null> {
+  if (!isMaxPlanAvailable()) return null;
+
+  try {
+    const feedbackLine = failedSummary
+      ? `\n\n前回の要約「${failedSummary}」は不適切でした（コピペ/長すぎ/体言止めでない等）。全く別の表現で、より短く抽象的に書き直してください。元メッセージの単語をそのまま並べるのではなく、意味を圧縮してください。`
+      : "";
+
+    console.log("[inbox/classifier] Resummarizing via Max Plan (Agent SDK)");
+    const result = await agentQuery(messageText, {
+      model: MAX_PLAN_MODEL,
+      timeout: 30_000,
+      sdkOptions: {
+        systemPrompt: `ユーザーのメッセージを短い体言止めの名詞句に要約してください。
+
+## ルール
+- 5〜10文字を目指す（最大15文字）
+- 体言止め（名詞で終わる）: ✅「AI動向の調査」 ❌「AI動向を調べて」
+- 形式: [トピック] + [アクション種別]（調査/修正/改善/作成/削除/追加/送信/登録 等）
+- ユーザーの発言をそのままコピペしない。意味を圧縮して別の表現にする
+- 名詞句のみを出力（説明文や引用符は不要）
+
+## 禁止事項
+- 動詞形で終わらない（〜して、〜する、〜ください、〜たい、〜ている）
+- 助詞で終わらない（を、は、が、に、で、の、と）
+- 丁寧語で終わらない（です、ます）
+- 「・」は絶対に使わない（❌「中止・即時中止」→ ✅「即時中止機能」）
+- 読点「、」句点「。」を含めない
+- 元メッセージの文頭からそのまま切り取らない
+- 鍵括弧「」内の引用をそのまま使わない
+
+## 例
+入力「最新のAI動向について調べてください」→ AI動向の調査
+入力「スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けてる」→ タイトル要約改善
+入力「私がスレッド内で中止してって言ったらすぐに中止できるようにしてほしいです」→ 即時中止機能の実装${feedbackLine}`,
+        tools: [],
+        maxTurns: 1,
+      },
+    });
+
+    if (!result.success) return null;
+
+    const text = result.message.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text || "")
+      .join("")
+      .trim()
+      .replace(/^["「『]|["」』]$/g, "");
+
+    if (text.length > 0 && text.length <= 30) {
+      return text;
+    }
+    return null;
+  } catch (error) {
+    console.error("[inbox/classifier] Max Plan resummarize failed:", error);
     return null;
   }
 }
@@ -340,6 +445,18 @@ export function isProperNounPhrase(summary: string): boolean {
   // 「・」区切りで3つ以上のセグメントがある（summarizeJa の句結合が冗長）
   if ((summary.match(/・/g) || []).length >= 2) {
     return false;
+  }
+
+  // 「・」区切りで同じ漢字語が重複している（「中止・即時中止」「調査・再調査」等）
+  if (summary.includes("・")) {
+    const segments = summary.split("・");
+    const allKanji = segments.flatMap(
+      (seg) => seg.match(/[\u4e00-\u9fff]{2,}/g) || [],
+    );
+    const unique = new Set(allKanji);
+    if (unique.size < allKanji.length) {
+      return false;
+    }
   }
 
   // 途中で切れている: ひらがなで終わり、かつ12文字以上の長い summary
@@ -439,7 +556,7 @@ function extractActionPhrase(message: string): string | null {
     { re: /(?:登録して)/, noun: "登録" },
     { re: /(?:導入して)/, noun: "導入" },
     { re: /(?:強化して)/, noun: "強化" },
-    { re: /(?:テスト|テストして)/, noun: "テスト整備" },
+    { re: /(?:テストして)/, noun: "テスト整備" },
   ];
 
   // メッセージを文に分割（句点・改行）
@@ -460,14 +577,26 @@ function extractActionPhrase(message: string): string | null {
             .replace(/(?:わかりやすい|確実に|網羅的に|ちゃんと|きちんと)/g, "")
             .trim();
           if (topic.length >= 2) {
-            return `${topic}${noun}`;
+            // 動詞形で終わるトピックは不適切（「全部通る」「すぐできる」等）
+            const isVerbTopic = /(?:る|い|った|んだ|てる|てた|した|ない)$/.test(
+              topic,
+            );
+            const candidate = `${topic}${noun}`;
+            // 壊れた抽出を除外: 助詞で始まる、同じ漢字語が重複する、動詞形トピック
+            if (
+              !/^[をはがにでのともから]/.test(candidate) &&
+              !hasDuplicateKanji(topic, noun) &&
+              !isVerbTopic
+            ) {
+              return candidate;
+            }
           }
         }
-        // トピック抽出失敗: メッセージ全体から主要名詞を探す
+        // トピック抽出失敗: メッセージ全体から主要名詞（漢字・カタカナ語）を探す
         const nounMatch = message.match(
-          /(?:の|「)([^\s。、「」]{2,10}?)(?:」|が|を|は|の|って)/,
+          /(?:の|「)([\u4e00-\u9fff\u30a0-\u30ffA-Za-z-]{2,10}?)(?:」|が|を|は|の|って)/,
         );
-        if (nounMatch?.[1]) {
+        if (nounMatch?.[1] && !/^[をはがにでのともから]/.test(nounMatch[1])) {
           return `${nounMatch[1]}${noun}`;
         }
       }
@@ -475,6 +604,51 @@ function extractActionPhrase(message: string): string | null {
   }
 
   return null;
+}
+
+/** topic と noun に同じ漢字2文字以上の語が含まれるか判定 */
+function hasDuplicateKanji(topic: string, noun: string): boolean {
+  const kanjiWords = topic.match(/[\u4e00-\u9fff]{2,}/g) || [];
+  return kanjiWords.some((w) => noun.includes(w));
+}
+
+/**
+ * summary にアクション語（調査/改善/作成 等）が欠けている場合、元メッセージから推定して補完する。
+ * 例: summary="タイトル要約", message="〜改善して" → "タイトル要約改善"
+ *     summary="APIのレスポンス", message="〜調べて改善して" → "APIレスポンス改善"
+ */
+function appendActionSuffix(summary: string, originalMessage: string): string {
+  // 既にアクション語で終わっている場合はそのまま
+  const actionSuffixes =
+    /(?:調査|修正|改善|作成|削除|追加|送信|登録|確認|設定|整理|変更|更新|実装|導入|対応|強化|整備|検討|分析|購入|送信|テスト整備)$/;
+  if (actionSuffixes.test(summary)) return summary;
+
+  // 元メッセージからアクション動詞を抽出
+  const actionVerbMap: Array<{ re: RegExp; noun: string }> = [
+    { re: /(?:調べて|調査して|リサーチして)/, noun: "調査" },
+    { re: /(?:改善して|直して|修正して|変更して)/, noun: "改善" },
+    { re: /(?:作って|作成して|生成して|書いて)/, noun: "作成" },
+    { re: /(?:追加して|実装して|入れて)/, noun: "追加" },
+    { re: /(?:削除して|消して|除去して)/, noun: "削除" },
+    { re: /(?:送って|送信して)/, noun: "送信" },
+    { re: /(?:整理して|まとめて)/, noun: "整理" },
+    { re: /(?:確認して|チェックして)/, noun: "確認" },
+    { re: /(?:更新して|アップデートして)/, noun: "更新" },
+  ];
+
+  // 元メッセージの後半（主要なアクション指示がある）から探す
+  for (const { re, noun } of actionVerbMap) {
+    if (re.test(originalMessage)) {
+      // 末尾の「の」を除去してからアクション語を追加
+      const base = summary.replace(/の$/, "");
+      const candidate = `${base}${noun}`;
+      if (candidate.length <= 30 && !hasDuplicateKanji(base, noun)) {
+        return candidate;
+      }
+    }
+  }
+
+  return summary;
 }
 
 /**
@@ -525,19 +699,31 @@ export async function ensureQualitySummary(
         lastFailed = resummarized;
       }
     }
+  } else if (isMaxPlanAvailable()) {
+    // API キーが使えない場合、Max Plan で1回試行（CLI オーバーヘッドがあるため1回のみ）
+    const resummarized = await resummarizeWithMaxPlan(originalMessage, summary);
+    if (
+      resummarized &&
+      !isCopyPaste(resummarized, originalMessage) &&
+      isProperNounPhrase(resummarized)
+    ) {
+      console.log(
+        `[inbox/classifier] Resummarized via Max Plan: "${resummarized}"`,
+      );
+      return resummarized;
+    }
+    if (resummarized) {
+      console.log(
+        `[inbox/classifier] Max Plan resummarize rejected: "${resummarized}" (copyPaste=${isCopyPaste(resummarized, originalMessage)}, properNoun=${isProperNounPhrase(resummarized)})`,
+      );
+    }
   }
 
   // AI 再要約も失敗 → 正規表現ベースのフォールバック
-  // summarizeJa はすでに動詞→名詞変換・フィラー除去を行っているため、
-  // isCopyPaste チェックは緩和し、体言止めと長さだけを確認する
-  const fallback = summarizeJa(originalMessage);
-  console.log(`[inbox/classifier] Using summarizeJa fallback: "${fallback}"`);
+  // 優先順位: extractActionPhrase（抽象的要約）→ summarizeJa（構造変換）
+  // extractActionPhrase は「トピック＋アクション名詞」形式で真の要約を生成するため最優先
 
-  if (fallback.length <= 30 && isProperNounPhrase(fallback)) {
-    return fallback;
-  }
-
-  // summarizeJa も不十分な場合: 元メッセージからアクション句を直接抽出
+  // 1. アクション句抽出（最優先: 真に抽象的な要約を生成する唯一の手段）
   const extracted = extractActionPhrase(originalMessage);
   if (
     extracted &&
@@ -545,10 +731,26 @@ export async function ensureQualitySummary(
     isProperNounPhrase(extracted) &&
     !isCopyPaste(extracted, originalMessage)
   ) {
-    console.log(
-      `[inbox/classifier] Extracted action phrase: "${extracted}"`,
-    );
+    console.log(`[inbox/classifier] Extracted action phrase: "${extracted}"`);
     return extracted;
+  }
+
+  // 2. summarizeJa（動詞→名詞変換 + 構造整理）
+  //    ただし元メッセージのコピペになりやすいので isCopyPaste もチェックする
+  const fallback = summarizeJa(originalMessage);
+  console.log(`[inbox/classifier] Using summarizeJa fallback: "${fallback}"`);
+
+  if (
+    fallback.length <= 30 &&
+    isProperNounPhrase(fallback) &&
+    !isCopyPaste(fallback, originalMessage)
+  ) {
+    // アクション語が欠けている場合（トピックだけの名詞句）、元メッセージからアクション語を補完
+    const withAction = appendActionSuffix(fallback, originalMessage);
+    if (withAction.length <= 30 && isProperNounPhrase(withAction)) {
+      return withAction;
+    }
+    return fallback;
   }
 
   // それでもダメなら末尾クリーンアップ＋助詞境界で切り詰め
@@ -691,23 +893,28 @@ export async function ensureQualitySummary(
     }
   }
 
+  // 最後にアクション語を補完（トピックだけで終わっている場合）
+  if (isProperNounPhrase(final)) {
+    final = appendActionSuffix(final, originalMessage);
+  }
+
   console.log(`[inbox/classifier] Final forced cleanup: "${final}"`);
   return final || truncateToNounPhrase(fallback, 25);
 }
 
 /**
  * メッセージを分類する。
- * API キーがあれば Haiku で分類、なければキーワードベースで分類。
+ * 優先順位: API 直接呼び出し → Max Plan (Agent SDK) → キーワード分類
  */
 export async function classifyMessage(
   messageText: string,
 ): Promise<ClassificationResult> {
   const client = getClient();
   let result: ClassificationResult;
-  if (!client) {
-    console.log("[inbox/classifier] No API key, using keyword classification");
-    result = keywordClassification(messageText);
-  } else {
+  let apiWorked = false;
+
+  // 1. API 直接呼び出し（最速）
+  if (client) {
     try {
       const response = await client.messages.create({
         model: CLASSIFIER_MODEL,
@@ -730,17 +937,31 @@ export async function classifyMessage(
         .join("");
 
       result = parseClassificationResult(text, messageText);
+      apiWorked = true;
     } catch (error) {
-      console.error("[inbox/classifier] Classification failed:", error);
+      console.error("[inbox/classifier] API classification failed:", error);
+    }
+  }
+
+  // 2. Max Plan (Agent SDK) — API が使えない場合のフォールバック
+  if (!apiWorked) {
+    const maxPlanResult = await classifyWithMaxPlan(messageText);
+    if (maxPlanResult) {
+      result = maxPlanResult;
+    } else {
+      console.log(
+        "[inbox/classifier] No API key or Max Plan, using keyword classification",
+      );
       result = keywordClassification(messageText);
     }
   }
 
   // 最終ガード: summary の品質チェック（コピペ検出 + 長さチェック → AI再要約 → summarizeJa）
+  // API が動作しなかった場合、resummarize にも Max Plan を使用
   result.summary = await ensureQualitySummary(
     result.summary,
     messageText,
-    client,
+    apiWorked ? client : null,
   );
 
   console.log(
