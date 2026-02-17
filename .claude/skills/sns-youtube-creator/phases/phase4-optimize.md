@@ -2,11 +2,11 @@
 
 ## 前提条件
 
-- `work/content.json` が存在すること（Phase 3 の出力）
+- 前フェーズ (content) の JSON 出力が入力として提供されること
 
 ## 目的
 
-content.json を入力に、CTR と維持率の整合性をチェックし最終出力する。
+content フェーズの出力を入力に、CTR と維持率の整合性をチェックし最終成果物を JSON で出力する。
 
 ## 手順
 
@@ -24,28 +24,31 @@ content.json を入力に、CTR と維持率の整合性をチェックし最終
 
 ### Step 3: API アップロード設定
 
+categoryId: 28, privacyStatus: "private", defaultLanguage: "ja", madeForKids: false
+
+## 出力形式
+
+以下の JSON オブジェクトを出力すること（ファイル保存は不要）:
+
 ```json
 {
-  "categoryId": 28,
-  "privacyStatus": "private",
-  "defaultLanguage": "ja",
-  "madeForKids": false
+  "title": "最適化済みタイトル",
+  "description": "最適化済み説明文",
+  "tags": ["tag1", "tag2"],
+  "chapters": [{ "time": "00:00", "title": "イントロ" }],
+  "thumbnailText": "サムネイルテキスト",
+  "metadata": {
+    "category": "tutorial",
+    "estimatedDuration": "10:00",
+    "categoryId": 28,
+    "privacyStatus": "private"
+  }
 }
 ```
 
-### Step 4: 最終出力
+## バリデーション
 
-- `output/metadata.json`: 完全なメタデータ（タイトル、説明、タグ、チャプター、サムネイルテキスト、API設定）
-
-### Step 5: ユーザー承認（BLOCKER）
-
-`AskUserQuestion` でメタデータサマリーを提示して承認を得る。
-
-## 入力
-
-- ファイル: `work/content.json`
-- ファイル: `work/strategy.json`
-
-## 出力
-
-- ファイル: `output/metadata.json`
+- タイトルが100文字以内であること
+- 説明文の最初の150文字にキーワードが含まれていること
+- タグが適切に設定されていること
+- chapters が時系列順であること

@@ -2,11 +2,11 @@
 
 ## 前提条件
 
-- `work/content.json` が存在すること（Phase 3 の出力）
+- 前フェーズ (content) の JSON 出力が入力として提供されること
 
 ## 目的
 
-content.json を入力に、note 固有の最適化を行い最終成果物を出力する。
+content フェーズの出力を入力に、note 固有の最適化を行い最終成果物を JSON で出力する。
 
 ## 手順
 
@@ -20,33 +20,36 @@ content.json を入力に、note 固有の最適化を行い最終成果物を�
 
 投稿直後2時間の「スキ」が結果を左右するため、最適時間帯を推奨。
 
-### Step 2: 収益化設定
-
-- 有料記事にするかの判断
-- 価格設定（100-500円が一般的）
-- マガジン連携の有無
-
-### Step 3: 品質チェック
+### Step 2: 品質チェック
 
 - 文字数が 2,000〜5,000文字の範囲内か
 - ストーリーの流れが自然か
 - 共感ポイントが適切に配置されているか
-- アイキャッチ画像の指示があるか
+- 必要に応じて本文を修正・改善
 
-### Step 4: 最終出力
+## 出力形式
 
-- `output/article.md`: note 投稿用 Markdown
-- `output/metadata.json`: タイトル、投稿設定、推奨投稿時間
+以下の JSON オブジェクトを出力すること（ファイル保存は不要）:
 
-### Step 5: ユーザー承認（BLOCKER）
+```json
+{
+  "title": "最適化済みタイトル",
+  "body": "最適化済み本文（Markdown）",
+  "tags": ["tag1", "tag2", "tag3"],
+  "type": "essay",
+  "metadata": {
+    "wordCount": 3000,
+    "category": "experience",
+    "platform": "note",
+    "recommendedPostTime": "夜21-22時",
+    "isPaid": false
+  }
+}
+```
 
-`AskUserQuestion` で承認を得る。
+## バリデーション
 
-## 入力
-
-- ファイル: `work/content.json`
-
-## 出力
-
-- ファイル: `output/article.md`
-- ファイル: `output/metadata.json`
+- タイトルが読者の共感を引くものであること
+- タグが 1〜5個であること（文字列の配列）
+- body が有効な Markdown であること
+- metadata に必須フィールドが全て存在すること

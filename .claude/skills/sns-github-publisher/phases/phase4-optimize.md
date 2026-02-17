@@ -2,11 +2,11 @@
 
 ## 前提条件
 
-- `work/content.json` が存在すること（Phase 3 の出力）
+- 前フェーズ (content) の JSON 出力が入力として提供されること
 
 ## 目的
 
-content.json を入力に、GitHub 固有の品質チェックを行い最終出力する。
+content フェーズの出力を入力に、GitHub 固有の品質チェックを行い最終成果物を JSON で出力する。
 
 ## 手順
 
@@ -30,34 +30,32 @@ content.json を入力に、GitHub 固有の品質チェックを行い最終出
 
 ### Step 4: 禁止事項チェック
 
-| チェック項目                          | OK/NG |
-| ------------------------------------- | ----- |
-| README がある                         |       |
-| LICENSE がある                        |       |
-| 英語で書かれている                    |       |
-| Quick Start がコピペ可能              |       |
-| シークレット・APIキーが含まれていない |       |
+- README があること
+- 英語で書かれていること
+- Quick Start がコピペ可能であること
+- シークレット・APIキーが含まれていないこと
 
-### Step 5: SNS 告知文生成
+## 出力形式
 
-- X 投稿: ツールの価値を伝える投稿 + リプライ欄にリンク
-- Threads 投稿: カジュアルに「こんなの作った」
+以下の JSON オブジェクトを出力すること（ファイル保存は不要）:
 
-### Step 6: 最終出力
+```json
+{
+  "name": "repo-name",
+  "description": "リポジトリの説明（英語）",
+  "readme": "# repo-name\n\n完全な README（Markdown）",
+  "topics": ["ai", "claude-code", "typescript"],
+  "visibility": "public",
+  "metadata": {
+    "category": "tool",
+    "license": "MIT"
+  }
+}
+```
 
-- `output/README.md`: 完全な README
-- `output/metadata.json`: description, topics, license, SNS 告知文
+## バリデーション
 
-### Step 7: ユーザー承認（BLOCKER）
-
-`AskUserQuestion` で README サマリーと Topics を提示して承認を得る。
-
-## 入力
-
-- ファイル: `work/content.json`
-- ファイル: `work/strategy.json`
-
-## 出力
-
-- ファイル: `output/README.md`
-- ファイル: `output/metadata.json`
+- name が英数字とハイフンで構成されていること
+- description が英語であること
+- readme が有効な Markdown であること
+- topics が 5〜10個であること

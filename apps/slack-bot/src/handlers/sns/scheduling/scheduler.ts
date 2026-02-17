@@ -38,6 +38,9 @@ const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
 let suggestionTask: ScheduledTask | null = null;
 let publishTask: ScheduledTask | null = null;
 
+/** generateAllPlatformSuggestions の排他制御フラグ */
+let isGenerating = false;
+
 export function startSnsScheduler(client: WebClient): void {
   if (!SNS_CHANNEL) {
     console.warn(
@@ -159,6 +162,25 @@ export async function catchUpIfNeeded(client: WebClient): Promise<void> {
  * 実行中に CliUnavailableError が発生した場合も残りをスキップする。
  */
 export async function generateAllPlatformSuggestions(
+  client: WebClient,
+): Promise<void> {
+  // 排他制御: 同時に1つだけ実行（cron + キャッチアップの重複防止）
+  if (isGenerating) {
+    console.warn(
+      "[sns-scheduler] Generation already in progress, skipping duplicate invocation",
+    );
+    return;
+  }
+  isGenerating = true;
+
+  try {
+    await generateAllPlatformSuggestionsInternal(client);
+  } finally {
+    isGenerating = false;
+  }
+}
+
+async function generateAllPlatformSuggestionsInternal(
   client: WebClient,
 ): Promise<void> {
   // バッチ開始前の CLI ヘルスチェック

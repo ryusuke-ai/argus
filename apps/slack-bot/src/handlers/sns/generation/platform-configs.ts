@@ -37,6 +37,7 @@ function buildLongFormPhases(skillDir: string): PhaseConfig[] {
       promptPath: `${base}/phases/phase4-optimize.md`,
       allowWebSearch: false,
       inputFromPhase: "content",
+      maxRetries: 1,
     },
   ];
 }
