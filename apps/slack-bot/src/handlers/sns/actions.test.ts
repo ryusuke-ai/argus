@@ -6,7 +6,14 @@ const mockWhere = vi.fn(() => ({ limit: mockLimit }));
 const mockFrom = vi.fn(() => ({ where: mockWhere }));
 const mockSelect = vi.fn(() => ({ from: mockFrom }));
 
-const mockUpdateWhere = vi.fn();
+const mockReturning = vi.fn();
+const mockUpdateWhere = vi.fn(
+  () =>
+    ({
+      returning: mockReturning,
+      catch: vi.fn().mockResolvedValue(undefined),
+    }) as Record<string, unknown>,
+);
 const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
 const mockUpdateFn = vi.fn(() => ({ set: mockUpdateSet }));
 
@@ -35,6 +42,8 @@ vi.mock("@argus/db", () => ({
 
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((col, val) => ({ col, val })),
+  and: vi.fn((...args: unknown[]) => ({ and: args })),
+  inArray: vi.fn((col, vals) => ({ col, vals })),
 }));
 
 vi.mock("./platforms/x-publisher.js", () => ({
@@ -187,7 +196,7 @@ describe("SNS Action Handlers", () => {
     platform: "x",
     postType: "single",
     content: { text: "Hello world!", category: "tips" },
-    status: "draft",
+    status: "approved",
     slackChannel: "C123",
     slackMessageTs: "1234567890.123456",
     publishedUrl: null,
@@ -225,12 +234,18 @@ describe("SNS Action Handlers", () => {
     mockWhere.mockReset().mockReturnValue({ limit: mockLimit });
     mockFrom.mockReset().mockReturnValue({ where: mockWhere });
     mockSelect.mockReset().mockReturnValue({ from: mockFrom });
-    mockUpdateWhere.mockReset();
+    mockReturning.mockReset();
+    mockUpdateWhere.mockReset().mockReturnValue({
+      returning: mockReturning,
+      catch: vi.fn().mockResolvedValue(undefined),
+    } as Record<string, unknown>);
     mockUpdateSet.mockReset().mockReturnValue({ where: mockUpdateWhere });
     mockUpdateFn.mockReset().mockReturnValue({ set: mockUpdateSet });
 
     // Default: return the mock post
     mockLimit.mockResolvedValue([mockPost]);
+    // Default: CAS lock succeeds
+    mockReturning.mockResolvedValue([{ id: mockPost.id }]);
 
     // Import and setup handlers
     const { setupSnsActions } = await import("./actions.js");
@@ -795,7 +810,7 @@ describe("SNS Action Handlers", () => {
         tags: ["test", "demo"],
         thumbnailPath: "/tmp/thumb.jpg",
       },
-      status: "draft",
+      status: "approved",
       slackChannel: "C123",
       slackMessageTs: "1234567890.123456",
       publishedUrl: null,
@@ -896,7 +911,10 @@ describe("SNS Action Handlers", () => {
           text: "YouTube 投稿に失敗しました: Quota exceeded",
         }),
       );
-      expect(mockUpdateFn).not.toHaveBeenCalled();
+      // CAS lock update is called, but status:"published" update is NOT
+      expect(mockUpdateSet).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: "published" }),
+      );
     });
   });
 
