@@ -461,4 +461,42 @@ describe("ensureQualitySummary（APIなしフォールバック経路）", () =>
     expect(result.length).toBeLessThanOrEqual(30);
     expect(isProperNounPhrase(result)).toBe(true);
   });
+
+  it("長い改善依頼メッセージが適切な名詞句になる", async () => {
+    const original =
+      "ビルドがエラーになってて、CIも落ちてるから直してほしい。テストも通るようにしてね";
+    const badSummary = "ビルドがエラーになっててCIも落ちてるから直してほしい";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary (ビルドエラー) result: "${result}" (${result.length} chars)`,
+    );
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(isProperNounPhrase(result)).toBe(true);
+    // 文断片ではなく名詞句であること
+    expect(result).not.toMatch(/(?:てて|てる|から|ほしい)$/);
+  });
+
+  it("複数の指示を含む長文が最後のアクションに基づいた名詞句になる", async () => {
+    const original =
+      "このAPIのレスポンスが遅い気がするんだけど、パフォーマンス調べて改善してほしい";
+    const badSummary = "このAPIのレスポンスが遅い気がするんだけどパフォーマンス";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary (API改善) result: "${result}" (${result.length} chars)`,
+    );
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(isProperNounPhrase(result)).toBe(true);
+  });
+
+  it("口語的な依頼がアクション名詞句に変換される", async () => {
+    const original = "毎日のニュース記事を自動で投稿できるようにしてほしいです";
+    const badSummary = "毎日のニュース記事を自動で投稿できるようにしてほしいです";
+    const result = await ensureQualitySummary(badSummary, original, null);
+    console.log(
+      `ensureQualitySummary (自動投稿) result: "${result}" (${result.length} chars)`,
+    );
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(isProperNounPhrase(result)).toBe(true);
+    expect(result).not.toMatch(/(?:です|ます|ほしい)$/);
+  });
 });

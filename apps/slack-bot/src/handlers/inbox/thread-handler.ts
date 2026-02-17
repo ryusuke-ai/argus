@@ -445,12 +445,7 @@ export async function resumeInThread(
   } catch (error) {
     activeFollowUps.delete(task.id);
     console.error(`[inbox] Resume failed for task ${task.id}:`, error);
-    if (typingMsg.ts) {
-      fireAndForget(
-        client.chat.delete({ channel: getInboxChannel(), ts: typingMsg.ts }),
-        "delete typing message on resume failure",
-      );
-    }
+    await reporter.finish();
     await removeReaction(client, getInboxChannel(), reactionTarget, "eyes");
     // 親メッセージのリアクションを :x: に戻す
     await removeReaction(
@@ -486,11 +481,14 @@ export async function newQueryInThread(
   const reactionTarget = replyTs || task.slackMessageTs;
   await addReaction(client, getInboxChannel(), reactionTarget, "eyes");
 
-  const typingMsg = await client.chat.postMessage({
+  // 進捗レポーター: スレッド内の既存メッセージを再利用（1行更新方式）
+  const reporter = new ProgressReporter({
+    client,
     channel: getInboxChannel(),
-    thread_ts: threadTs,
-    text: "⏳ 回答を準備しています...",
+    threadTs: threadTs,
+    taskLabel: "回答を準備しています",
   });
+  await reporter.start();
 
   activeFollowUps.add(task.id);
   try {
@@ -499,20 +497,19 @@ export async function newQueryInThread(
       ? `以下の会話の続きです。\n\n元のリクエスト: ${task.originalMessage}\n\n${task.result ? `前回の回答: ${task.result.slice(0, 500)}\n\n` : ""}ユーザーの追加メッセージ: ${replyText}`
       : replyText;
 
-    const result = await executor.executeTask({
-      id: task.id,
-      executionPrompt: contextPrompt,
-      intent: task.intent,
-      originalMessage: task.originalMessage,
-    });
+    const result = await executor.executeTask(
+      {
+        id: task.id,
+        executionPrompt: contextPrompt,
+        intent: task.intent,
+        originalMessage: task.originalMessage,
+      },
+      reporter,
+    );
 
     activeFollowUps.delete(task.id);
 
-    if (typingMsg.ts) {
-      await client.chat
-        .delete({ channel: getInboxChannel(), ts: typingMsg.ts })
-        .catch(() => {});
-    }
+    await reporter.finish();
     await removeReaction(client, getInboxChannel(), reactionTarget, "eyes");
 
     // 中止された場合は早期リターン
@@ -567,11 +564,7 @@ export async function newQueryInThread(
       `[inbox] New query in thread failed for task ${task.id}:`,
       error,
     );
-    if (typingMsg.ts) {
-      await client.chat
-        .delete({ channel: getInboxChannel(), ts: typingMsg.ts })
-        .catch(() => {});
-    }
+    await reporter.finish();
     await removeReaction(client, getInboxChannel(), reactionTarget, "eyes");
     // 親メッセージのリアクションを :x: に戻す
     await removeReaction(
