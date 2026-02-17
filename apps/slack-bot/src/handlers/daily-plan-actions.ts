@@ -43,48 +43,56 @@ export function setupDailyPlanActions(): void {
     const messageTs = ba.message?.ts;
 
     try {
-      switch (parsed.type) {
-        case "todo":
-          if (parsed.id) {
-            await db
-              .update(todos)
-              .set({
-                status: "completed",
-                completedAt: new Date(),
-                updatedAt: new Date(),
-              })
-              .where(eq(todos.id, parsed.id));
-          }
-          break;
+      // DB更新は個別にtry-catchし、失敗してもSlack表示更新は継続する
+      try {
+        switch (parsed.type) {
+          case "todo":
+            if (parsed.id) {
+              await db
+                .update(todos)
+                .set({
+                  status: "completed",
+                  completedAt: new Date(),
+                  updatedAt: new Date(),
+                })
+                .where(eq(todos.id, parsed.id));
+            }
+            break;
 
-        case "inbox":
-          if (parsed.id) {
-            await db
-              .update(inboxTasks)
-              .set({ status: "completed" })
-              .where(eq(inboxTasks.id, parsed.id));
-          }
-          break;
+          case "inbox":
+            if (parsed.id) {
+              await db
+                .update(inboxTasks)
+                .set({ status: "completed" })
+                .where(eq(inboxTasks.id, parsed.id));
+            }
+            break;
 
-        case "email":
-          if (parsed.id) {
-            await db
-              .update(gmailMessages)
-              .set({ status: "dismissed" })
-              .where(eq(gmailMessages.id, parsed.id));
-          }
-          break;
+          case "email":
+            if (parsed.id) {
+              await db
+                .update(gmailMessages)
+                .set({ status: "dismissed" })
+                .where(eq(gmailMessages.id, parsed.id));
+            }
+            break;
 
-        case "event":
-          // イベントは DB に保存しないため、表示更新のみ
-          break;
+          case "event":
+            // イベントは DB に保存しないため、表示更新のみ
+            break;
 
-        default:
-          console.log("[DailyPlanActions] Unknown type:", parsed.type);
-          return;
+          default:
+            console.log("[DailyPlanActions] Unknown type:", parsed.type);
+            break;
+        }
+      } catch (dbError) {
+        console.error(
+          "[DailyPlanActions] DB update failed (continuing with UI update):",
+          dbError,
+        );
       }
 
-      // チェック済み表示に更新
+      // チェック済み表示に更新（DB更新の成否に関わらず実行）
       if (channelId && messageTs) {
         const originalMessage = ba.message;
         if (originalMessage?.blocks) {

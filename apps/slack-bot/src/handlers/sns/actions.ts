@@ -1,8 +1,34 @@
 import type { BlockAction } from "@slack/bolt";
+import type { WebClient } from "@slack/web-api";
 import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { addReaction } from "../../utils/reactions.js";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** postId の UUID バリデーション。無効な場合は Slack にエラーを返す。 */
+async function validatePostId(
+  postId: string | undefined,
+  client: WebClient,
+  channelId?: string,
+  messageTs?: string,
+): Promise<boolean> {
+  if (!postId) return false;
+  if (UUID_RE.test(postId)) return true;
+  console.error(`[sns] Invalid postId (not UUID): "${postId}"`);
+  if (channelId && messageTs) {
+    await client.chat
+      .postMessage({
+        channel: channelId,
+        thread_ts: messageTs,
+        text: `このメッセージはテストデータのため操作できません。スケジューラが生成した投稿案をご利用ください。`,
+      })
+      .catch(() => {});
+  }
+  return false;
+}
 import {
   parseXPostContent,
   parseYouTubeContent,
@@ -51,7 +77,8 @@ export function setupSnsActions(): void {
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
+    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
+      return;
 
     const [post] = await db
       .select()
@@ -105,7 +132,8 @@ export function setupSnsActions(): void {
     await ack();
     const ba = body as BlockAction;
     const postId = "value" in action ? action.value : undefined;
-    if (!postId) return;
+    if (!(await validatePostId(postId, client, ba.channel?.id, ba.message?.ts)))
+      return;
 
     await client.chat.postMessage({
       channel: ba.channel?.id || "",
@@ -121,14 +149,15 @@ export function setupSnsActions(): void {
     const ba = body as BlockAction;
     const channelId = ba.channel?.id;
     const messageTs = ba.message?.ts;
-    if (channelId && messageTs) {
-      await addReaction(client, channelId, messageTs, "eyes");
-    }
 
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
+    if (!(await validatePostId(postId, client, channelId, messageTs))) return;
+
+    if (channelId && messageTs) {
+      await addReaction(client, channelId, messageTs, "eyes");
+    }
 
     try {
       await db
@@ -170,6 +199,20 @@ export function setupSnsActions(): void {
     const ba = body as BlockAction;
     const channelIdForReaction = ba.channel?.id;
     const messageTsForReaction = ba.message?.ts;
+
+    const action = ba.actions?.[0];
+    const postId =
+      action && "value" in action ? (action.value as string) : undefined;
+    if (
+      !(await validatePostId(
+        postId,
+        client,
+        channelIdForReaction,
+        messageTsForReaction,
+      ))
+    )
+      return;
+
     if (channelIdForReaction && messageTsForReaction) {
       await addReaction(
         client,
@@ -178,11 +221,6 @@ export function setupSnsActions(): void {
         "eyes",
       );
     }
-
-    const action = ba.actions?.[0];
-    const postId =
-      action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
 
     const [post] = await db
       .select()
@@ -452,12 +490,19 @@ export function setupSnsActions(): void {
   // スケジュール投稿ボタン
   app.action("sns_schedule", async ({ ack, body, client }) => {
     await ack();
+    console.log("[sns] sns_schedule action triggered");
 
     const ba = body as BlockAction;
     const action = ba.actions?.[0];
     const postId =
       action && "value" in action ? (action.value as string) : undefined;
-    if (!postId) return;
+    if (!postId) {
+      console.error("[sns] sns_schedule: postId not found in action value");
+      return;
+    }
+
+    const channelId = ba.channel?.id;
+    const messageTs = ba.message?.ts;
 
     const [post] = await db
       .select()
@@ -465,7 +510,17 @@ export function setupSnsActions(): void {
       .where(eq(snsPosts.id, postId))
       .limit(1);
 
-    if (!post) return;
+    if (!post) {
+      console.error("[sns] sns_schedule: post not found in DB:", postId);
+      if (channelId && messageTs) {
+        await client.chat.postMessage({
+          channel: channelId,
+          thread_ts: messageTs,
+          text: "投稿データが見つかりませんでした。再生成してください。",
+        });
+      }
+      return;
+    }
 
     try {
       const platform = post.platform as Platform;
@@ -491,8 +546,10 @@ export function setupSnsActions(): void {
         })
         .where(eq(snsPosts.id, postId));
 
-      const channelId = ba.channel?.id;
-      const messageTs = ba.message?.ts;
+      console.log(
+        `[sns] Scheduled post ${postId} (${platform}) at ${timeLabel}`,
+      );
+
       if (channelId && messageTs) {
         const platformLabels: Record<string, string> = {
           x: "X",
@@ -518,6 +575,15 @@ export function setupSnsActions(): void {
       }
     } catch (error) {
       console.error("[sns] Schedule error:", error);
+      if (channelId && messageTs) {
+        await client.chat
+          .postMessage({
+            channel: channelId,
+            thread_ts: messageTs,
+            text: `スケジュール投稿の設定に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+          })
+          .catch(() => {});
+      }
     }
   });
 

@@ -49,6 +49,22 @@ export async function handleSnsPublish(
   const postIdStr = action?.value;
   if (!postIdStr) return;
 
+  const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(postIdStr)) {
+    console.error(`[sns] Invalid postId (not UUID): "${postIdStr}"`);
+    if (body.channel?.id && body.message?.ts) {
+      await client.chat
+        .postMessage({
+          channel: body.channel.id,
+          thread_ts: body.message.ts,
+          text: "このメッセージはテストデータのため操作できません。",
+        })
+        .catch(() => {});
+    }
+    return;
+  }
+
   const channelIdForReaction = body.channel?.id;
   const messageTsForReaction = body.message?.ts;
   if (channelIdForReaction && messageTsForReaction) {

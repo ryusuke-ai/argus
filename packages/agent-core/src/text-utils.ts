@@ -136,7 +136,15 @@ export function summarizeJa(text: string, maxLen = 30): string {
         ),
     )
     // 内容のない指示代名詞・修飾句の残骸を除外
-    .filter((c) => !/^(?:何回も|これ|それ|網羅的|確実)$/.test(c));
+    .filter((c) => !/^(?:何回も|これ|それ|網羅的|確実)$/.test(c))
+    // 汎用修飾語＋汎用アクションだけの句（トピック情報がない）を除外
+    // 例: 「全部対応」「すぐ対応」「確実対応」→ トピックが何か分からない
+    .filter(
+      (c) =>
+        !/^(?:全部|すべて|全て|すぐ|すぐに|確実に|ちゃんと|きちんと)(?:対応|確認|処理|実行)$/.test(
+          c,
+        ),
+    );
 
   // 重複句の除去: 同じ核心語を含む句が複数ある場合、長い方だけ残す
   // 例: 「スレッド内で中止」「すぐに中止」→「中止」が共通 → 長い方を残す
@@ -285,9 +293,14 @@ function clauseToNoun(clause: string): string {
     /^(.+?)(?:が|を)(.{2,6}?)(?:できる|通る|動く|使える|見れる|行ける)(?:ように|よう)(?:してほしいです|してほしい|してください|して下さい|してくれ|して)$/,
   );
   if (complexAction?.[1] && complexAction?.[2]) {
-    let base = complexAction[1].replace(/(を|は|が|に|で|も|すぐに|すぐ)$/g, "");
+    const base = complexAction[1].replace(
+      /(を|は|が|に|で|も|すぐに|すぐ)$/g,
+      "",
+    );
     // group[2] からアクション名詞を抽出（「自動で投稿」→「自動投稿」等）
-    const actionPart = complexAction[2].replace(/(を|は|が|に|で|も)$/g, "").replace(/(.+)で(.+)/, "$1$2");
+    const actionPart = complexAction[2]
+      .replace(/(を|は|が|に|で|も)$/g, "")
+      .replace(/(.+)で(.+)/, "$1$2");
     if (base.length >= 2) {
       // actionPart が意味のある動詞名詞を含む場合はそちらを使う
       if (actionPart.length >= 2 && actionPart !== "対応") {
@@ -303,13 +316,19 @@ function clauseToNoun(clause: string): string {
     /^(.{2,}?)(?:できる|通る|動く|使える|見れる|行ける)(?:ように|よう)(?:してほしいです|してほしい|してください|して下さい|してくれ|して)?$/,
   );
   if (complexActionNoParticle?.[1]) {
-    let base = complexActionNoParticle[1].replace(/(を|は|が|に|で|も|すぐに|すぐ)$/g, "");
+    const base = complexActionNoParticle[1].replace(
+      /(を|は|が|に|で|も|すぐに|すぐ)$/g,
+      "",
+    );
     if (base.length >= 2) {
       return base + "対応";
     }
   }
   // 「〜も〜」の冗長パターンを除去（「テストも通る」→「テスト」）
-  s = s.replace(/も[^\s。、]{1,4}(?:通る|動く|できる|使える|行ける)(?:ように)?$/, "");
+  s = s.replace(
+    /も[^\s。、]{1,4}(?:通る|動く|できる|使える|行ける)(?:ように)?$/,
+    "",
+  );
 
   // 汎用: 「〜して」「〜する」→ 除去
   s = s.replace(

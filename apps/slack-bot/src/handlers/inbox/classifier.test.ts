@@ -1,5 +1,20 @@
 // apps/slack-bot/src/handlers/inbox/classifier.test.ts
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// ensureQualitySummary のテストで Max Plan (CLI 起動) が実行されないようにモック
+vi.mock("@argus/agent-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@argus/agent-core")>();
+  return {
+    ...actual,
+    isMaxPlanAvailable: () => false,
+    query: vi.fn().mockResolvedValue({
+      success: false,
+      message: { content: [] },
+      toolCalls: [],
+    }),
+  };
+});
+
 import {
   parseClassificationResult,
   keywordClassification,
@@ -435,7 +450,8 @@ describe("ensureQualitySummary（APIなしフォールバック経路）", () =>
   it("今回の実メッセージ: タイトル要約品質の改善依頼", async () => {
     const original =
       "スレッドのタイトルが要約じゃなくて、私の発言そのまま貼り付けて途中で文字数制限かなんかで切れてるように見える。ちゃんと〇〇の調査とか、、〇〇の削除とかわかりやすいタイトルになるようにして。これ何回もなってるから網羅的に調査して確実にできるようにして";
-    const badSummary = "スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けて途中で文字数制限";
+    const badSummary =
+      "スレッドのタイトルが要約じゃなくて私の発言そのまま貼り付けて途中で文字数制限";
     const result = await ensureQualitySummary(badSummary, original, null);
     console.log(
       `ensureQualitySummary (実メッセージ) result: "${result}" (${result.length} chars)`,
@@ -479,7 +495,8 @@ describe("ensureQualitySummary（APIなしフォールバック経路）", () =>
   it("複数の指示を含む長文が最後のアクションに基づいた名詞句になる", async () => {
     const original =
       "このAPIのレスポンスが遅い気がするんだけど、パフォーマンス調べて改善してほしい";
-    const badSummary = "このAPIのレスポンスが遅い気がするんだけどパフォーマンス";
+    const badSummary =
+      "このAPIのレスポンスが遅い気がするんだけどパフォーマンス";
     const result = await ensureQualitySummary(badSummary, original, null);
     console.log(
       `ensureQualitySummary (API改善) result: "${result}" (${result.length} chars)`,
@@ -490,7 +507,8 @@ describe("ensureQualitySummary（APIなしフォールバック経路）", () =>
 
   it("口語的な依頼がアクション名詞句に変換される", async () => {
     const original = "毎日のニュース記事を自動で投稿できるようにしてほしいです";
-    const badSummary = "毎日のニュース記事を自動で投稿できるようにしてほしいです";
+    const badSummary =
+      "毎日のニュース記事を自動で投稿できるようにしてほしいです";
     const result = await ensureQualitySummary(badSummary, original, null);
     console.log(
       `ensureQualitySummary (自動投稿) result: "${result}" (${result.length} chars)`,

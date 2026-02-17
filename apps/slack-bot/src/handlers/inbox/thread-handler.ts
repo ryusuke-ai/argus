@@ -66,12 +66,12 @@ export async function handleThreadReply(
         client,
         getInboxChannel(),
         pendingTask.slackMessageTs,
-        "octagonal_sign",
+        "no_entry_sign",
       );
       await client.chat.postMessage({
         channel: getInboxChannel(),
         thread_ts: parentThreadTs,
-        text: "🛑 タスクを中止しました。",
+        text: "🚫 タスクを中止しました。",
       });
       return;
     }
@@ -147,12 +147,12 @@ export async function handleThreadReply(
         client,
         getInboxChannel(),
         queuedTask.slackMessageTs,
-        "octagonal_sign",
+        "no_entry_sign",
       );
       await client.chat.postMessage({
         channel: getInboxChannel(),
         thread_ts: parentThreadTs,
-        text: "🛑 タスクを中止しました。",
+        text: "🚫 タスクを中止しました。",
       });
       return;
     }
@@ -191,7 +191,7 @@ export async function handleThreadReply(
         await client.chat.postMessage({
           channel: getInboxChannel(),
           thread_ts: parentThreadTs,
-          text: "🛑 タスクを中止しました。",
+          text: "🚫 タスクを中止しました。",
         });
       } else {
         // AbortController が見つからない（既に完了間際等）
@@ -239,7 +239,7 @@ export async function handleThreadReply(
         await client.chat.postMessage({
           channel: getInboxChannel(),
           thread_ts: parentThreadTs,
-          text: "🛑 タスクを中止しました。",
+          text: "🚫 タスクを中止しました。",
         });
       } else {
         await client.chat.postMessage({
@@ -256,7 +256,7 @@ export async function handleThreadReply(
     await client.chat.postMessage({
       channel: getInboxChannel(),
       thread_ts: parentThreadTs,
-      text: "🛑 了解しました。実行中のタスクはありませんでした。",
+      text: "🚫 了解しました。実行中のタスクはありませんでした。",
     });
     return;
   }
