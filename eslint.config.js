@@ -30,7 +30,7 @@ export default tseslint.config(
   },
   // Node.js standalone scripts and CJS files
   {
-    files: [".claude/skills/**/*.js", "**/scripts/**/*.{js,mjs}", "**/*.cjs"],
+    files: [".claude/skills/**/*.js", "**/scripts/**/*.{js,mjs}", "**/*.cjs", "**/*.mjs"],
     languageOptions: {
       globals: {
         console: "readonly",

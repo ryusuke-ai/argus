@@ -6,7 +6,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["json", "text"],
       thresholds: {
-        lines: 60,
+        lines: 80,
       },
     },
   },

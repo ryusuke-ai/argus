@@ -1,7 +1,7 @@
 # Argus
 
 [![Tests](https://github.com/ryusuke-ai/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/ryusuke-ai/argus/actions/workflows/ci.yml)
-[![Packages](https://img.shields.io/badge/packages-12-blue?style=flat-square)](https://github.com/ryusuke-ai/argus)
+[![Packages](https://img.shields.io/badge/packages-11-blue?style=flat-square)](https://github.com/ryusuke-ai/argus)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://github.com/ryusuke-ai/argus)
 [![Claude Agent SDK](https://img.shields.io/badge/Claude_Agent_SDK-v0.2.34-black?style=flat-square&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)
 [![codecov](https://codecov.io/gh/ryusuke-ai/argus/branch/master/graph/badge.svg)](https://codecov.io/gh/ryusuke-ai/argus)
@@ -151,7 +151,7 @@ argus/
 │   └── agent-orchestrator/     # Cron scheduler + REST API
 ├── packages/
 │   ├── agent-core/             # Claude SDK wrapper (query/resume/hooks)
-│   ├── db/                     # Drizzle ORM schema (15+ tables)
+│   ├── db/                     # Drizzle ORM schema (16 tables)
 │   ├── knowledge/              # Knowledge MCP server
 │   ├── knowledge-personal/     # Personal knowledge MCP server
 │   ├── gmail/                  # Google API (OAuth2 + Gmail MCP)
@@ -164,16 +164,16 @@ argus/
 └── .claude/                    # Agent rules, skills, and permissions
 ```
 
-| Package                     | Description                                                                                         |
-| --------------------------- | --------------------------------------------------------------------------------------------------- |
-| `@argus/agent-core`         | Claude Agent SDK wrapper with hook injection, session management, and Max Plan auto-detection       |
-| `@argus/db`                 | Drizzle ORM schema for 15+ tables (sessions, messages, tasks, lessons, knowledge, inbox, SNS posts) |
-| `@argus/knowledge`          | MCP server for shared knowledge with Collector/Executor role-based access                           |
-| `@argus/knowledge-personal` | MCP server for personal notes, personality data, and habits                                         |
-| `@argus/gmail`              | Google OAuth2 token management and Gmail MCP integration                                            |
-| `@argus/google-calendar`    | Google Calendar MCP server (reuses Gmail OAuth2 infrastructure)                                     |
-| `@argus/tiktok`             | TikTok Content Posting API v2 with OAuth2 and chunked file upload                                   |
-| `@argus/r2-storage`         | Cloudflare R2 object storage via S3-compatible API                                                  |
+| Package                     | Description                                                                                        |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `@argus/agent-core`         | Claude Agent SDK wrapper with hook injection, session management, and Max Plan auto-detection      |
+| `@argus/db`                 | Drizzle ORM schema for 16 tables (sessions, messages, tasks, lessons, knowledge, inbox, SNS posts) |
+| `@argus/knowledge`          | MCP server for shared knowledge with Collector/Executor role-based access                          |
+| `@argus/knowledge-personal` | MCP server for personal notes, personality data, and habits                                        |
+| `@argus/gmail`              | Google OAuth2 token management and Gmail MCP integration                                           |
+| `@argus/google-calendar`    | Google Calendar MCP server (reuses Gmail OAuth2 infrastructure)                                    |
+| `@argus/tiktok`             | TikTok Content Posting API v2 with OAuth2 and chunked file upload                                  |
+| `@argus/r2-storage`         | Cloudflare R2 object storage via S3-compatible API                                                 |
 
 ## Quick Start
 
@@ -206,7 +206,7 @@ pnpm dev
 | ----------------------- | ------------------------------------ |
 | `pnpm dev`              | Build + start all 3 apps in parallel |
 | `pnpm build`            | Build all packages                   |
-| `pnpm test`             | Run all tests across 12 packages     |
+| `pnpm test`             | Run all tests across 11 packages     |
 | `pnpm dev:slack`        | Start Slack bot only                 |
 | `pnpm dev:dashboard`    | Start Dashboard only                 |
 | `pnpm dev:orchestrator` | Start Orchestrator only              |
@@ -266,7 +266,7 @@ See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the complete deployment guide.
 pnpm test
 ```
 
-The test suite covers 12 packages, including:
+The test suite covers 11 packages, including:
 
 - Agent core execution and hook injection
 - Database service layers with Drizzle ORM mocks
@@ -282,7 +282,7 @@ Technical deep-dives into Argus's architecture and design decisions:
 - [Claude Agent SDK でマルチエージェントシステムを作った話 ― CLI spawn からの脱却](https://zenn.dev/42316/articles/claude-agent-sdk-migration)
 - [MCP サーバーで AI エージェントにナレッジベースを持たせる方法](https://zenn.dev/42316/articles/mcp-knowledge-base-design)
 - [AI エージェントの全行動を記録する ─ Observation-First アーキテクチャの設計と実装](https://zenn.dev/42316/articles/observation-first-architecture)
-- [12パッケージの pnpm monorepo を Turborepo なしで運用する](https://zenn.dev/42316/articles/pnpm-monorepo-agent-sdk-)
+- [11パッケージの pnpm monorepo を Turborepo なしで運用する](https://zenn.dev/42316/articles/pnpm-monorepo-agent-sdk-)
 - [Claude Code を10倍使いこなす実践Tips 7選【2026年版】](https://zenn.dev/42316/articles/claude-code-10tips-72026)
 
 ## Security
@@ -306,3 +306,7 @@ Notable:
 - **[Remotion](https://www.remotion.dev/)** — Used for video rendering. Remotion is **free for individuals and companies with up to 3 employees**, but requires a [Company License](https://www.remotion.dev/docs/license) for larger organizations. If you fork this project for commercial use with 4+ employees, you must purchase a Remotion license.
 - **[Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)** — Subject to [Anthropic's Terms of Service](https://www.anthropic.com/legal/terms). Usage requires a valid Claude subscription or API key.
 - **Media assets** (character images, BGM, sound effects, background videos) are **not included** in this repository. See the [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for setup instructions.
+
+## Related
+
+- [argus-aws](https://github.com/ryusuke-ai/argus-aws) — Argus のナレッジ管理機能を AWS サーバーレス (CDK + Lambda + API Gateway + DynamoDB) で再実装
