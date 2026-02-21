@@ -1,5 +1,9 @@
-# Career/Interview documents (archived originals)
+# Career/Interview documents (private - not for public)
 docs/archive/
+docs/career-*.md
+docs/final-ranking*.md
+docs/interview*.md
+docs/argus-interview*.md
 
 # Worktrees
 .worktrees/
