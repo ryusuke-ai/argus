@@ -784,12 +784,12 @@ export async function ensureQualitySummary(
     // 「・」で区切られている場合、各部分を試す
     if (aggressive.includes("・")) {
       const parts = aggressive.split("・");
-      let found = false;
+      let _found = false;
       for (const part of parts) {
         const cleaned = cleanupSummaryEnding(part.trim());
         if (cleaned.length >= 3 && isProperNounPhrase(cleaned)) {
           aggressive = cleaned;
-          found = true;
+          _found = true;
           break;
         }
         // 「が」「を」で長くなっている場合、助詞の前で切る
@@ -797,7 +797,7 @@ export async function ensureQualitySummary(
           const particleCut = cleaned.replace(/[がを].+$/, "");
           if (particleCut.length >= 3 && isProperNounPhrase(particleCut)) {
             aggressive = particleCut;
-            found = true;
+            _found = true;
             break;
           }
         }

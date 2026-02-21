@@ -60,7 +60,7 @@ const blocks = buildInstagramPostBlocks({
 
 await client.chat.postMessage({
   channel,
-  blocks: blocks as any[],
+  blocks: blocks as unknown[],
   text: `[テスト] Instagram 投稿案 (${category})`,
 });
 

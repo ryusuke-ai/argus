@@ -453,7 +453,7 @@ function fileName(input: Record<string, unknown>, key: string): string {
 }
 
 /** ファイルパスを短縮（argus/ 以降のみ表示） */
-function shortPath(input: Record<string, unknown>, key: string): string {
+function _shortPath(input: Record<string, unknown>, key: string): string {
   const v = str(input, key, 200);
   if (!v) return "";
   const idx = v.indexOf("argus/");

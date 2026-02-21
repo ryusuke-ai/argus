@@ -33,7 +33,7 @@ vi.mock("@argus/agent-core", async (importOriginal) => {
   };
 });
 
-import { classifyMessage, summarizeText } from "./classifier.js";
+import { classifyMessage } from "./classifier.js";
 import { buildClassificationBlocks } from "./reporter.js";
 
 // --- Approach A: ユニット統合テスト（Slack API 不要） ---

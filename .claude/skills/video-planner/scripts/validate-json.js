@@ -18,7 +18,7 @@
 
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { resolve, dirname, join } from "node:path";
+import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   validateJson,

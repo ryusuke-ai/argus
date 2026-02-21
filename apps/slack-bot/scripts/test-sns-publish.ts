@@ -18,7 +18,6 @@ import {
   buildVideoPostBlocks,
   buildTikTokPostBlocks,
   buildInstagramPostBlocks,
-  buildInstagramImageBlocks,
   buildGitHubPostBlocks,
   buildPodcastPostBlocks,
 } from "../src/handlers/sns/ui/reporter.js";
@@ -371,7 +370,7 @@ async function main() {
   try {
     media = ensureTestMedia();
     console.log("  OK: メディアファイル生成完了\n");
-  } catch (err) {
+  } catch (_err) {
     console.warn(
       "  WARN: ffmpeg がない、またはメディア生成に失敗。メディア系テストはスキップされます。",
     );

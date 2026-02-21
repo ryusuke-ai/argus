@@ -3,16 +3,6 @@
 // post.content (jsonb) の `as unknown as` を置き換える。
 
 import { z } from "zod";
-import type {
-  XPostContent,
-  ArticleContent,
-  YouTubeMetadataContent,
-  TikTokScript,
-  InstagramContent,
-  ThreadsContent,
-  GitHubContent,
-  PodcastContent,
-} from "./types.js";
 
 // ─── Zod スキーマ ───────────────────────────────────────
 

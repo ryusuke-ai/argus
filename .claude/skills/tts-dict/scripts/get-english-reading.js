@@ -200,7 +200,7 @@ function extractJson(response) {
   if (jsonMatch) {
     try {
       return JSON.parse(jsonMatch[1].trim());
-    } catch (e) {
+    } catch (_e) {
       // JSONパースに失敗した場合、全体を試す
     }
   }

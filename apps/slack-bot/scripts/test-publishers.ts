@@ -59,9 +59,10 @@ async function testXAuth(): Promise<void> {
     headers: { Authorization: `OAuth ${header}` },
   });
   if (res.ok) {
-    const data = (await res.json()) as any;
+    const data = (await res.json()) as Record<string, unknown>;
+    const inner = data.data as Record<string, unknown> | undefined;
     console.log(
-      `[X] ✅ 認証成功! ユーザー: @${data.data?.username} (${data.data?.name})`,
+      `[X] ✅ 認証成功! ユーザー: @${inner?.username} (${inner?.name})`,
     );
   } else {
     const err = await res.json().catch(() => ({}));
@@ -83,7 +84,7 @@ async function testQiitaAuth(): Promise<void> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.ok) {
-    const data = (await res.json()) as any;
+    const data = (await res.json()) as Record<string, unknown>;
     console.log(
       `[Qiita] ✅ 認証成功! ユーザー: @${data.id} (${data.name || data.id})`,
     );

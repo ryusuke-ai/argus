@@ -472,7 +472,6 @@ function tryRepairJson(jsonStr: string): unknown | null {
   // 切り詰められた文字列を閉じる: 未閉じの " を検出
   // バックスラッシュエスケープを考慮して未閉じ引用符を数える
   let inString = false;
-  let lastStringStart = -1;
   for (let i = 0; i < s.length; i++) {
     if (s[i] === "\\" && inString) {
       i++; // エスケープ文字をスキップ
@@ -481,7 +480,6 @@ function tryRepairJson(jsonStr: string): unknown | null {
     if (s[i] === '"') {
       if (!inString) {
         inString = true;
-        lastStringStart = i;
       } else {
         inString = false;
       }

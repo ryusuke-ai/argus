@@ -53,7 +53,7 @@ export function buildClassificationBlocks(opts: {
  */
 export function buildResultBlocks(
   resultText: string,
-  meta?: { toolCount: number; costUsd: number; durationSec: string },
+  _meta?: { toolCount: number; costUsd: number; durationSec: string },
 ): Block[] {
   const blocks: Block[] = [];
 

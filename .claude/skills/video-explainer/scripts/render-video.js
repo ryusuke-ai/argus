@@ -24,7 +24,6 @@ import http from "http";
 import { fileURLToPath } from "url";
 import { getWavDuration, secondsToFrames } from "./wav-utils.js";
 import {
-  resolveAsset,
   resolveBackground,
   resolveCharacterImage,
   resolveAccent,
@@ -32,7 +31,6 @@ import {
   resolveFont,
   resolveWatermark,
   loadCharactersConfig,
-  CONFIG_PATHS,
 } from "./config-loader.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -300,7 +298,7 @@ async function loadScript(inputPath, fps) {
 
   // まず生のシーンデータを作成（動画クリップは非同期で長さ取得）
   const rawScenes = await Promise.all(
-    script.scenes.map(async (scene, index) => {
+    script.scenes.map(async (scene, _index) => {
       // 動画クリップシーンの場合
       if (scene.video) {
         const videoPath = scene.video.startsWith("/")

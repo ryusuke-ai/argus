@@ -41,7 +41,7 @@ import {
   createSaveCallback,
   finalizePost,
 } from "../ui/phase-tracker.js";
-import { getCategoryForDay, getYouTubeFormat } from "./scheduler-utils.js";
+import { getYouTubeFormat } from "./scheduler-utils.js";
 
 const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
 
@@ -286,7 +286,7 @@ export async function generateYouTubeSuggestion(
     );
 
     const scheduledAt = getNextOptimalTime("youtube");
-    const scheduledTime = formatScheduledTime(scheduledAt);
+    formatScheduledTime(scheduledAt);
 
     await finalizePost(postId, {
       ...content,

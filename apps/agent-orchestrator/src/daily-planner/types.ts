@@ -1,7 +1,7 @@
 // Daily Planner - Shared types and constants for builders
 // Used by block-builders, slack-poster, and db-saver.
 
-import type { PendingEmailSummary, TodoSummary } from "./collectors.js";
+import type { PendingEmailSummary } from "./collectors.js";
 
 // --- Display limits (based on Slack Block Kit best practices) ---
 

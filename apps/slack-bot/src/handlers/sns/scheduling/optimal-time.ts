@@ -96,7 +96,7 @@ function toJST(utc: Date): Date {
 /**
  * Get the day-of-week in JST (0=Sun, 1=Mon, ..., 6=Sat).
  */
-function getJSTDayOfWeek(utc: Date): number {
+function _getJSTDayOfWeek(utc: Date): number {
   return toJST(utc).getUTCDay();
 }
 

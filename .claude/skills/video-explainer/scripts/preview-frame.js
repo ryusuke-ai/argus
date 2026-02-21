@@ -6,27 +6,13 @@
 
 import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
-import {
-  readFileSync,
-  existsSync,
-  mkdirSync,
-  copyFileSync,
-  rmSync,
-  writeFileSync,
-} from "fs";
-import { resolve, dirname, basename, extname } from "path";
-import https from "https";
-import http from "http";
+import { readFileSync, existsSync, mkdirSync, copyFileSync, rmSync } from "fs";
+import { resolve, dirname, basename } from "path";
 import { fileURLToPath } from "url";
 import { getWavDuration, secondsToFrames } from "./wav-utils.js";
 import {
   resolveAsset,
-  resolveBackground,
-  resolveCharacterImage,
-  resolveAccent,
-  resolveBgm,
   resolveFont,
-  resolveWatermark,
   getAssetBaseDir,
   loadCharactersConfig,
 } from "./config-loader.js";
@@ -40,12 +26,8 @@ const DEFAULT_BACKGROUND =
   resolve(__dirname, "../assets/backgrounds/base.webp");
 const BACKGROUND_BASE_DIR = getAssetBaseDir("backgrounds");
 const CHARA_BASE_DIR = getAssetBaseDir("chara");
-const ACCENT_BASE_DIR = getAssetBaseDir("accent");
-const TRANSITION_SOUND_BASE_DIR = getAssetBaseDir("transition");
-const BGM_BASE_DIR = getAssetBaseDir("bgm");
 const FONT_PATH =
   resolveFont() || resolve(__dirname, "../assets/font/keifont.ttf");
-const WATERMARK_BASE_DIR = getAssetBaseDir("watermark");
 const charactersConfig = loadCharactersConfig();
 
 // 引数パース

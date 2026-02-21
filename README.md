@@ -160,7 +160,7 @@ argus/
 │   └── r2-storage/             # Cloudflare R2 client
 ├── docs/
 │   ├── adr/                    # Architecture Decision Records
-│   └── diagrams/               # Mermaid architecture diagrams
+│   └── screenshots/             # Dashboard screenshots
 └── .claude/                    # Agent rules, skills, and permissions
 ```
 

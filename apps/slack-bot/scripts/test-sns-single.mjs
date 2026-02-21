@@ -12,7 +12,7 @@ if (!platform) {
 const client = new WebClient(process.env.SLACK_BOT_TOKEN);
 
 async function run() {
-  const { generateAllPlatformSuggestions } =
+  const { generateAllPlatformSuggestions: _generateAllPlatformSuggestions } =
     await import("../dist/handlers/sns/scheduler.js");
   const { generateXPost } = await import("../dist/handlers/sns/generator.js");
   const { generateArticle } =
@@ -35,11 +35,13 @@ async function run() {
   } = await import("../dist/handlers/sns/reporter.js");
   const { createGeneratingPost, createSaveCallback, finalizePost } =
     await import("../dist/handlers/sns/phase-tracker.js");
-  const { getNextOptimalTime, formatScheduledTime } =
-    await import("../dist/handlers/sns/optimal-time.js");
+  const {
+    getNextOptimalTime: _getNextOptimalTime,
+    formatScheduledTime: _formatScheduledTime,
+  } = await import("../dist/handlers/sns/optimal-time.js");
   const { validateXPost } = await import("../dist/handlers/sns/validator.js");
-  const { db, snsPosts } = await import("@argus/db");
-  const { eq } = await import("drizzle-orm");
+  const { db: _db, snsPosts: _snsPosts } = await import("@argus/db");
+  const { eq: _eq } = await import("drizzle-orm");
 
   const SNS_CHANNEL = process.env.SLACK_SNS_CHANNEL || "";
   if (!SNS_CHANNEL) {

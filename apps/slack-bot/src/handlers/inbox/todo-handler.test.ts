@@ -1,5 +1,5 @@
 // apps/slack-bot/src/handlers/inbox/todo-handler.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   extractCategory,
   findMatchingTodo,

@@ -11,7 +11,7 @@
 import { config as dotenvConfig } from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { dirname, resolve, join, extname } from "path";
+import { dirname, resolve, extname } from "path";
 import { fileURLToPath } from "url";
 import { parseArgs } from "util";
 
@@ -372,7 +372,7 @@ async function main() {
   const config = loadConfig();
 
   // コマンドライン引数のパース
-  const { values, positionals } = parseArgs({
+  const { values } = parseArgs({
     options: {
       output: { type: "string", short: "o" },
       pattern: { type: "string", short: "p", default: "thumbnail" },

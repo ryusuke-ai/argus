@@ -61,7 +61,7 @@ const schemaContent = readFileContent(values.schema, "スキーマファイル")
 let schema;
 try {
   schema = JSON.parse(schemaContent);
-} catch (e) {
+} catch (_e) {
   console.error("エラー: スキーマファイルのJSONパースに失敗しました");
   process.exit(1);
 }
@@ -159,7 +159,7 @@ async function callCodex(outputPath) {
   }
 }
 
-async function callZaiApi(outputPath) {
+async function callZaiApi(_outputPath) {
   if (!zaiClient) throw new Error("Z.ai APIキーが設定されていません");
 
   console.error(`[Fallback] Z.ai (${fallbackModel}) にフォールバック中...`);
@@ -230,7 +230,7 @@ async function main() {
     let result;
     try {
       result = JSON.parse(content);
-    } catch (e) {
+    } catch (_e) {
       console.error("エラー: レスポンスのJSONパースに失敗しました");
       console.error("Raw response:", content);
       process.exit(1);

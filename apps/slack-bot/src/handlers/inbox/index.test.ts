@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock all dependencies before imports
-const mockDbInsert = vi.fn();
-const mockDbUpdate = vi.fn();
-const mockDbSelect = vi.fn();
+const _mockDbInsert = vi.fn();
+const _mockDbUpdate = vi.fn();
+const _mockDbSelect = vi.fn();
 const mockClassifyMessage = vi.fn();
 const mockExecuteTask = vi.fn();
 const mockAppMessage = vi.fn();

@@ -206,7 +206,7 @@ function formatResearchProgress(
   toolName: string,
   toolInput: Record<string, unknown>,
   searchCount: number,
-  fetchCount: number,
+  _fetchCount: number,
 ): string | null {
   if (toolName === "WebSearch") {
     const query = toolInput.query;

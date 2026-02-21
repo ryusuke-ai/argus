@@ -15,7 +15,7 @@ const GET_READING_SCRIPT = path.join(__dirname, "get-english-reading.js");
 function countMoras(yomi) {
   // 小書き文字（ャュョッァィゥェォヮ）と撥音（ン）・長音（ー）はモーラとしてカウントしない
   const smallKana = /[ャュョッァィゥェォヮ]/g;
-  const special = /[ンー]/g;
+  const _special = /[ンー]/g;
 
   // 全カタカナ文字数
   const totalChars = yomi.length;
@@ -442,7 +442,7 @@ async function cmdHealthcheck() {
       console.log(`   ⚠️  COEIROINKからエラーレスポンス: ${response.status}`);
       hasError = true;
     }
-  } catch (error) {
+  } catch (_error) {
     console.log(
       "   ⛔ COEIROINKに接続できません（起動しているか確認してください）",
     );

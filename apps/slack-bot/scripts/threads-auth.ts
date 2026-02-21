@@ -4,7 +4,7 @@
  */
 import { createServer as createHttpsServer } from "node:https";
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { readFileSync, unlinkSync } from "node:fs";
 import { URL } from "node:url";
 
 const APP_ID = process.env.THREADS_APP_ID || "";

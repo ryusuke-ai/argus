@@ -6,7 +6,6 @@ import type {
   HookCallback,
   HookCallbackMatcher,
   HookEvent,
-  HookJSONOutput,
   PreToolUseHookInput,
   PostToolUseHookInput,
   PostToolUseFailureHookInput,

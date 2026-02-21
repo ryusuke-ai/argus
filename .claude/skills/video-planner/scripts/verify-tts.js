@@ -12,9 +12,9 @@
  */
 
 import { readFile, writeFile, mkdir, unlink, readdir } from "fs/promises";
-import { existsSync, readFileSync, createWriteStream } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { execSync, spawn } from "child_process";
-import { dirname, join, basename, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { homedir } from "os";
 
@@ -231,7 +231,7 @@ async function transcribeAudio(audioPath, modelPath) {
   try {
     await unlink(wavPath);
     await unlink(jsonPath);
-  } catch (e) {
+  } catch (_e) {
     // ignore cleanup errors
   }
 
@@ -623,7 +623,7 @@ function preflightUppercaseCheck(dialogue) {
  * @param {Array} words - 登録する単語のリスト
  * @returns {Promise<Object>} 登録結果
  */
-async function autoRegisterDictionary(words) {
+async function _autoRegisterDictionary(words) {
   if (!words || words.length === 0) {
     console.log("\n✓ 自動登録する単語がありません");
     return { added: 0, words: [] };
@@ -640,7 +640,7 @@ async function autoRegisterDictionary(words) {
   );
   console.log(`\n対象単語: ${words.join(", ")}`);
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const args = ["auto-add", "--json", JSON.stringify(words), "--apply"];
     const child = spawn("node", [DICT_SCRIPT, ...args], {
       cwd: dirname(DICT_SCRIPT),

@@ -2,12 +2,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // DB モック
-const mockSelect = vi.fn();
-const mockUpdate = vi.fn();
+const _mockSelect = vi.fn();
+const _mockUpdate = vi.fn();
 const mockFrom = vi.fn();
 const mockWhere = vi.fn();
-const mockOrderBy = vi.fn();
-const mockLimit = vi.fn();
+const _mockOrderBy = vi.fn();
+const _mockLimit = vi.fn();
 const mockSet = vi.fn();
 const mockReturning = vi.fn();
 
@@ -104,8 +104,12 @@ vi.mock("./executor.js", () => {
 });
 
 // テスト対象をインポート（モック設定後）
-const { handleThreadReply, resumeInThread, newQueryInThread, executor } =
-  await import("./index.js");
+const {
+  handleThreadReply,
+  resumeInThread: _resumeInThread,
+  newQueryInThread: _newQueryInThread,
+  executor: _executor,
+} = await import("./index.js");
 
 // Slack client モック
 function createMockClient() {

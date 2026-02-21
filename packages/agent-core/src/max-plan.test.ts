@@ -10,7 +10,7 @@ import { isMaxPlanAvailable, getDefaultModel } from "./agent.js";
 
 describe("isMaxPlanAvailable", () => {
   const originalPlatform = process.platform;
-  const originalEnv = { ...process.env };
+  const _originalEnv = { ...process.env };
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -107,7 +107,7 @@ describe("PersonalServiceImpl", () => {
   ];
 
   // Helper to set up db.select() mock for full-row select (no column arg)
-  function mockSelectFull(resolvedRows: unknown[]) {
+  function _mockSelectFull(resolvedRows: unknown[]) {
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({

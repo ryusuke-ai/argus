@@ -28,7 +28,7 @@ const __dirname = path.dirname(__filename);
 let sharp;
 try {
   sharp = (await import("sharp")).default;
-} catch (error) {
+} catch (_error) {
   console.error("Error: sharpライブラリがインストールされていません。");
   console.error("以下のコマンドでインストールしてください:");
   console.error("  npm install sharp");
@@ -248,7 +248,7 @@ async function convertMermaidToPng(
       // 設定ファイルをクリーンアップ
       try {
         fs.unlinkSync(configPath);
-      } catch (e) {
+      } catch (_e) {
         // 無視
       }
 
@@ -263,7 +263,7 @@ async function convertMermaidToPng(
       // 設定ファイルをクリーンアップ
       try {
         fs.unlinkSync(configPath);
-      } catch (e) {
+      } catch (_e) {
         // 無視
       }
       reject(new Error(`Failed to run mermaid-cli: ${error.message}`));
@@ -331,14 +331,14 @@ async function convertMermaidToWebp(mermaidText, outputPath, options) {
       if (fs.existsSync(tempMmdPath)) {
         fs.unlinkSync(tempMmdPath);
       }
-    } catch (e) {
+    } catch (_e) {
       // 無視
     }
     try {
       if (fs.existsSync(tempPngPath)) {
         fs.unlinkSync(tempPngPath);
       }
-    } catch (e) {
+    } catch (_e) {
       // 無視
     }
   }

@@ -25,7 +25,7 @@ const __dirname = path.dirname(__filename);
 let sharp;
 try {
   sharp = (await import("sharp")).default;
-} catch (error) {
+} catch (_error) {
   console.error("Error: sharpライブラリがインストールされていません。");
   console.error("以下のコマンドでインストールしてください:");
   console.error("  npm install sharp");

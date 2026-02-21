@@ -20,7 +20,6 @@ vi.mock("node:fs", () => ({
 }));
 
 import { query } from "@argus/agent-core";
-import { readFileSync } from "node:fs";
 import {
   PhasedGenerator,
   CliUnavailableError,

@@ -241,12 +241,12 @@ function buildReportBlocks(report) {
     );
   }
 
-  const riskLabel = RISK_LABEL[report.riskLevel];
+  const _riskLabel = RISK_LABEL[report.riskLevel];
   const blocks = [];
   const isAutoFix = report.remediations.length > 0 || report.rolledBack;
   const detected = totalFindings(report.findings);
 
-  const [year, month, day] = report.date.split("-");
+  const [_year, month, day] = report.date.split("-");
   const titleDate = `${Number(month)}月${Number(day)}日`;
   blocks.push({
     type: "header",

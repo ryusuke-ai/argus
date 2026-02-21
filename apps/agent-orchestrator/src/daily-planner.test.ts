@@ -12,7 +12,7 @@ const { mockListEvents } = vi.hoisted(() => ({
 }));
 
 // Hoisted mock for global fetch
-const { mockFetch } = vi.hoisted(() => ({
+const { mockFetch: _mockFetch } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
 }));
 
@@ -98,7 +98,7 @@ function headerTexts(blocks: Record<string, unknown>[]): string[] {
 }
 
 /** Helper: extract all actions blocks (legacy) */
-function actionsBlocks(
+function _actionsBlocks(
   blocks: Record<string, unknown>[],
 ): Record<string, unknown>[] {
   return blocks.filter((b) => b.type === "actions");
@@ -127,7 +127,7 @@ function checkboxValue(block: Record<string, unknown>): string {
 }
 
 /** Helper: extract context block texts */
-function contextTexts(blocks: Record<string, unknown>[]): string[] {
+function _contextTexts(blocks: Record<string, unknown>[]): string[] {
   return blocks
     .filter((b) => b.type === "context")
     .flatMap((b) =>

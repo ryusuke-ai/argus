@@ -6,11 +6,7 @@ import { db, snsPosts } from "@argus/db";
 import { gte, sql } from "drizzle-orm";
 import { CliUnavailableError } from "../generation/phased-generator.js";
 import { checkCliHealth } from "@argus/agent-core";
-import {
-  getCategoryForDay,
-  getCategoriesForDay,
-  getYouTubeFormat,
-} from "./scheduler-utils.js";
+import { getCategoryForDay, getCategoriesForDay } from "./scheduler-utils.js";
 import {
   generateXSuggestion,
   generateArticleSuggestion,
@@ -20,10 +16,7 @@ import {
   generateGitHubSuggestion,
   generatePodcastSuggestion,
 } from "./suggestion-generators.js";
-import {
-  pollScheduledPosts,
-  publishPost,
-} from "../platforms/publish-dispatcher.js";
+import { pollScheduledPosts } from "../platforms/publish-dispatcher.js";
 
 // Re-export for external consumers
 export {

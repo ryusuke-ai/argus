@@ -561,7 +561,8 @@ describe("SNS Action Handlers", () => {
     });
 
     it("should detect thread format from --- separator", async () => {
-      const { buildXPostBlocks } = await import("./ui/reporter.js");
+      const { buildXPostBlocks: _buildXPostBlocks } =
+        await import("./ui/reporter.js");
       const mockAck = vi.fn();
       const mockClient = { chat: { update: vi.fn().mockResolvedValue({}) } };
 

@@ -57,7 +57,6 @@ export { RISK_LABEL };
 export function buildReportBlocks(
   report: PatrolReport,
 ): Record<string, unknown>[] {
-  const riskLabel = RISK_LABEL[report.riskLevel];
   const blocks: Record<string, unknown>[] = [];
 
   const isAutoFix = report.remediations.length > 0 || report.rolledBack;
@@ -65,7 +64,7 @@ export function buildReportBlocks(
 
   // Header
   // Title
-  const [year, month, day] = report.date.split("-");
+  const [_year, month, day] = report.date.split("-");
   const titleDate = `${Number(month)}月${Number(day)}日`;
   blocks.push({
     type: "header",

@@ -19,7 +19,7 @@ const { mockMessagesCreate } = vi.hoisted(() => ({
 }));
 
 // Hoisted mock for global fetch
-const { mockFetch } = vi.hoisted(() => ({
+const { mockFetch: _mockFetch } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
 }));
 

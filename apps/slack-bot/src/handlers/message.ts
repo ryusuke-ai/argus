@@ -14,11 +14,7 @@ import { executeDeepResearch } from "./deep-research.js";
 import { markdownToMrkdwn } from "../utils/mrkdwn.js";
 import { ProgressReporter } from "../utils/progress-reporter.js";
 
-import {
-  channelModelOverrides,
-  parseModelCommand,
-  handleModelCommand,
-} from "./model-commands.js";
+import { channelModelOverrides, handleModelCommand } from "./model-commands.js";
 import { parseDeepResearchTrigger } from "./deep-research-trigger.js";
 import {
   extractImageFiles,
