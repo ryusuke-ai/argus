@@ -13,7 +13,9 @@ const client = new WebClient(token);
 const channel = process.env.SLACK_SNS_CHANNEL;
 
 console.log(`[trigger] Starting all-platform generation (channel: ${channel})`);
-console.log(`[trigger] Time: ${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}`);
+console.log(
+  `[trigger] Time: ${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}`,
+);
 
 try {
   await generateAllPlatformSuggestions(client);
