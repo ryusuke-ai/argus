@@ -4,7 +4,6 @@
 [![Packages](https://img.shields.io/badge/packages-11-blue?style=flat-square)](https://github.com/ryusuke-ai/argus)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://github.com/ryusuke-ai/argus)
 [![Claude Agent SDK](https://img.shields.io/badge/Claude_Agent_SDK-v0.2.34-black?style=flat-square&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)
-[![codecov](https://codecov.io/gh/ryusuke-ai/argus/branch/master/graph/badge.svg)](https://codecov.io/gh/ryusuke-ai/argus)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 
 > AI-powered multi-agent orchestration system that autonomously manages tasks, generates content, and integrates with external services — all controlled through Slack.
@@ -306,7 +305,3 @@ Notable:
 - **[Remotion](https://www.remotion.dev/)** — Used for video rendering. Remotion is **free for individuals and companies with up to 3 employees**, but requires a [Company License](https://www.remotion.dev/docs/license) for larger organizations. If you fork this project for commercial use with 4+ employees, you must purchase a Remotion license.
 - **[Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)** — Subject to [Anthropic's Terms of Service](https://www.anthropic.com/legal/terms). Usage requires a valid Claude subscription or API key.
 - **Media assets** (character images, BGM, sound effects, background videos) are **not included** in this repository. See the [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for setup instructions.
-
-## Related
-
-- [argus-aws](https://github.com/ryusuke-ai/argus-aws) — Argus のナレッジ管理機能を AWS サーバーレス (CDK + Lambda + API Gateway + DynamoDB) で再実装
