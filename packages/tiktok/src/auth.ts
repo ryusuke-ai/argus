@@ -53,15 +53,11 @@ export function generateCodeVerifier(): string {
 }
 
 /**
- * code_verifier から code_challenge を生成する（RFC 7636: SHA256 の Base64URL エンコード）
+ * code_verifier から code_challenge を生成する（TikTok 仕様: SHA256 の hex エンコード）
+ * @see https://developers.tiktok.com/doc/login-kit-desktop/
  */
 export function generateCodeChallenge(verifier: string): string {
-  return createHash("sha256")
-    .update(verifier)
-    .digest("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  return createHash("sha256").update(verifier).digest("hex");
 }
 
 /**
@@ -114,15 +110,6 @@ export async function exchangeCodeForTokens(
     }
     const body = new URLSearchParams(params);
 
-    console.log("[TikTok] Token exchange params:", {
-      ...params,
-      client_secret: "***",
-      code: params.code.slice(0, 20) + "...",
-      code_verifier: params.code_verifier
-        ? `${params.code_verifier.slice(0, 10)}... (len=${params.code_verifier.length})`
-        : "MISSING",
-    });
-
     const response = await fetch(TIKTOK_TOKEN_URL, {
       method: "POST",
       headers: {
@@ -131,9 +118,7 @@ export async function exchangeCodeForTokens(
       body: body.toString(),
     });
 
-    const rawText = await response.text();
-    console.log("[TikTok] Raw response:", rawText);
-    const data = JSON.parse(rawText) as TiktokTokenResponse;
+    const data = (await response.json()) as TiktokTokenResponse;
 
     if (data.error || !data.access_token) {
       return {

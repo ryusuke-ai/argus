@@ -80,15 +80,15 @@ describe("auth", () => {
       expect(verifier).toMatch(/^[A-Za-z0-9\-._~]+$/);
     });
 
-    it("should generate a Base64URL-encoded code_challenge (RFC 7636)", async () => {
+    it("should generate a hex-encoded code_challenge (TikTok Desktop spec)", async () => {
       const { generateCodeChallenge } = await import("./auth.js");
 
       const challenge = generateCodeChallenge("test-verifier");
 
-      // Base64URL: [A-Za-z0-9_-] のみ、パディング '=' なし
-      expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/);
-      // SHA256 の Base64URL エンコードは 43 文字（256bit / 6bit = 42.67 → 43文字）
-      expect(challenge.length).toBe(43);
+      // TikTok Desktop: SHA256 の hex エンコード [0-9a-f]
+      expect(challenge).toMatch(/^[0-9a-f]+$/);
+      // SHA256 hex は 64 文字（256bit / 4bit = 64文字）
+      expect(challenge.length).toBe(64);
     });
 
     it("should produce deterministic output for the same verifier", async () => {
@@ -136,7 +136,7 @@ describe("auth", () => {
         scope: "video.upload,video.publish,user.info.basic",
       };
       mockFetch.mockResolvedValueOnce({
-        text: () => Promise.resolve(JSON.stringify(tokenResponse)),
+        json: () => Promise.resolve(tokenResponse),
       });
 
       // saveTokens: upsert
@@ -169,7 +169,7 @@ describe("auth", () => {
         error_description: "Authorization code expired",
       };
       mockFetch.mockResolvedValueOnce({
-        text: () => Promise.resolve(JSON.stringify(errorResponse)),
+        json: () => Promise.resolve(errorResponse),
       });
 
       const result = await exchangeCodeForTokens("expired-code");
