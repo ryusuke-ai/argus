@@ -236,7 +236,7 @@ Phase 5完了後:
 ✅ Phase 5: ナレッジ管理
 
 次のステップ:
-1. Railway VPSへのデプロイ
+1. PM2でローカルデプロイ
 2. Cloudflare Tunnel設定
 3. 本番環境テスト
 

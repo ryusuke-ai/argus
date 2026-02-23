@@ -88,7 +88,7 @@ VALUES
   (gen_random_uuid(), 'Observation-First Architecture', 'Design principles for AI agent monitoring', 'Every tool invocation must be recorded via PreToolUse/PostToolUse hooks. This enables: full execution replay, performance analysis, error pattern detection, and episodic memory formation.', NOW() - INTERVAL '5 days'),
   (gen_random_uuid(), 'MCP Server Best Practices', 'Guidelines for implementing MCP tool servers', 'MCP servers should follow the Collector/Executor pattern: Collectors have full CRUD access, Executors have read-only access. This minimizes the blast radius of autonomous agent operations.', NOW() - INTERVAL '10 days'),
   (gen_random_uuid(), 'Slack Block Kit Patterns', 'Reusable Block Kit UI patterns for Argus', 'Use section blocks for text content, actions blocks for buttons, and context blocks for metadata. Always include a fallback text for notifications. Maximum 50 blocks per message.', NOW() - INTERVAL '15 days'),
-  (gen_random_uuid(), 'Railway Deployment Notes', 'Production deployment configuration on Railway', 'Single Docker container with PM2 managing 3 processes. Memory limit: 2GB. Cloudflare Tunnel for HTTPS. Health check on /api/health endpoint.', NOW() - INTERVAL '20 days')
+  (gen_random_uuid(), 'Deployment Notes', 'Production deployment configuration', 'PM2 managing 3 processes with Cloudflare Tunnel for HTTPS.', NOW() - INTERVAL '20 days')
 ON CONFLICT DO NOTHING;
 
 -- ===== Inbox Tasks =====

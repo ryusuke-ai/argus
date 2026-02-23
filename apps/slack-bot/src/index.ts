@@ -22,7 +22,7 @@ setupDailyPlanActions();
 await app.start();
 console.log("⚡️ Slack bot is running (Socket Mode)");
 
-// Health check server for Railway
+// Health check server
 const server = createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200);

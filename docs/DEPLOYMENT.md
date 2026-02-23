@@ -1,6 +1,6 @@
-# Argus デプロイガイド（Railway VPS）
+# Argus デプロイガイド（ローカルMac）
 
-Argus を Railway VPS 環境にデプロイし、24時間稼働させるための手順書です。
+Argus をローカルMac環境で24時間稼働させるための手順書です。
 
 > **このドキュメントの対象読者**: エンジニアだけでなく、技術に詳しくない方でも手順に沿って進められるように書かれています。専門用語には「平たく言うと」の説明を付けています。
 
@@ -12,9 +12,8 @@ Argus を Railway VPS 環境にデプロイし、24時間稼働させるため�
 
 | 用語                  | 平たく言うと                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Docker**            | アプリを動かすための箱。どのコンピュータでも同じ環境で動かせる仕組み                                   |
 | **PM2**               | アプリの見張り番。アプリが落ちたら自動で再起動してくれるツール                                         |
-| **Railway**           | クラウド上のレンタルサーバー。GitHub にコードを置くと自動でデプロイ（公開）される                      |
+| **LaunchAgent**       | macOS の自動起動の仕組み。Mac が起動したら自動的にアプリを立ち上げてくれる                             |
 | **Supabase**          | クラウド上のデータベースサービス。PostgreSQL（データを保存する仕組み）を簡単に使える                   |
 | **Cloudflare Tunnel** | サーバーとインターネットをつなぐ秘密のトンネル。サーバーのポートを外部に公開せず、安全にアクセスできる |
 | **Cloudflare Access** | ドアの鍵。メール認証で本人確認してからアクセスを許可する仕組み                                         |
@@ -22,7 +21,6 @@ Argus を Railway VPS 環境にデプロイし、24時間稼働させるため�
 | **環境変数**          | アプリの設定情報。パスワードや API キーなど、コードに直接書きたくない秘密の情報を外部から渡す仕組み    |
 | **マイグレーション**  | データベースの引っ越し作業。テーブル（データの入れ物）の構造を変更するときに使う                       |
 | **ヘルスチェック**    | アプリが正常に動いているかを定期的に確認する仕組み。「生きてる？」と聞いて「OK」と返ってくれば正常     |
-| **コンテナ**          | Docker で作られた「箱」の中身。アプリとその動作に必要なもの一式が入っている                            |
 | **ポート**            | アプリが通信に使う「窓口番号」。複数のアプリが同じサーバーで動くとき、ポート番号で区別する             |
 | **ビルド**            | ソースコード（人間が書いたコード）をコンピュータが実行できる形に変換する作業                           |
 | **monorepo**          | 複数のアプリやライブラリを1つのリポジトリ（コード保管場所）でまとめて管理する方式                      |
@@ -35,8 +33,8 @@ Argus を Railway VPS 環境にデプロイし、24時間稼働させるため�
 
 1. [アーキテクチャ概要](#アーキテクチャ概要)
 2. [事前準備](#1-事前準備)
-3. [Railway 環境変数設定](#2-railway-環境変数設定)
-4. [デプロイ方法](#3-デプロイ方法)
+3. [環境変数設定](#2-環境変数設定)
+4. [起動方法](#3-起動方法)
 5. [動作確認](#4-動作確認)
 6. [トラブルシューティング](#5-トラブルシューティング)
 7. [PM2 コマンド一覧](#6-pm2-コマンド一覧)
@@ -49,17 +47,19 @@ Argus を Railway VPS 環境にデプロイし、24時間稼働させるため�
 
 ## アーキテクチャ概要
 
-Argus は1つの Docker コンテナの中で3つのアプリケーションを同時に動かしています。PM2 というプロセスマネージャが、それぞれのアプリを監視・管理しています。
+Argus はローカルMac上で PM2 を使い、3つのアプリケーションを同時に動かしています。Cloudflare Tunnel でダッシュボードを外部公開し、Cloudflare Access でアクセス制御しています。
 
 ```
-Railway Container（Docker の箱）
+ローカルMac
 ├── PM2 Process Manager（アプリの見張り番）
 │   ├── Slack ボット (Port 3939)
 │   │   └── Socket Mode で Slack と常時接続 + ヘルスチェック用 HTTP サーバー
-│   ├── ダッシュボード (PORT=3150)
+│   ├── ダッシュボード (Port 3150)
 │   │   └── Next.js ウェブアプリ。ブラウザからアクセスする管理画面
 │   └── オーケストレーター (Port 3950)
 │       └── エージェント実行・スケジューリング（Cron ジョブ）・REST API
+├── Cloudflare Tunnel (cloudflared)
+│   └── ダッシュボードを外部に安全に公開
 ├── Claude Code CLI (/usr/local/bin/claude)
 │   └── AI エージェントが使う CLI ツール
 └── Node.js 22 + pnpm
@@ -76,40 +76,20 @@ Railway Container（Docker の箱）
 
 ### 技術的な特徴
 
-- **方式**: 単一 Docker コンテナで 3 つのアプリを起動（平たく言うと、1つの箱に3つのアプリが入っている）
+- **方式**: ローカルMac上で PM2 が 3 つのアプリを直接実行（Docker不使用）
 - **プロセス管理**: PM2 が各アプリを見張り、落ちたら自動で再起動（最大10回）、メモリが 512MB を超えたら再起動
-- **認証**: Claude Code CLI のセッショントークンを手動で移行する必要がある
-- **外部公開**: ダッシュボードのみが外部に公開される（Railway の `PORT` 環境変数を使用）
+- **設定ファイル**: `ecosystem.local.config.cjs` でローカル環境用のプロセス設定を管理
+- **自動起動**: macOS LaunchAgent（`scripts/ops/startup.sh`）により Mac 起動時に自動で PM2 プロセスが立ち上がる
+- **外部公開**: ダッシュボードのみが Cloudflare Tunnel 経由で外部に公開される
 - **セキュリティ**: Cloudflare Tunnel + Access でメール認証付きアクセス制御
 
-### Docker ビルドの流れ
+### 起動の流れ
 
-Dockerfile は2段階（マルチステージ）で構成されています。
+Mac の起動時に LaunchAgent が `scripts/ops/startup.sh` を実行し、以下の処理が行われます。
 
-```
-Stage 1: ビルダー（一時的な作業場）
-  1. Node.js 22 Alpine イメージを使用
-  2. pnpm でパッケージをインストール
-  3. TypeScript をビルド（JavaScript に変換）
-
-Stage 2: 本番用イメージ（実際にデプロイされるもの）
-  1. PM2 をグローバルインストール
-  2. Claude Code CLI をグローバルインストール
-  3. 非 root ユーザー（nodejs）を作成してセキュリティ強化
-  4. ビルド成果物をコピー
-  5. 本番用の依存関係のみインストール（開発用は含めない）
-  6. docker-entrypoint.sh で起動
-```
-
-> **なぜ2段階にするのか？**: ビルドに必要なツール（TypeScript コンパイラなど）を本番イメージに含めないことで、イメージサイズを小さくし、セキュリティリスクを減らすため。
-
-### 起動の流れ（docker-entrypoint.sh）
-
-コンテナが起動すると、以下の処理が順に実行されます。
-
-1. ログディレクトリ (`/app/logs/`) を作成
-2. `CLAUDE_SESSION_TOKEN` 環境変数があれば `~/.claude/session_token` に書き込み（AI 機能の認証）
-3. `pm2-runtime` で `ecosystem.config.cjs` を読み込み、3つのアプリを同時起動
+1. 環境変数をルートの `.env` ファイルから読み込み
+2. `pm2 start ecosystem.local.config.cjs` で3つのアプリを同時起動
+3. Cloudflare Tunnel (`cloudflared`) がダッシュボードを外部公開
 
 ---
 
@@ -129,20 +109,18 @@ pnpm db:push
 > **Supabase ダッシュボード** (Settings > Database) から `DATABASE_URL` を取得しておいてください。
 > この URL はデータベースの住所のようなもので、`postgresql://ユーザー名:パスワード@ホスト:ポート/データベース名` という形式です。
 
-### 1.2 Claude Code セッショントークンの取得
+### 1.2 Claude Code CLI の認証確認
 
-> **なぜこの手順が必要か？**: AI 機能（Claude によるメッセージ応答やタスク実行）を使うために、Claude Code CLI にログインした状態を Railway サーバーに移行する必要があるため。ローカルでログインした「セッション（ログイン状態）」をサーバーにコピーします。
+> **なぜこの手順が必要か？**: AI 機能（Claude によるメッセージ応答やタスク実行）を使うために、Claude Code CLI にログイン済みの状態である必要があるためです。
 
-Claude Code CLI のセッショントークンをローカルマシンから取得します。
+Claude Code CLI にログインしていることを確認します。
 
 ```bash
-# ローカルマシンで実行
-cat ~/.claude/session_token
+# Claude Code CLI のバージョン確認（ログイン状態の確認も兼ねる）
+claude --version
 ```
 
-この値をコピーしておきます。後のステップで Railway の環境変数に設定します。
-
-> **注意**: セッショントークンには有効期限があります。期限が切れた場合は、ローカルで `claude` コマンドを実行して再ログインし、トークンを再取得してください。
+未ログインの場合は `claude` コマンドを実行してログインしてください。ローカルMac上で直接実行するため、セッショントークンの移行は不要です。
 
 ### 1.3 Slack アプリの認証情報を確認
 
@@ -197,11 +175,11 @@ Cloudflare R2 はメディアファイル（画像・動画・音声）を保存
 
 ---
 
-## 2. Railway 環境変数設定
+## 2. 環境変数設定
 
-> **環境変数とは？**: アプリの設定情報をコードの外から渡す仕組みです。パスワードや API キーなど、秘密にしたい情報をコードに直接書かず、Railway のダッシュボードから安全に設定できます。
+> **環境変数とは？**: アプリの設定情報をコードの外から渡す仕組みです。パスワードや API キーなど、秘密にしたい情報をコードに直接書かず、`.env` ファイルから安全に設定できます。
 
-Railway ダッシュボード > Variables から以下の環境変数を設定します。
+プロジェクトルートの `.env` ファイルに以下の環境変数を設定します。
 
 ### 2.1 必須環境変数（これがないと起動しません）
 
@@ -211,7 +189,6 @@ Railway ダッシュボード > Variables から以下の環境変数を設定�
 | `SLACK_BOT_TOKEN`      | Slack Bot Token                      | Slack App Settings > OAuth & Permissions                  | `xoxb-1234567890-...`                    |
 | `SLACK_APP_TOKEN`      | Slack App-Level Token                | Slack App Settings > Basic Information > App-Level Tokens | `xapp-1-A1234567-...`                    |
 | `SLACK_SIGNING_SECRET` | Slack Signing Secret                 | Slack App Settings > Basic Information > Signing Secret   | `abc123def456...`                        |
-| `CLAUDE_SESSION_TOKEN` | Claude Code セッショントークン       | ローカルで `cat ~/.claude/session_token` を実行           | (長い文字列)                             |
 | `ANTHROPIC_API_KEY`    | Anthropic API キー                   | Anthropic Console > API Keys                              | `sk-ant-...`                             |
 | `NODE_ENV`             | 環境設定（必ず `production` にする） | 固定値                                                    | `production`                             |
 
@@ -334,85 +311,69 @@ Railway ダッシュボード > Variables から以下の環境変数を設定�
 | `ORCHESTRATOR_PORT`    | オーケストレーターのポート番号                   | `3950`                  |
 | `AGENT_RETRY_DELAY_MS` | エージェントのリトライ間隔（ミリ秒）             | (デフォルトなし)        |
 
-### 2.9 自動設定される変数
-
-| 変数名 | 説明           | 備考                                                                             |
-| ------ | -------------- | -------------------------------------------------------------------------------- |
-| `PORT` | 外部公開ポート | Railway が自動設定。ダッシュボード（Next.js）がこの値を使用。デフォルトは `3150` |
-
-> **なぜ PORT は 3150 か？**: ダッシュボード（Next.js）が使うポートで、Railway が外部からのアクセスをこのポートに転送するためです。Slack ボット (3939) やオーケストレーター (3950) はコンテナ内部でのみ通信するので、外部に公開する必要がありません。
-
 ### 環境変数の設定例（最小構成）
 
-Railway ダッシュボードの Variables セクションに以下を入力します。
+プロジェクトルートの `.env` ファイルに以下を設定します。
 
 ```
 DATABASE_URL=postgresql://user:password@<your-supabase-host>:6543/postgres
 SLACK_BOT_TOKEN=xoxb-1234567890123-1234567890123-xxxxxxxxxxxxxxxxxxxxxxxx
 SLACK_APP_TOKEN=xapp-1-A1234567890-1234567890123-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 SLACK_SIGNING_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-CLAUDE_SESSION_TOKEN=<ローカルで取得した値>
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx
 NODE_ENV=production
 ```
 
+> **注意**: `.env` ファイルはリポジトリにコミットしないでください（`.gitignore` で除外済み）。
+
 ---
 
-## 3. デプロイ方法
+## 3. 起動方法
 
-### 方法 A: GitHub からの自動デプロイ（推奨）
-
-> **なぜ推奨か？**: 一度設定すれば、以降はコードを GitHub に push するだけで自動的にデプロイされます。手動操作が不要でミスが減り、常に最新のコードが反映されます。
-
-1. [Railway](https://railway.app/) にログイン
-2. 「New Project」>「Deploy from GitHub repo」を選択
-3. Argus のリポジトリを接続
-4. Railway が `Dockerfile` を自動検出してビルド・デプロイを実行
-
-以降、`main` ブランチに push するたびに自動デプロイされます。
+### 方法 A: PM2 での手動起動
 
 ```bash
-# コードを変更してデプロイ
-git add .
-git commit -m "feat: update configuration"
-git push origin main
-# → Railway が自動的にビルド・デプロイを実行（数分かかります）
+# 1. 依存関係のインストール
+pnpm install
+
+# 2. TypeScript ビルド
+pnpm build
+
+# 3. PM2 で起動（ローカル用設定ファイルを使用）
+pm2 start ecosystem.local.config.cjs
 ```
 
-### 方法 B: Railway CLI での手動デプロイ
+### 方法 B: LaunchAgent による自動起動（推奨）
 
-Railway CLI をインストールして手動でデプロイします。テスト時や緊急対応時に便利です。
+> **なぜ推奨か？**: Mac の起動時に自動で PM2 プロセスが立ち上がるため、手動操作が不要です。電源を入れるだけで Argus が稼働し始めます。
 
-```bash
-# Railway CLI インストール
-npm install -g @railway/cli
+`scripts/ops/startup.sh` を macOS LaunchAgent に登録することで、Mac 起動時に自動的に Argus が起動します。
 
-# ログイン（ブラウザが開きます）
-railway login
+LaunchAgent の plist ファイル例（`~/Library/LaunchAgents/com.argus.startup.plist`）:
 
-# プロジェクトにリンク（どのプロジェクトにデプロイするか選択）
-railway link
-
-# デプロイ実行
-railway up
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.argus.startup</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/path/to/argus/scripts/ops/startup.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
 ```
 
-### デプロイ設定（Railway ダッシュボード > Settings）
+### ビルドと起動の流れ
 
-| 項目          | 値     | 備考                                                    |
-| ------------- | ------ | ------------------------------------------------------- |
-| Build Command | (空欄) | Dockerfile を自動検出するため、空欄のままにしてください |
-| Start Command | (空欄) | Dockerfile の CMD（`docker-entrypoint.sh`）を使用       |
-| Port          | `3150` | Railway が `PORT` 環境変数を自動設定                    |
-
-### ビルドの内部処理
-
-デプロイ時、Docker が以下の処理を自動的に行います。
-
-1. **依存関係のインストール**: `pnpm install --frozen-lockfile`（全パッケージの依存関係をインストール）
+1. **依存関係のインストール**: `pnpm install`（全パッケージの依存関係をインストール）
 2. **TypeScript ビルド**: `pnpm build`（TypeScript を JavaScript に変換）
-3. **本番用イメージ作成**: PM2 と Claude Code CLI をインストール、本番用依存関係のみを含むイメージを作成
-4. **起動**: `docker-entrypoint.sh` が PM2 経由で3つのアプリを同時起動
+3. **起動**: `pm2 start ecosystem.local.config.cjs` で3つのアプリを同時起動
 
 ### 利用可能な npm スクリプト
 
@@ -442,8 +403,8 @@ railway up
 > **何を確認するか？**: 3つのアプリがすべて正常に起動しているかを確認します。
 
 ```bash
-# Railway CLI でコンテナに接続してプロセス一覧を確認
-railway run pm2 list
+# PM2 プロセス一覧を確認
+pm2 list
 ```
 
 期待される出力:
@@ -465,62 +426,63 @@ railway run pm2 list
 > **ヘルスチェックとは？**: 「アプリが正常に動いていますか？」と聞いて、「OK」と返ってくるかを確認する仕組みです。
 
 ```bash
-# ダッシュボード（外部公開 URL）- ブラウザからもアクセス可能
-curl https://<railway-domain>/
+# ダッシュボード（ローカル）
+curl http://localhost:3150/
 
-# ダッシュボードの API ヘルスチェック（Docker のヘルスチェックと同じ）
-curl https://<railway-domain>/api/health
+# ダッシュボードの API ヘルスチェック
+curl http://localhost:3150/api/health
 
-# Slack ボット（コンテナ内部からのみアクセス可能）
-railway run curl http://localhost:3939/health
+# Slack ボット
+curl http://localhost:3939/health
 
-# オーケストレーター（コンテナ内部からのみアクセス可能）
-railway run curl http://localhost:3950/health
+# オーケストレーター
+curl http://localhost:3950/health
+
+# 外部公開 URL（Cloudflare Tunnel 経由）
+curl https://argus.yourdomain.com/
 ```
 
 ### 4.3 ログ確認
 
 ```bash
-# Railway のデプロイログ（リアルタイム）
-railway logs --follow
+# PM2 経由で全アプリのログ（リアルタイム）
+pm2 logs
 
-# PM2 経由で全アプリのログ
-railway run pm2 logs --lines 100
+# 直近の指定行数を表示
+pm2 logs --lines 100
 
 # 特定アプリのログ
-railway run pm2 logs slack-bot --lines 50
-railway run pm2 logs dashboard --lines 50
-railway run pm2 logs orchestrator --lines 50
+pm2 logs slack-bot --lines 50
+pm2 logs dashboard --lines 50
+pm2 logs orchestrator --lines 50
 ```
 
 ### 4.4 Slack ボットの動作確認
 
 1. Slack でボットをメンションしてメッセージを送信
 2. ボットが応答することを確認（数秒〜十数秒かかることがあります）
-3. ダッシュボード (`https://<railway-domain>`) でセッションとメッセージが記録されていることを確認
+3. ダッシュボード (`http://localhost:3150`) でセッションとメッセージが記録されていることを確認
 
 ---
 
 ## 5. トラブルシューティング
 
-### 5.1 コンテナが起動しない
+### 5.1 プロセスが起動しない
 
 **原因**: 環境変数が未設定、または値が不正
 
 **対処**:
 
 ```bash
-# 環境変数の一覧を確認
-railway variables
+# .env ファイルの内容を確認
+cat .env
 
-# 不足している変数を設定
-railway variables set DATABASE_URL="postgresql://..."
-railway variables set SLACK_BOT_TOKEN="xoxb-..."
-railway variables set SLACK_APP_TOKEN="xapp-..."
-railway variables set SLACK_SIGNING_SECRET="..."
-railway variables set CLAUDE_SESSION_TOKEN="<値>"
-railway variables set ANTHROPIC_API_KEY="sk-ant-..."
-railway variables set NODE_ENV="production"
+# 必須環境変数が設定されているか確認
+grep DATABASE_URL .env
+grep SLACK_BOT_TOKEN .env
+grep SLACK_APP_TOKEN .env
+grep SLACK_SIGNING_SECRET .env
+grep ANTHROPIC_API_KEY .env
 ```
 
 > **よくあるミス**: `DATABASE_URL` の末尾に余分なスペースが入っている、`SLACK_BOT_TOKEN` が `xoxb-` で始まっていない、など。
@@ -533,15 +495,12 @@ railway variables set NODE_ENV="production"
 
 ```bash
 # エラーログを確認（最初にこれを見ましょう）
-railway run pm2 logs --err --lines 100
+pm2 logs --err --lines 100
 
 # DATABASE_URL を確認
-railway variables | grep DATABASE_URL
+grep DATABASE_URL .env
 
-# コンテナに接続してデバッグ
-railway run sh
-
-# コンテナ内でデータベース接続テスト
+# データベース接続テスト
 node -e "const { Pool } = require('pg'); const pool = new Pool({ connectionString: process.env.DATABASE_URL }); pool.query('SELECT 1').then(() => console.log('OK')).catch(e => console.error(e));"
 ```
 
@@ -554,29 +513,25 @@ node -e "const { Pool } = require('pg'); const pool = new Pool({ connectionStrin
 **対処**:
 
 ```bash
-# 1. ローカルでログインし直す
+# 1. Claude Code にログインし直す
 claude
 
-# 2. トークンを再取得
-cat ~/.claude/session_token
-
-# 3. Railway の環境変数を更新
-railway variables set CLAUDE_SESSION_TOKEN="<新しい値>"
-
-# 4. 再デプロイ（環境変数の変更で自動的に再デプロイされます）
+# 2. PM2 プロセスを再起動（新しいセッションを反映）
+pm2 restart all
 ```
 
-> **注意**: セッショントークンは有効期限があります。定期的に（数週間〜1ヶ月ごとに）更新が必要な場合があります。認証エラーが発生した場合は、ローカルで Claude Code にログインし直してからトークンを再取得してください。
+> **注意**: ローカルMac上で直接実行しているため、Claude Code にログインし直すだけで認証が更新されます。セッショントークンの手動コピーは不要です。
 
 ### 5.4 ポート衝突
 
-**原因**: Railway の `PORT` 環境変数とアプリの固定ポートが衝突
+**原因**: 他のアプリケーションとポートが衝突
 
 **対処**:
 
-- ダッシュボードのみ Railway の `PORT` 環境変数を使用するように設定済み
-- Slack ボット (3939) とオーケストレーター (3950) は固定ポート
-- 外部公開が必要なのはダッシュボードのみなので通常は問題なし
+- ダッシュボード: ポート 3150
+- Slack ボット: ポート 3939
+- オーケストレーター: ポート 3950
+- 他のアプリがこれらのポートを使用していないか `lsof -i :3150` 等で確認
 
 ### 5.5 PM2 プロセスが起動しない
 
@@ -585,28 +540,28 @@ railway variables set CLAUDE_SESSION_TOKEN="<新しい値>"
 **対処**:
 
 ```bash
-# ローカルでビルドを実行して確認
+# ビルドを実行して確認
 pnpm build
 
 # ビルドエラーがないか確認
 # TypeScript のコンパイルエラーがある場合、dist/ が生成されません
 
-# Railway のビルドログを確認
-railway logs | grep "pnpm build"
+# PM2 を再起動
+pm2 restart all
 ```
 
 ### 5.6 メモリ不足
 
-**原因**: Railway プランのメモリ上限に到達
+**原因**: Mac のメモリが逼迫、または個別プロセスのメモリ上限に到達
 
 **対処**:
 
 ```bash
 # PM2 でメモリ使用量を確認
-railway run pm2 monit
+pm2 monit
 
 # 特定のプロセスのみ再起動してメモリ解放
-railway run pm2 restart slack-bot
+pm2 restart slack-bot
 ```
 
 > **補足**: PM2 は各プロセスのメモリが 512MB を超えると自動的に再起動する設定になっています（`ecosystem.config.cjs` の `max_memory_restart` 設定）。
@@ -622,7 +577,7 @@ railway run pm2 restart slack-bot
 1. **環境変数を確認**: `TIKTOK_CLIENT_KEY` と `TIKTOK_CLIENT_SECRET` が正しく設定されているか確認
 
    ```bash
-   railway variables | grep TIKTOK
+   grep TIKTOK .env
    ```
 
 2. **トークンの再認証**: TikTok のトークンはデータベースに保存されています。期限切れの場合は自動的にリフレッシュされますが、リフレッシュトークン自体が期限切れの場合は再認証が必要です
@@ -638,7 +593,7 @@ railway run pm2 restart slack-bot
 1. **チャンネル設定を確認**:
 
    ```bash
-   railway variables | grep SLACK_SNS_CHANNEL
+   grep SLACK_SNS_CHANNEL .env
    ```
 
    `SLACK_SNS_CHANNEL` が設定されていない場合、SNS 機能は無効になります。
@@ -646,13 +601,13 @@ railway run pm2 restart slack-bot
 2. **オーケストレーターのログを確認**:
 
    ```bash
-   railway run pm2 logs orchestrator --lines 100
+   pm2 logs orchestrator --lines 100
    ```
 
 3. **オーケストレーターを再起動**:
 
    ```bash
-   railway run pm2 restart orchestrator
+   pm2 restart orchestrator
    ```
 
 ### 5.9 MCP サーバーが起動しない
@@ -664,7 +619,7 @@ railway run pm2 restart slack-bot
 1. **Slack ボットのログを確認**（MCP サーバーは Slack ボットから起動されるため）:
 
    ```bash
-   railway run pm2 logs slack-bot --err --lines 100
+   pm2 logs slack-bot --err --lines 100
    ```
 
 2. **必要な環境変数を確認**: MCP サーバーは以下の環境変数を使用します
@@ -682,7 +637,7 @@ railway run pm2 restart slack-bot
 1. **Gmail 認証情報の確認**:
 
    ```bash
-   railway variables | grep GMAIL
+   grep GMAIL .env
    ```
 
    `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_ADDRESS` が設定されているか確認。
@@ -695,42 +650,42 @@ railway run pm2 restart slack-bot
 
 ## 6. PM2 コマンド一覧
 
-> **PM2 とは？**: アプリの見張り番です。Railway CLI (`railway run`) を介して PM2 コマンドを実行します。
+> **PM2 とは？**: アプリの見張り番です。ターミナルから直接 PM2 コマンドを実行します。
 
 ### プロセス管理
 
-| コマンド                               | 説明                       |
-| -------------------------------------- | -------------------------- |
-| `railway run pm2 list`                 | 全プロセスの一覧表示       |
-| `railway run pm2 restart all`          | 全プロセスを再起動         |
-| `railway run pm2 restart slack-bot`    | Slack ボットを再起動       |
-| `railway run pm2 restart dashboard`    | ダッシュボードを再起動     |
-| `railway run pm2 restart orchestrator` | オーケストレーターを再起動 |
-| `railway run pm2 stop all`             | 全プロセスを停止           |
-| `railway run pm2 delete all`           | 全プロセスを削除           |
+| コマンド                   | 説明                       |
+| -------------------------- | -------------------------- |
+| `pm2 list`                 | 全プロセスの一覧表示       |
+| `pm2 restart all`          | 全プロセスを再起動         |
+| `pm2 restart slack-bot`    | Slack ボットを再起動       |
+| `pm2 restart dashboard`    | ダッシュボードを再起動     |
+| `pm2 restart orchestrator` | オーケストレーターを再起動 |
+| `pm2 stop all`             | 全プロセスを停止           |
+| `pm2 delete all`           | 全プロセスを削除           |
 
 ### ログ
 
-| コマンド                            | 説明                             |
-| ----------------------------------- | -------------------------------- |
-| `railway run pm2 logs`              | 全アプリのログをリアルタイム表示 |
-| `railway run pm2 logs slack-bot`    | Slack ボットのログ               |
-| `railway run pm2 logs dashboard`    | ダッシュボードのログ             |
-| `railway run pm2 logs orchestrator` | オーケストレーターのログ         |
-| `railway run pm2 logs --err`        | エラーログのみ表示               |
-| `railway run pm2 logs --lines 200`  | 直近 200 行を表示                |
-| `railway run pm2 flush`             | 全ログファイルをクリア           |
+| コマンド                | 説明                             |
+| ----------------------- | -------------------------------- |
+| `pm2 logs`              | 全アプリのログをリアルタイム表示 |
+| `pm2 logs slack-bot`    | Slack ボットのログ               |
+| `pm2 logs dashboard`    | ダッシュボードのログ             |
+| `pm2 logs orchestrator` | オーケストレーターのログ         |
+| `pm2 logs --err`        | エラーログのみ表示               |
+| `pm2 logs --lines 200`  | 直近 200 行を表示                |
+| `pm2 flush`             | 全ログファイルをクリア           |
 
 ### モニタリング
 
-| コマンド                            | 説明                                 |
-| ----------------------------------- | ------------------------------------ |
-| `railway run pm2 monit`             | CPU / メモリ使用量のリアルタイム監視 |
-| `railway run pm2 show slack-bot`    | Slack ボットの詳細情報               |
-| `railway run pm2 show dashboard`    | ダッシュボードの詳細情報             |
-| `railway run pm2 show orchestrator` | オーケストレーターの詳細情報         |
+| コマンド                | 説明                                 |
+| ----------------------- | ------------------------------------ |
+| `pm2 monit`             | CPU / メモリ使用量のリアルタイム監視 |
+| `pm2 show slack-bot`    | Slack ボットの詳細情報               |
+| `pm2 show dashboard`    | ダッシュボードの詳細情報             |
+| `pm2 show orchestrator` | オーケストレーターの詳細情報         |
 
-### PM2 設定の詳細（ecosystem.config.cjs）
+### PM2 設定の詳細（ecosystem.local.config.cjs）
 
 各プロセスの設定内容です。
 
@@ -742,10 +697,10 @@ railway run pm2 restart slack-bot
 | `max_memory_restart`        | `"512M"` | メモリ使用量が512MBを超えたら自動再起動                  |
 | `exp_backoff_restart_delay` | `100`    | 再起動の間隔を指数的に増やす（100ms, 200ms, 400ms, ...） |
 
-### ログファイルの場所（コンテナ内）
+### ログファイルの場所
 
 ```
-/app/logs/
+~/.pm2/logs/
 ├── slack-bot-error.log       # Slack ボットのエラーログ
 ├── slack-bot-out.log         # Slack ボットの通常ログ
 ├── dashboard-error.log       # ダッシュボードのエラーログ
@@ -786,7 +741,7 @@ railway run pm2 restart slack-bot
 
 ### アプリケーション
 
-- [ ] ダッシュボードがブラウザで開ける (`https://<railway-domain>/`)
+- [ ] ダッシュボードがブラウザで開ける (`http://localhost:3150/`)
 - [ ] Slack ボットがメンションに応答する
 - [ ] オーケストレーターの Cron ジョブが動作している
 - [ ] ログが正常に記録されている (`pm2 logs`)
@@ -822,64 +777,40 @@ railway run pm2 restart slack-bot
 
 Cloudflare 提供のサブドメイン（`*.trycloudflare.com`）を使用する場合は不要。
 
-### 8.2 Railway Service 2（argus-tunnel）の作成
+### 8.2 cloudflared のインストールと設定
 
-> **なぜ別のサービスが必要か？**: Cloudflare のトンネルクライアント（cloudflared）は、メインアプリとは別のコンテナで動かします。これにより、トンネルの問題がアプリに影響しない（逆も同様）ようになります。
-
-#### Railway ダッシュボードで設定
-
-1. Railway ダッシュボードにログイン
-2. 既存プロジェクト（argus）を開く
-3. 「New Service」をクリック
-4. 「GitHub Repo」を選択
-5. 既存の argus リポジトリを選択
-6. 設定:
-   - **Service Name**: `argus-tunnel`
-   - **Root Directory**: `/`
-   - **Dockerfile Path**: `Dockerfile.tunnel`
-
-> `Dockerfile.tunnel` は非常にシンプルで、Cloudflare 公式の `cloudflared` イメージを使い、`tunnel run` コマンドを実行するだけです。
-
-#### 環境変数設定
-
-Service 2（argus-tunnel）の Variables で設定:
-
-| 変数名         | 値                                        |
-| -------------- | ----------------------------------------- |
-| `TUNNEL_TOKEN` | Cloudflare で取得したトークン（`eyJ...`） |
-
-**注意**: `TUNNEL_ID` は不要です（`TUNNEL_TOKEN` にトンネル ID の情報が含まれています）。
-
-### 8.3 config.yml の更新
-
-#### Railway Service 1 の名前を確認
+ローカルMac上で `cloudflared`（Cloudflare Tunnel クライアント）をインストールし、設定します。
 
 ```bash
-# Railway CLI で確認
-railway status
+# Homebrew でインストール
+brew install cloudflared
+
+# Cloudflare にログイン
+cloudflared tunnel login
+
+# トンネルを作成
+cloudflared tunnel create argus-tunnel
 ```
 
-Service 1 の正確な名前（例: `argus-app` または `argus-production`）を確認。
+### 8.3 config.yml の設定
 
-#### config.yml を更新
-
-`config.yml` の `service` 行を実際の Service 名に更新:
+`~/.cloudflared/config.yml` を作成し、ローカルのダッシュボードにトンネルを接続します:
 
 ```yaml
+tunnel: argus-tunnel
+credentials-file: ~/.cloudflared/<tunnel-id>.json
+
 ingress:
   - hostname: argus.yourdomain.com
-    service: http://argus-app:3150 # ← 実際の Service 名に置き換え
+    service: http://localhost:3150
   - service: http_status:404
 ```
 
-GitHub に push → Railway が自動再デプロイ
-
-### 8.4 動作確認
-
-#### Railway ログ確認
+### 8.4 Tunnel の起動と動作確認
 
 ```bash
-railway logs --service argus-tunnel
+# Tunnel を起動
+cloudflared tunnel run argus-tunnel
 ```
 
 期待される出力:
@@ -889,6 +820,8 @@ INFO Connection established to Cloudflare
 INFO Registered tunnel connection
 INFO Serving https://argus.yourdomain.com
 ```
+
+> **Tip**: `cloudflared` を LaunchAgent に登録すれば、Mac 起動時に自動的に Tunnel も起動します。`cloudflared service install` コマンドで設定可能です。
 
 #### 外部アクセス確認
 
@@ -906,16 +839,16 @@ curl https://argus.yourdomain.com
 
 #### トンネルが接続しない
 
-**症状**: `railway logs --service argus-tunnel` で接続エラー
+**症状**: `cloudflared tunnel run` で接続エラー
 
 **対処**:
 
 ```bash
-# TUNNEL_TOKEN を確認
-railway variables --service argus-tunnel
+# Tunnel の状態を確認
+cloudflared tunnel info argus-tunnel
 
-# 新しいトークンを再取得して Railway に設定
-railway variables set TUNNEL_TOKEN=<新しいトークン> --service argus-tunnel
+# 認証情報を再取得
+cloudflared tunnel login
 ```
 
 #### ダッシュボードにアクセスできない
@@ -924,15 +857,15 @@ railway variables set TUNNEL_TOKEN=<新しいトークン> --service argus-tunne
 
 **対処**:
 
-1. Service 1 の名前を確認:
+1. ダッシュボードがローカルで動作しているか確認:
 
    ```bash
-   railway status
+   curl http://localhost:3150/
    ```
 
-2. `config.yml` の `service` 行を更新（例: `argus-app` → `argus-production`）
+2. `~/.cloudflared/config.yml` の `service` 行が `http://localhost:3150` であることを確認
 
-3. GitHub に push → 自動再デプロイ
+3. `cloudflared tunnel run argus-tunnel` を再起動
 
 #### Cloudflare DNS が解決しない
 
@@ -1010,8 +943,7 @@ railway variables set TUNNEL_TOKEN=<新しいトークン> --service argus-tunne
 - [ ] Cloudflare Tunnel が正常に接続している
 - [ ] `https://argus.yourdomain.com` でダッシュボードにアクセスできる
 - [ ] HTTPS 証明書が有効（ブラウザで鍵マークが表示される）
-- [ ] Railway Service 1（既存アプリ）が正常に動作している
-- [ ] Railway Service 2（argus-tunnel）が正常に動作している
+- [ ] `cloudflared` プロセスが正常に動作している
 
 ### Cloudflare Access
 

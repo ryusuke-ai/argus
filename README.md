@@ -27,7 +27,7 @@
 
 ## Overview
 
-Argus is a production-ready AI agent platform built as a TypeScript monorepo. It wraps the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk) with a hook-based observation layer, enabling real-time monitoring and episodic memory across all agent executions. The system runs 24/7 on Railway VPS, processing Slack messages, managing emails, scheduling tasks, and generating multi-platform social media content — with every tool invocation recorded for full traceability.
+Argus is a production-ready AI agent platform built as a TypeScript monorepo. It wraps the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk) with a hook-based observation layer, enabling real-time monitoring and episodic memory across all agent executions. The system runs 24/7 on a local Mac managed by PM2, processing Slack messages, managing emails, scheduling tasks, and generating multi-platform social media content — with every tool invocation recorded for full traceability.
 
 ## Architecture
 
@@ -137,7 +137,7 @@ All three applications share a common execution engine (`@argus/agent-core`) tha
 | APIs       | Google APIs (Gmail, Calendar), Meta (Threads, Instagram), TikTok | External service integration                         |
 | Storage    | Cloudflare R2 (S3-compatible)                                    | Media asset storage                                  |
 | Testing    | Vitest 4, Testing Library                                        | Unit and integration testing                         |
-| Deployment | Railway VPS, Docker, PM2                                         | Container-based production hosting                   |
+| Deployment | PM2, Cloudflare Tunnel/Access                                    | Local Mac production hosting                         |
 | Security   | Cloudflare Tunnel + Access                                       | HTTPS tunneling with email-based authentication      |
 
 ## Project Structure
@@ -250,7 +250,7 @@ For deeper technical documentation:
 
 ## Deployment
 
-Argus runs on **Railway VPS** with a single Docker container managed by PM2:
+Argus runs on a **local Mac** managed by PM2:
 
 - **3 PM2 processes**: Slack Bot, Dashboard, Orchestrator
 - **External access**: Cloudflare Tunnel for HTTPS

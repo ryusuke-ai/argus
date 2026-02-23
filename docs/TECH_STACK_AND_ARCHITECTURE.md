@@ -17,7 +17,7 @@
 8. [Dashboard: なぜ Next.js か](#8-dashboard-なぜ-nextjs-か)
 9. [API サーバー: なぜ Express か](#9-api-サーバー-なぜ-express-か)
 10. [テスト: なぜ Vitest か](#10-テスト-なぜ-vitest-か)
-11. [ホスティング: なぜ Railway + Supabase か](#11-ホスティング-なぜ-railway--supabase-か)
+11. [ホスティング: なぜ ローカルMac + Supabase か](#11-ホスティング-なぜ-ローカルmac--supabase-か)
 12. [ストレージ: なぜ Cloudflare R2 か](#12-ストレージ-なぜ-cloudflare-r2-か)
 13. [設計パターンと原則](#13-設計パターンと原則)
 14. [面接想定 Q&A](#14-面接想定-qa)
@@ -99,13 +99,13 @@ Argus は **Slack ベースの AI エージェントプラットフォーム**�
 
 #### プロジェクト基本情報
 
-| 項目     | 値                                                                                        |
-| -------- | ----------------------------------------------------------------------------------------- |
-| 種別     | pnpm モノレポ（12 パッケージ）— 複数のプログラムを 1 つのリポジトリで管理する構成         |
-| 言語     | TypeScript 5.6（strict, ESM）— JavaScript に型チェックを加えた言語                        |
-| Node.js  | >= 22.12.0 — JavaScript をサーバーで動かすための実行環境                                  |
-| テスト   | 1,200+ テスト（Vitest 4）— プログラムが正しく動くかを自動確認する仕組み                   |
-| デプロイ | Railway VPS + Docker + PM2 — クラウド上の仮想サーバーにコンテナ化して配置、プロセスを管理 |
+| 項目     | 値                                                                                                       |
+| -------- | -------------------------------------------------------------------------------------------------------- |
+| 種別     | pnpm モノレポ（12 パッケージ）— 複数のプログラムを 1 つのリポジトリで管理する構成                        |
+| 言語     | TypeScript 5.6（strict, ESM）— JavaScript に型チェックを加えた言語                                       |
+| Node.js  | >= 22.12.0 — JavaScript をサーバーで動かすための実行環境                                                 |
+| テスト   | 1,200+ テスト（Vitest 4）— プログラムが正しく動くかを自動確認する仕組み                                  |
+| デプロイ | PM2（ローカルMac）+ Cloudflare Tunnel/Access — ローカルMac上でプロセスを管理し、Cloudflare経由で外部公開 |
 
 ---
 
@@ -141,7 +141,7 @@ Argus は **3つのアプリ（apps）+ 共通部品（packages）+ 外部サー
 │  └─────┘  └──────────────┘  └──────────┘        │
 └─────────────────────────────────────────────────┘
          ↓               ↓              ↓
-   Supabase PG    Cloudflare R2    Railway VPS
+   Supabase PG    Cloudflare R2    ローカルMac
 ```
 
 #### 3層それぞれの役割
@@ -169,23 +169,23 @@ Argus は **3つのアプリ（apps）+ 共通部品（packages）+ 外部サー
 
 #### 技術スタック一覧
 
-| レイヤー            | 技術                           | バージョン  |
-| ------------------- | ------------------------------ | ----------- |
-| **ランタイム**      | Node.js                        | >= 22.12.0  |
-| **言語**            | TypeScript (strict ESM)        | ^5.6.0      |
-| **パッケージ管理**  | pnpm                           | 10.23.0     |
-| **DB**              | PostgreSQL (Supabase)          | -           |
-| **ORM**             | Drizzle ORM + postgres.js      | ^0.45.0     |
-| **AI エージェント** | Claude Agent SDK               | ^0.2.34     |
-| **AI API**          | Anthropic SDK                  | ^0.74.0     |
-| **Slack**           | Bolt (Socket Mode)             | ^4.0.0      |
-| **Web UI**          | Next.js + React + Tailwind CSS | 16 / 19 / 4 |
-| **API サーバー**    | Express                        | ^5.1.0      |
-| **MCP**             | Model Context Protocol SDK     | ^1.26.0     |
-| **ストレージ**      | Cloudflare R2 (S3 互換)        | -           |
-| **テスト**          | Vitest                         | ^4.0.0      |
-| **デプロイ**        | Railway + Docker + PM2         | -           |
-| **CDN/トンネル**    | Cloudflare Tunnel + Access     | -           |
+| レイヤー            | 技術                                         | バージョン  |
+| ------------------- | -------------------------------------------- | ----------- |
+| **ランタイム**      | Node.js                                      | >= 22.12.0  |
+| **言語**            | TypeScript (strict ESM)                      | ^5.6.0      |
+| **パッケージ管理**  | pnpm                                         | 10.23.0     |
+| **DB**              | PostgreSQL (Supabase)                        | -           |
+| **ORM**             | Drizzle ORM + postgres.js                    | ^0.45.0     |
+| **AI エージェント** | Claude Agent SDK                             | ^0.2.34     |
+| **AI API**          | Anthropic SDK                                | ^0.74.0     |
+| **Slack**           | Bolt (Socket Mode)                           | ^4.0.0      |
+| **Web UI**          | Next.js + React + Tailwind CSS               | 16 / 19 / 4 |
+| **API サーバー**    | Express                                      | ^5.1.0      |
+| **MCP**             | Model Context Protocol SDK                   | ^1.26.0     |
+| **ストレージ**      | Cloudflare R2 (S3 互換)                      | -           |
+| **テスト**          | Vitest                                       | ^4.0.0      |
+| **デプロイ**        | PM2（ローカルMac）+ Cloudflare Tunnel/Access | -           |
+| **CDN/トンネル**    | Cloudflare Tunnel + Access                   | -           |
 
 #### バージョン表記の読み方
 
@@ -1791,7 +1791,7 @@ app.post("/api/run-agent", async (req, res) => {
 **なぜ Hono ではないか**:
 
 - Hono は Edge / Cloudflare Workers に最適化されている
-- Argus の Orchestrator は Railway VPS の Docker 上で動くので、Edge 最適化は不要
+- Argus の Orchestrator はローカルMac上で PM2 により動くので、Edge 最適化は不要
 - Hono の型システムは優秀だが、4 エンドポイントではその恩恵が薄い
 
 **なぜ Fastify ではないか**:
@@ -2002,15 +2002,15 @@ Argus では jsdom 環境でのコンポーネントテスト、Watch モード�
 
 ---
 
-## 11. ホスティング: なぜ Railway + Supabase か
+## 11. ホスティング: なぜ ローカルMac + Supabase か
 
 ### ひとことまとめ
 
-Railway は **Docker をそのまま動かせるクラウドサービス**。Argus の 3 つの常駐プロセス（Slack Bot, Orchestrator, Dashboard）を月額 $5 程度で 24 時間稼働させられ、`git push` だけで自動デプロイが完了する。
+ローカルMac上で PM2 を使い、Argus の 3 つの常駐プロセス（Slack Bot, Orchestrator, Dashboard）を24時間稼働させている。ホスティングコストは0円で、開発環境とのシームレスな連携が最大の利点。Cloudflare Tunnel + Access でダッシュボードを安全に外部公開している。
 
 ### 身近なたとえ
 
-> **住居** に例えると、Vercel は「ホテル（必要な時だけ部屋を使う）」で常時滞在はできない。Railway は「月額制の賃貸マンション（常駐OK、Docker という家具も持ち込み自由）」。AWS EC2 は「注文住宅（何でもできるが設計・管理は全て自分）」。Argus は 24 時間住み込みの秘書（Slack Bot）がいるので、賃貸マンションが最適。
+> **住居** に例えると、Vercel は「ホテル（必要な時だけ部屋を使う）」で常時滞在はできない。クラウド VPS は「月額制の賃貸マンション」。ローカルMac は「自宅（すでに持っている家にそのまま住む）」。Argus は 24 時間住み込みの秘書（Slack Bot）がいるので、追加コストゼロで常時稼働できる自宅が最適。
 
 ### 図で理解する
 
@@ -2018,7 +2018,7 @@ Railway は **Docker をそのまま動かせるクラウドサービス**。Arg
 
 ```
 ┌──────────────┐     ┌──────────────────┐
-│   Slack API   │────▶│  Railway VPS     │
+│   Slack API   │────▶│  ローカルMac      │
 │  (WebSocket)  │     │  ┌────────────┐  │
 └──────────────┘     │  │  PM2       │  │
                       │  │ ┌─────────┐│  │
@@ -2037,13 +2037,11 @@ Railway は **Docker をそのまま動かせるクラウドサービス**。Arg
 ```
 常駐プロセス（24時間稼働）が必要？
 ├── No → サーバーレス（Vercel / AWS Lambda）でOK
-└── Yes → 運用をシンプルに保ちたい？
-    ├── Yes → Docker をそのまま動かせる？
-    │   ├── Yes → Railway  ★ Argus はここ
-    │   └── No  → Render / Fly.io
-    └── No  → 完全制御が必要？
-        ├── Yes → AWS EC2 + RDS
-        └── No  → Fly.io（リージョン制御あり）
+└── Yes → 個人/インハウスで常時稼働のMacがある？
+    ├── Yes → ローカルMac + PM2  ★ Argus はここ
+    └── No  → 運用をシンプルに保ちたい？
+        ├── Yes → Render / Fly.io
+        └── No  → AWS EC2 + RDS
 ```
 
 ### もう少し詳しく
@@ -2052,7 +2050,7 @@ Railway は **Docker をそのまま動かせるクラウドサービス**。Arg
 >
 > - 常駐プロセスとサーバーレスの違い
 > - 個人/インハウスプロジェクトのコスト最適化戦略
-> - Docker + PM2 によるマルチプロセス管理
+> - PM2 によるマルチプロセス管理
 
 #### 背景（なぜ選ぶ必要があったか）
 
@@ -2060,73 +2058,38 @@ Argus は 3 つの常駐プロセス（Slack Bot, Orchestrator, Dashboard）を 
 
 ### 選択肢の比較
 
-| 比較軸               | Railway                               | Vercel                 | Fly.io          | Render            | AWS (EC2 + RDS) |
-| -------------------- | ------------------------------------- | ---------------------- | --------------- | ----------------- | --------------- |
-| **身近なたとえ**     | 月額制の賃貸マンション                | ホテル（短期滞在のみ） | 世界中に別荘    | コンパクトな賃貸  | 注文住宅        |
-| **常駐プロセス**     | Docker で自由                         | サーバーレス（不可）   | VM で可能       | 可能              | 完全自由        |
-| **Socket Mode**      | 問題なし                              | WebSocket 制限         | 可能            | 可能              | 問題なし        |
-| **PM2 (3プロセス)**  | Docker 内で自由                       | 不可                   | Procfile で可能 | 不可              | 自由            |
-| **料金**             | $5/月〜                               | Hobby 無料だが常駐不可 | $1.94/月〜      | $7/月〜           | $15/月〜        |
-| **Docker サポート**  | 標準搭載（Docker をそのまま動かせる） | なし                   | Dockerfile 対応 | Dockerfile 対応   | 完全対応        |
-| **デプロイ**         | `git push` で自動                     | `git push` で自動      | `fly deploy`    | `git push` で自動 | 手動 or CI/CD   |
-| **DB マネージド**    | なし（外部利用）                      | Postgres（Neon）       | Postgres 内蔵   | Postgres 内蔵     | RDS             |
-| **運用負荷**         | 低い                                  | 最低                   | 中程度          | 低い              | 高い            |
-| **スケーラビリティ** | 垂直スケール                          | 自動スケール           | 水平スケール    | 垂直スケール      | 完全自由        |
+| 比較軸               | ローカルMac + PM2            | Vercel                 | Fly.io          | AWS (EC2 + RDS) |
+| -------------------- | ---------------------------- | ---------------------- | --------------- | --------------- |
+| **身近なたとえ**     | 自宅（追加コストゼロ）       | ホテル（短期滞在のみ） | 世界中に別荘    | 注文住宅        |
+| **常駐プロセス**     | PM2 で自由                   | サーバーレス（不可）   | VM で可能       | 完全自由        |
+| **Socket Mode**      | 問題なし                     | WebSocket 制限         | 可能            | 問題なし        |
+| **PM2 (3プロセス)**  | ネイティブ動作               | 不可                   | Procfile で可能 | 自由            |
+| **料金**             | $0（電気代のみ）             | Hobby 無料だが常駐不可 | $1.94/月〜      | $15/月〜        |
+| **デプロイ**         | `pm2 restart all`            | `git push` で自動      | `fly deploy`    | 手動 or CI/CD   |
+| **運用負荷**         | 低い（LaunchAgent で自動化） | 最低                   | 中程度          | 高い            |
+| **開発連携**         | シームレス（同じマシン）     | リモートのみ           | リモートのみ    | リモートのみ    |
+| **スケーラビリティ** | 単一マシン                   | 自動スケール           | 水平スケール    | 完全自由        |
 
-#### 決定: Railway + Supabase
+#### 決定: ローカルMac + Supabase
 
-**決め手**: Slack Bot (Socket Mode) + Orchestrator (Cron) + Dashboard (Next.js) の 3 つの常駐プロセスを 1 つの VPS で PM2 管理できる。Vercel は常駐プロセスが動かせないので不可。
+**決め手**: Slack Bot (Socket Mode) + Orchestrator (Cron) + Dashboard (Next.js) の 3 つの常駐プロセスを、すでに24時間稼働しているMac上で PM2 により直接管理できる。ホスティングコストは0円、開発環境とプロダクション環境が同一マシンのためデバッグも容易。
 
-**なぜ Fly.io ではなく Railway か**:
+**ローカルMacの利点**:
 
-- **Docker デプロイの簡単さ** — Railway は Dockerfile を置いて `git push` するだけ。Fly.io は `fly.toml` の設定 + `fly deploy` コマンドが必要
-- **GitHub 連携の自動デプロイ** — Railway は GitHub リポジトリと連携するだけで push 時に自動ビルド・デプロイ。Fly.io は CI パイプラインの自前構築が必要
-- **PM2 との相性** — Railway の Docker 環境では PM2 がそのまま動作。Fly.io は Procfile ベースが推奨
-- **運用のシンプルさ** — Fly.io のリージョン管理やボリューム管理は個人プロジェクトにはオーバーヘッド
-
-<details>
-<summary>Docker 2 段階ビルドのコード（マルチステージビルド）</summary>
-
-> **身近なたとえ**: 「調理場で料理を作ってから、完成品だけをお客さんのテーブルに運ぶ」イメージ。調理場（Stage 1）には包丁や鍋（ビルドツール）が必要だが、テーブル（Stage 2）には完成した料理（ビルド成果物）だけがあればいい。
-
-```dockerfile
-# Stage 1: ビルド
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
-RUN pnpm install --frozen-lockfile
-RUN pnpm build
-
-# Stage 2: 本番
-FROM node:22-alpine
-WORKDIR /app
-# PM2 + Claude Code CLI をインストール
-RUN npm install -g pm2
-# 本番依存のみコピー
-COPY --from=builder /app .
-RUN pnpm install --prod --frozen-lockfile
-CMD ["pm2-runtime", "ecosystem.config.cjs"]
-```
-
-**2 段階ビルドのメリット**:
-
-- **イメージサイズ削減** — Stage 1 のビルドツール（TypeScript コンパイラ、devDependencies）は最終イメージに含まれない
-- **攻撃対象面の縮小** — 最終イメージにコンパイラや開発ツールが含まれない
-- **ビルドキャッシュの効率化** — Docker はレイヤー単位でキャッシュするため、依存が変わらなければ再利用される
-
-**alpine を使う理由**: イメージサイズが ~50MB（debian ベースだと ~300MB）。Railway の料金はストレージにも依存するため、小さいほうがいい。
-
-</details>
+- **コスト0** — すでに常時稼働のMacがあるため、追加のサーバー費用が不要
+- **開発とのシームレスな連携** — コード変更を即座に反映でき、ログやプロセスに直接アクセス可能
+- **ファイルシステムが永続** — クラウドのエフェメラルコンテナと違い、ファイルが消えない
+- **Claude Code CLI が直接動作** — セッショントークンの移行が不要
+- **LaunchAgent で自動起動** — Mac 起動時に PM2 が自動的にプロセスを立ち上げる
 
 <details>
 <summary>Cloudflare Tunnel + Access の構成</summary>
 
 ```
-ユーザー → Cloudflare Access（メール認証）→ Cloudflare Tunnel → Railway VPS
+ユーザー → Cloudflare Access（メール認証）→ Cloudflare Tunnel → ローカルMac
 ```
 
-- **Tunnel**: VPS のポートを公開せずに HTTPS アクセスを提供
+- **Tunnel**: Mac のポートを公開せずに HTTPS アクセスを提供
 - **Access**: メールアドレスベースのゼロトラスト認証（「社内ネットワークだから安全」と信用せず、毎回本人確認する方式。無料 50 ユーザーまで）
 - Dashboard にアクセスする前に Cloudflare のログイン画面が表示される
 
@@ -2136,15 +2099,15 @@ CMD ["pm2-runtime", "ecosystem.config.cjs"]
 
 **メリット**:
 
-- 月額 $5 程度で 3 プロセスを常時稼働
-- `git push` で自動デプロイ
-- Docker で環境を完全に再現可能
+- ホスティングコスト0円（電気代のみ）
+- 開発環境と同一マシンのためデバッグが容易
+- ファイルシステムが永続化されている
 
 **デメリット・トレードオフ**:
 
-- 単一 VPS なので、サーバーダウン時に全サービスが停止する
+- Mac が停止すると全サービスが停止する（停電、macOS アップデート等）
 - Vercel のような自動スケールはない
-- Railway の無料枠は月 500 時間（常駐には足りないので有料プラン必須）
+- 外部からのアクセスには Cloudflare Tunnel の設定が必要
 
 #### こうしなかったらどうなる？
 
@@ -2153,8 +2116,8 @@ CMD ["pm2-runtime", "ecosystem.config.cjs"]
 ### 理解度チェック
 
 - [ ] Q1: 常駐プロセスが必要なアプリに Vercel が不向きな理由を説明できるか？
-- [ ] Q2: Docker 2 段階ビルドのメリットを説明できるか？
-- [ ] Q3: Fly.io ではなく Railway を選んだ理由を説明できるか？
+- [ ] Q2: ローカルMacでの稼働がクラウドVPSと比べてどんなメリット・デメリットがあるか説明できるか？
+- [ ] Q3: Cloudflare Tunnel + Access がローカルMac運用において果たす役割を説明できるか？
 
 ---
 
@@ -2662,7 +2625,6 @@ onPostToolUse: async (event) => {
 | ----------------- | --------------------------- | --------------------------------------------------------------------------------- |
 | **Supabase**      | スパベース                  | PostgreSQL のマネージド（運用おまかせ）サービス。無料枠が大きく、個人開発に人気   |
 | **Cloudflare R2** | クラウドフレア アールツー   | ファイルを保存するストレージサービス。AWS S3 互換だがデータ転送料が無料           |
-| **Railway**       | レイルウェイ                | Docker コンテナをそのままデプロイできるクラウドサービス。Git push で自動デプロイ  |
 | **Vitest**        | ヴィテスト                  | JavaScript/TypeScript のテストフレームワーク。高速で ESM に標準対応               |
 | **Drizzle**       | ドリズル                    | TypeScript 向けの軽量 ORM。SQL に近い書き方ができ、型推論が強力                   |
 | **Prisma**        | プリズマ                    | 人気の ORM だが、コード生成ステップが必要で、ESM 対応やバイナリサイズに課題がある |

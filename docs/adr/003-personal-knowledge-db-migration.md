@@ -12,12 +12,12 @@ Accepted
 
 Argus maintains a "personal knowledge" module that stores the user's identity, values, strengths, thinking style, preferences, and routines. This data powers the `personal_context` MCP tool, which agents use to personalize responses and match the user's communication style.
 
-Initially, personal knowledge was stored as Markdown files on the local filesystem (e.g., `self/values.md`, `self/preferences.md`). This worked during local development but became a critical blocker when deploying to production:
+Initially, personal knowledge was stored as Markdown files on the local filesystem (e.g., `self/values.md`, `self/preferences.md`). This worked but had several limitations that motivated a migration to a database:
 
-- **Docker containers are ephemeral** — personal knowledge files would be lost on every container restart or redeployment on Railway.
-- **Volume mounts are fragile** — Railway VPS supports persistent volumes, but mounting filesystem paths into containers adds deployment complexity and makes horizontal scaling impossible.
 - **No search capability** — reading files required knowing the exact path; there was no way to search across all personal notes by keyword.
 - **Backup and migration** — filesystem-based storage requires manual backup scripts and is not portable across environments.
+- **No transactional consistency** — file operations cannot participate in database transactions alongside other Argus data operations.
+- **API integration** — exposing file-based data via MCP tools required custom file-reading logic for each operation.
 
 ## Options Considered
 
@@ -30,11 +30,10 @@ Initially, personal knowledge was stored as Markdown files on the local filesyst
 
 **Cons:**
 
-- Requires Railway persistent volume configuration and Docker volume mounts.
-- Cannot scale horizontally (multiple containers would need shared filesystem).
 - No built-in search; would need to implement file scanning.
 - Backup requires manual scripts or cron jobs.
-- Path handling differs between macOS (local dev) and Linux (production Docker).
+- No transactional consistency with other database operations.
+- Cannot participate in Drizzle ORM queries or Dashboard UI without custom adapters.
 
 ### Option B: S3/R2 Object Storage
 
@@ -92,7 +91,7 @@ The migration introduced:
 
 ### Positive
 
-- **Zero-config deployment** — Railway and Docker deployments only need `DATABASE_URL`; no volume mounts, no filesystem paths.
+- **Zero-config deployment** — deployments only need `DATABASE_URL`; no filesystem path management required.
 - **Cross-note search** — the `personal_search` MCP tool now searches across all notes with `ILIKE`, returning matched lines with surrounding context (2 lines above and below).
 - **Personality context API** — `personal_context` can return a single section (`self/values.md`) or a summary of all `self/` category notes, giving agents flexible access to user personality data.
 - **Consistent data model** — personal notes follow the same Drizzle ORM patterns as all other Argus tables, making them queryable from the Dashboard and Agent Orchestrator.

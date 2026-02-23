@@ -52,7 +52,7 @@ pnpm monorepo (`@argus/` スコープ):
 - Next.js 16, React 19, Tailwind CSS 4
 - Drizzle ORM + postgres.js, Supabase PostgreSQL
 - Vitest 4, Testing Library
-- Deploy: Railway VPS + PM2 + Cloudflare Tunnel/Access
+- Deploy: ローカルMac + PM2 + Cloudflare Tunnel/Access
 
 ## Conventions
 
@@ -73,5 +73,5 @@ Slack にはファイルパスではなく URL を貼る。
 
 ## Deploy
 
-Railway VPS (GitHub連携自動デプロイ) + Cloudflare Tunnel + Access (メール認証)
+ローカルMac（PM2プロセス管理）+ Cloudflare Tunnel + Access（メール認証）
 詳細: docs/DEPLOYMENT.md

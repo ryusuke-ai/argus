@@ -103,7 +103,7 @@ export function isMaxPlanAvailable(): boolean {
   const cliExists = CLAUDE_CLI_PATHS.some((p) => existsSync(p));
   if (!cliExists) return false;
 
-  // OAuth トークンが環境変数で提供されている（Docker/Railway 等）
+  // OAuth トークンが環境変数で提供されている
   if (process.env.CLAUDE_CODE_OAUTH_TOKEN) return true;
 
   // credentials ファイルが存在する（docker-entrypoint.sh 等で書き込み済み）
