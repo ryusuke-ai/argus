@@ -153,10 +153,17 @@ export async function handleTodoCreate(
 ): Promise<void> {
   const category = extractCategory(classification);
 
+  // summaryから「ToDo追加:」等のメタアクションプレフィックスを除去
+  const rawContent = classification.summary || originalText;
+  const content =
+    rawContent
+      .replace(/^(?:ToDo追加|ToDo登録|タスク追加)\s*[:：]\s*/, "")
+      .trim() || rawContent;
+
   const [todo] = await db
     .insert(todos)
     .values({
-      content: classification.summary || originalText,
+      content,
       category,
       status: "pending",
       slackChannel: channel,
