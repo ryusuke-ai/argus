@@ -29,7 +29,6 @@ const AUTOMATED_SENDERS = [
   "notifications@github.com",
   "noreply@github.com",
   // CI/CD & Infrastructure
-  "railway.app",
   "vercel.com",
   "netlify.com",
   "circleci.com",

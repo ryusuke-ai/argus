@@ -941,41 +941,6 @@ describe("daily-planner", () => {
       expect(overflowContext).toBeDefined();
     });
 
-    it("should classify Railway emails as automated and exclude from display", () => {
-      const data: DailyData = {
-        date: "2026-02-08",
-        events: [],
-        pendingEmails: [
-          {
-            id: "e1",
-            from: "notifications@railway.app",
-            subject: "Build failed for argus — Railway",
-            classification: "needs_attention",
-            receivedAt: new Date("2026-02-08T10:00:00Z"),
-          },
-          {
-            id: "e2",
-            from: "noreply@github.com",
-            subject: "CI failed",
-            classification: "needs_attention",
-            receivedAt: new Date("2026-02-08T11:00:00Z"),
-          },
-        ],
-        pendingTasks: [],
-        pendingTodos: [],
-      };
-
-      const blocks = buildBlocks(data);
-      const allTexts = JSON.stringify(blocks);
-
-      // Both automated — should not appear in email section
-      expect(allTexts).not.toContain("Build failed");
-      expect(allTexts).not.toContain("CI failed");
-      expect(allTexts).not.toContain("未対応メール");
-      // No automated notification summary either
-      expect(allTexts).not.toContain("自動通知");
-    });
-
     it("should sort emails by priority: needs_reply > needs_attention", () => {
       const data: DailyData = {
         date: "2026-02-08",

@@ -896,7 +896,6 @@ describe("gmail-checker", () => {
         ["notification@github.com", "CI build failed"],
         ["no-reply@cloudflare.com", "サービス障害のお知らせ"],
         ["no-reply@example.com", "アカウントがロックされました"],
-        ["noreply@railway.app", "Deploy failed for production"],
         ["info@supabase.com", "Urgent: Database incident detected"],
       ];
       for (const [from, subject] of cases) {
@@ -984,14 +983,6 @@ describe("gmail-checker", () => {
       const r = shouldSkipEmail(
         "Supabase <notify@supabase.com>",
         "Incident: Database connection issues in ap-northeast-1",
-      );
-      expect(r.skipped).toBe(false);
-    });
-
-    it("should let Railway deploy failure through", () => {
-      const r = shouldSkipEmail(
-        "Railway <noreply@railway.app>",
-        "Deploy failed: argus-production",
       );
       expect(r.skipped).toBe(false);
     });
