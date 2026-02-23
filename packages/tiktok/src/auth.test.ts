@@ -128,15 +128,15 @@ describe("auth", () => {
     it("should call fetch with correct parameters", async () => {
       const { exchangeCodeForTokens } = await import("./auth.js");
 
+      const tokenResponse = {
+        access_token: "at_123",
+        refresh_token: "rt_456",
+        expires_in: 86400,
+        open_id: "oid_789",
+        scope: "video.upload,video.publish,user.info.basic",
+      };
       mockFetch.mockResolvedValueOnce({
-        json: () =>
-          Promise.resolve({
-            access_token: "at_123",
-            refresh_token: "rt_456",
-            expires_in: 86400,
-            open_id: "oid_789",
-            scope: "video.upload,video.publish,user.info.basic",
-          }),
+        text: () => Promise.resolve(JSON.stringify(tokenResponse)),
       });
 
       // saveTokens: upsert
@@ -164,12 +164,12 @@ describe("auth", () => {
     it("should return error on API failure", async () => {
       const { exchangeCodeForTokens } = await import("./auth.js");
 
+      const errorResponse = {
+        error: "invalid_grant",
+        error_description: "Authorization code expired",
+      };
       mockFetch.mockResolvedValueOnce({
-        json: () =>
-          Promise.resolve({
-            error: "invalid_grant",
-            error_description: "Authorization code expired",
-          }),
+        text: () => Promise.resolve(JSON.stringify(errorResponse)),
       });
 
       const result = await exchangeCodeForTokens("expired-code");

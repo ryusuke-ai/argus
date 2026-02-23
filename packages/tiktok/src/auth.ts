@@ -43,7 +43,7 @@ function getRedirectUri(): string {
  */
 export function generateCodeVerifier(): string {
   const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._";
   const bytes = randomBytes(64);
   let result = "";
   for (let i = 0; i < 64; i++) {
@@ -53,10 +53,15 @@ export function generateCodeVerifier(): string {
 }
 
 /**
- * code_verifier から code_challenge を生成する（RFC 7636: Base64URL エンコード SHA256）
+ * code_verifier から code_challenge を生成する（RFC 7636: SHA256 の Base64URL エンコード）
  */
 export function generateCodeChallenge(verifier: string): string {
-  return createHash("sha256").update(verifier).digest("base64url");
+  return createHash("sha256")
+    .update(verifier)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
 }
 
 /**
@@ -109,6 +114,15 @@ export async function exchangeCodeForTokens(
     }
     const body = new URLSearchParams(params);
 
+    console.log("[TikTok] Token exchange params:", {
+      ...params,
+      client_secret: "***",
+      code: params.code.slice(0, 20) + "...",
+      code_verifier: params.code_verifier
+        ? `${params.code_verifier.slice(0, 10)}... (len=${params.code_verifier.length})`
+        : "MISSING",
+    });
+
     const response = await fetch(TIKTOK_TOKEN_URL, {
       method: "POST",
       headers: {
@@ -117,7 +131,9 @@ export async function exchangeCodeForTokens(
       body: body.toString(),
     });
 
-    const data = (await response.json()) as TiktokTokenResponse;
+    const rawText = await response.text();
+    console.log("[TikTok] Raw response:", rawText);
+    const data = JSON.parse(rawText) as TiktokTokenResponse;
 
     if (data.error || !data.access_token) {
       return {
