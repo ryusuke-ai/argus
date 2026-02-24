@@ -2,7 +2,7 @@
  * Direct Instagram publish test.
  * Usage: tsx --env-file=../../.env scripts/test-instagram-publish.ts
  */
-import { publishToInstagram } from "../src/handlers/sns/platforms/instagram-publisher.js";
+import { publishToInstagram } from "@argus/sns-pipeline";
 
 // テスト用の公開画像（Unsplash のフリー画像）
 const TEST_IMAGE_URL =

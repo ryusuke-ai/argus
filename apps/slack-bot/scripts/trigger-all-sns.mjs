@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 一回限りのトリガースクリプト: generateAllPlatformSuggestions を直接実行する
 import { WebClient } from "@slack/web-api";
-import { generateAllPlatformSuggestions } from "./dist/handlers/sns/scheduling/scheduler.js";
+import { generateAllPlatformSuggestions } from "@argus/sns-pipeline";
 
 const token = process.env.SLACK_BOT_TOKEN;
 if (!token) {

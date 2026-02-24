@@ -7,12 +7,10 @@ import {
   generateTikTokSuggestion,
   generateGitHubSuggestion,
   generatePodcastSuggestion,
-} from "../apps/slack-bot/src/handlers/sns/scheduling/suggestion-generators.js";
-import { getDailyOptimalTimes } from "../apps/slack-bot/src/handlers/sns/scheduling/optimal-time.js";
-import {
+  getDailyOptimalTimes,
   getCategoriesForDay,
   getCategoryForDay,
-} from "../apps/slack-bot/src/handlers/sns/scheduling/scheduler-utils.js";
+} from "@argus/sns-pipeline";
 
 const token = process.env.SLACK_BOT_TOKEN;
 if (!token) {

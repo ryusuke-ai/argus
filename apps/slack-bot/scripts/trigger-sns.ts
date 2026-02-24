@@ -3,7 +3,7 @@
  * Usage: tsx --env-file=../../.env scripts/trigger-sns.ts
  */
 import { WebClient } from "@slack/web-api";
-import { generateAllPlatformSuggestions } from "../src/handlers/sns/scheduling/scheduler.js";
+import { generateAllPlatformSuggestions } from "@argus/sns-pipeline";
 
 const token = process.env.SLACK_BOT_TOKEN;
 const channel = process.env.SLACK_SNS_CHANNEL;

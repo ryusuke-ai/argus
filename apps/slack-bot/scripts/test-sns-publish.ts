@@ -20,7 +20,7 @@ import {
   buildInstagramPostBlocks,
   buildGitHubPostBlocks,
   buildPodcastPostBlocks,
-} from "../src/handlers/sns/ui/reporter.js";
+} from "@argus/sns-pipeline";
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 

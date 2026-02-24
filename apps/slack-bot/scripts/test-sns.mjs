@@ -1,5 +1,5 @@
 import { WebClient } from "@slack/web-api";
-import { generateAllPlatformSuggestions } from "../dist/handlers/sns/scheduler.js";
+import { generateAllPlatformSuggestions } from "@argus/sns-pipeline";
 
 const client = new WebClient(process.env.SLACK_BOT_TOKEN);
 console.log("Starting all-platform generation...");

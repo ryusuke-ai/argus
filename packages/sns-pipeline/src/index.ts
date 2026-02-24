@@ -1,3 +1,57 @@
+// Public API - scheduling
+export {
+  generateThreadsSuggestion,
+  generateTikTokSuggestion,
+  generateGitHubSuggestion,
+  generatePodcastSuggestion,
+} from "./scheduling/suggestion-generators.js";
+export {
+  getDailyOptimalTimes,
+  getNextOptimalTime,
+  formatScheduledTime,
+} from "./scheduling/optimal-time.js";
+export type { Platform } from "./scheduling/optimal-time.js";
+export {
+  getCategoriesForDay,
+  getCategoryForDay,
+} from "./scheduling/scheduler-utils.js";
+export { generateAllPlatformSuggestions } from "./scheduling/scheduler.js";
+
+// Public API - generation
+export { generateXPost } from "./generation/generator.js";
+export { generateArticle } from "./generation/article-generator.js";
+export { generateYouTubeMetadata } from "./generation/youtube-metadata-generator.js";
+export { generateTikTokScript } from "./generation/tiktok-script-generator.js";
+export { generateInstagramContent } from "./generation/instagram-content-generator.js";
+export { PhasedGenerator } from "./generation/phased-generator.js";
+export {
+  threadsConfig,
+  githubConfig,
+  podcastConfig,
+} from "./generation/platform-configs.js";
+
+// Public API - platforms (publishers)
+export { publishToThreads } from "./platforms/threads-publisher.js";
+export { publishToInstagram } from "./platforms/instagram-publisher.js";
+
+// Public API - UI
+export {
+  buildXPostBlocks,
+  buildArticlePostBlocks,
+  buildVideoPostBlocks,
+  buildTikTokPostBlocks,
+  buildInstagramPostBlocks,
+  buildGitHubPostBlocks,
+  buildPodcastPostBlocks,
+  buildSectionBlocksFromText,
+} from "./ui/reporter.js";
+export {
+  createGeneratingPost,
+  createSaveCallback,
+  finalizePost,
+} from "./ui/phase-tracker.js";
+export { validateXPost } from "./ui/validator.js";
+
 import type { App } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";

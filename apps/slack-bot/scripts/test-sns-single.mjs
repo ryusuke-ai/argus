@@ -12,34 +12,29 @@ if (!platform) {
 const client = new WebClient(process.env.SLACK_BOT_TOKEN);
 
 async function run() {
-  const { generateAllPlatformSuggestions: _generateAllPlatformSuggestions } =
-    await import("../dist/handlers/sns/scheduler.js");
-  const { generateXPost } = await import("../dist/handlers/sns/generator.js");
-  const { generateArticle } =
-    await import("../dist/handlers/sns/article-generator.js");
-  const { generateYouTubeMetadata } =
-    await import("../dist/handlers/sns/youtube-metadata-generator.js");
-  const { generateTikTokScript } =
-    await import("../dist/handlers/sns/tiktok-script-generator.js");
-  const { PhasedGenerator } =
-    await import("../dist/handlers/sns/phased-generator.js");
-  const { threadsConfig, githubConfig, podcastConfig } =
-    await import("../dist/handlers/sns/platform-configs.js");
   const {
+    generateAllPlatformSuggestions: _generateAllPlatformSuggestions,
+    generateXPost,
+    generateArticle,
+    generateYouTubeMetadata,
+    generateTikTokScript,
+    PhasedGenerator,
+    threadsConfig,
+    githubConfig,
+    podcastConfig,
     buildXPostBlocks,
     buildArticlePostBlocks,
     buildVideoPostBlocks,
     buildTikTokPostBlocks,
     buildGitHubPostBlocks,
     buildPodcastPostBlocks,
-  } = await import("../dist/handlers/sns/reporter.js");
-  const { createGeneratingPost, createSaveCallback, finalizePost } =
-    await import("../dist/handlers/sns/phase-tracker.js");
-  const {
+    createGeneratingPost,
+    createSaveCallback,
+    finalizePost,
     getNextOptimalTime: _getNextOptimalTime,
     formatScheduledTime: _formatScheduledTime,
-  } = await import("../dist/handlers/sns/optimal-time.js");
-  const { validateXPost } = await import("../dist/handlers/sns/validator.js");
+    validateXPost,
+  } = await import("@argus/sns-pipeline");
   const { db: _db, snsPosts: _snsPosts } = await import("@argus/db");
   const { eq: _eq } = await import("drizzle-orm");
 

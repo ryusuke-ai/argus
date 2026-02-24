@@ -5,13 +5,13 @@ import { setupGmailActionHandlers } from "./handlers/gmail-actions.js";
 import { setupDailyPlanActions } from "./handlers/daily-plan-actions.js";
 import { setupInboxHandler } from "./handlers/inbox/index.js";
 import { setupDailyPlanHandler } from "./handlers/daily-plan.js";
-import { setupSnsHandler } from "./handlers/sns/index.js";
+import { setupSnsHandler } from "@argus/sns-pipeline";
 import { createServer } from "node:http";
 
 const PORT = env.PORT;
 
 // Setup handlers (channel-specific BEFORE generic message handler to intercept their channels)
-setupSnsHandler();
+setupSnsHandler(app);
 setupInboxHandler();
 setupDailyPlanHandler();
 setupMessageHandler();

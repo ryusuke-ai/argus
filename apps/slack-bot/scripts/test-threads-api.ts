@@ -1,4 +1,4 @@
-import { publishToThreads } from "../src/handlers/sns/platforms/threads-publisher.js";
+import { publishToThreads } from "@argus/sns-pipeline";
 
 const result = await publishToThreads({
   text: "🤖 Argus SNS自動投稿テスト - Threads API接続確認",

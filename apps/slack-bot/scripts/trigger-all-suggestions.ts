@@ -3,7 +3,7 @@
  * 使い方: npx tsx --env-file=../../.env scripts/trigger-all-suggestions.ts
  */
 import { WebClient } from "@slack/web-api";
-import { generateAllPlatformSuggestions } from "../src/handlers/sns/scheduling/scheduler.js";
+import { generateAllPlatformSuggestions } from "@argus/sns-pipeline";
 
 async function main() {
   const token = process.env.SLACK_BOT_TOKEN;
