@@ -18,12 +18,7 @@ const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
 const mockUpdateFn = vi.fn(() => ({ set: mockUpdateSet }));
 
 // Mock dependencies before imports
-vi.mock("../../app.js", () => ({
-  app: {
-    action: vi.fn(),
-    view: vi.fn(),
-  },
-}));
+// app is now a parameter to setupSnsActions, no mock needed for ../../app.js
 
 vi.mock("@argus/db", () => ({
   db: {
@@ -140,7 +135,7 @@ vi.mock("./platforms/instagram-publisher.js", () => ({
   publishToInstagram: vi.fn(),
 }));
 
-vi.mock("../../utils/reactions.js", () => ({
+vi.mock("./utils/reactions.js", () => ({
   addReaction: vi.fn(),
   swapReaction: vi.fn(),
 }));
@@ -213,21 +208,19 @@ describe("SNS Action Handlers", () => {
     actionHandlers = {};
     viewHandlers = {};
 
-    // Re-import the mocked app
-    const appModule = await import("../../app.js");
-    app = appModule.app as unknown as { action: Mock; view: Mock };
-
-    // Capture handlers when registered
-    (app.action as Mock).mockImplementation(
-      (actionId: string, handler: (args: unknown) => Promise<void>) => {
-        actionHandlers[actionId] = handler;
-      },
-    );
-    (app.view as Mock).mockImplementation(
-      (viewId: string, handler: (args: unknown) => Promise<void>) => {
-        viewHandlers[viewId] = handler;
-      },
-    );
+    // Create a mock app object (app is now a parameter to setupSnsActions)
+    app = {
+      action: vi.fn(
+        (actionId: string, handler: (args: unknown) => Promise<void>) => {
+          actionHandlers[actionId] = handler;
+        },
+      ),
+      view: vi.fn(
+        (viewId: string, handler: (args: unknown) => Promise<void>) => {
+          viewHandlers[viewId] = handler;
+        },
+      ),
+    } as unknown as { action: Mock; view: Mock };
 
     // Reset DB mocks
     mockLimit.mockReset();
@@ -247,9 +240,9 @@ describe("SNS Action Handlers", () => {
     // Default: CAS lock succeeds
     mockReturning.mockResolvedValue([{ id: mockPost.id }]);
 
-    // Import and setup handlers
+    // Import and setup handlers (pass mock app as parameter)
     const { setupSnsActions } = await import("./actions.js");
-    setupSnsActions();
+    setupSnsActions(app as unknown as import("@slack/bolt").App);
   });
 
   it("should register 10 actions and 1 view handler", () => {

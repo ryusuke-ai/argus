@@ -1,9 +1,8 @@
-import type { BlockAction } from "@slack/bolt";
+import type { App, BlockAction } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
-import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
-import { addReaction } from "../../utils/reactions.js";
+import { addReaction } from "./utils/reactions.js";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,7 +53,7 @@ import {
   renderWithSkill,
 } from "./generation/content-generators.js";
 
-export function setupSnsActions(): void {
+export function setupSnsActions(app: App): void {
   // 投稿ボタン
   app.action("sns_publish", async ({ ack, body, client }) => {
     const ba = body as BlockAction;

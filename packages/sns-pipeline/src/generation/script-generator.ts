@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /** Argus プロジェクトルート */
-const PROJECT_ROOT = resolve(__dirname, "../../../../../..");
+const PROJECT_ROOT = resolve(__dirname, "../../../..");
 
 export interface VideoScript {
   title: string;

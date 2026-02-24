@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 // vi.hoisted() ensures these references survive vi.resetModules()
 const {
   mockAppMessage,
+  mockAppClient,
   mockSetupSnsActions,
   mockValidateXPost,
   mockValidateThread,
@@ -17,6 +18,7 @@ const {
   const validResult = () => ({ valid: true, warnings: [], errors: [] });
   return {
     mockAppMessage: vi.fn(),
+    mockAppClient: { chat: { postMessage: vi.fn() } },
     mockSetupSnsActions: vi.fn(),
     mockValidateXPost: vi.fn(validResult),
     mockValidateThread: vi.fn(validResult),
@@ -30,12 +32,11 @@ const {
   };
 });
 
-vi.mock("../../app.js", () => ({
-  app: {
-    message: mockAppMessage,
-    client: { chat: { postMessage: vi.fn() } },
-  },
-}));
+// Create a mock app object (app is now a parameter to setupSnsHandler)
+const mockApp = {
+  message: mockAppMessage,
+  client: mockAppClient,
+} as unknown as import("@slack/bolt").App;
 
 vi.mock("./actions.js", () => ({
   setupSnsActions: mockSetupSnsActions,
@@ -117,7 +118,7 @@ describe("setupSnsHandler", () => {
     const mod = await import("./index.js");
     setupSnsHandler = mod.setupSnsHandler;
 
-    setupSnsHandler();
+    setupSnsHandler(mockApp);
 
     expect(mockAppMessage).toHaveBeenCalledTimes(1);
     expect(mockSetupSnsActions).toHaveBeenCalledTimes(1);
@@ -126,7 +127,7 @@ describe("setupSnsHandler", () => {
   it("should not register handlers when SLACK_SNS_CHANNEL is not set", async () => {
     delete process.env.SLACK_SNS_CHANNEL;
     const mod = await import("./index.js");
-    mod.setupSnsHandler();
+    mod.setupSnsHandler(mockApp);
 
     expect(mockAppMessage).not.toHaveBeenCalled();
     expect(mockSetupSnsActions).not.toHaveBeenCalled();
@@ -143,7 +144,7 @@ describe("message handler", () => {
     process.env.SLACK_SNS_CHANNEL = "C_SNS";
 
     const mod = await import("./index.js");
-    mod.setupSnsHandler();
+    mod.setupSnsHandler(mockApp);
 
     // Extract the registered message handler
     messageHandler = mockAppMessage.mock.calls[0][0];

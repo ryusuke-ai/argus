@@ -14,7 +14,7 @@ import { publishToTikTok } from "./tiktok-publisher.js";
 import { publishToGitHub } from "./github-publisher.js";
 import { publishToInstagram } from "./instagram-publisher.js";
 import { buildPublishedBlocks } from "../ui/reporter.js";
-import { addReaction } from "../../../utils/reactions.js";
+import { addReaction } from "../utils/reactions.js";
 import {
   parseXPostContent,
   parseArticleContent,

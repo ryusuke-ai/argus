@@ -99,7 +99,7 @@ vi.mock("../ui/phase-tracker.js", () => ({
   finalizePost: vi.fn(),
 }));
 
-vi.mock("../../../utils/reactions.js", () => ({
+vi.mock("../utils/reactions.js", () => ({
   addReaction: vi.fn(),
 }));
 

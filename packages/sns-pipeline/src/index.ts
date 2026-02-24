@@ -1,6 +1,6 @@
+import type { App } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";
-import { app } from "../../app.js";
 import { db, snsPosts } from "@argus/db";
 import { setupSnsActions } from "./actions.js";
 import { generateXPost } from "./generation/generator.js";
@@ -238,13 +238,13 @@ function matchRoute(text: string): TriggerRoute | null {
   return null;
 }
 
-export function setupSnsHandler(): void {
+export function setupSnsHandler(app: App): void {
   if (!SNS_CHANNEL) {
     console.warn("[sns] SLACK_SNS_CHANNEL not set, SNS handler disabled");
     return;
   }
 
-  setupSnsActions();
+  setupSnsActions(app);
 
   app.message(async ({ message, client }) => {
     if ("subtype" in message && message.subtype === "bot_message") return;

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { db, snsPosts } from "@argus/db";
 import { eq } from "drizzle-orm";
 import { query } from "@argus/agent-core";
-import { swapReaction } from "../../../utils/reactions.js";
+import { swapReaction } from "../utils/reactions.js";
 import type { InstagramContent, YouTubeMetadataContent } from "../types.js";
 import {
   parseYouTubeContent,
@@ -33,7 +33,7 @@ import {
 import { extractVideoPath, extractImagePath } from "./artifact-extractors.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-export const PROJECT_ROOT = resolve(__dirname, "../../../../../..");
+export const PROJECT_ROOT = resolve(__dirname, "../../../..");
 
 const SNS_CHANNEL_FOR_IG = process.env.SLACK_SNS_CHANNEL || "";
 

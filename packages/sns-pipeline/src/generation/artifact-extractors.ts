@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { AgentResult } from "@argus/agent-core";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const PROJECT_ROOT = resolve(__dirname, "../../../../../..");
+const PROJECT_ROOT = resolve(__dirname, "../../../..");
 
 /**
  * 抽出されたメディアパスを正規化する。

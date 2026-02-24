@@ -2,7 +2,7 @@ import type { WebClient } from "@slack/web-api";
 import type { KnownBlock } from "@slack/types";
 import { db, snsPosts } from "@argus/db";
 import { and, eq, inArray } from "drizzle-orm";
-import { addReaction, swapReaction } from "../../../utils/reactions.js";
+import { addReaction, swapReaction } from "../utils/reactions.js";
 import {
   parseYouTubeContent,
   parseArticleContent,
