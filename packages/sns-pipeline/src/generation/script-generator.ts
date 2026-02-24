@@ -67,7 +67,7 @@ export interface GenerateVideoScriptResult {
 
 const PROMPT_PATH = resolve(
   PROJECT_ROOT,
-  "apps/slack-bot/src/handlers/sns/prompts/script-generator-prompt.md",
+  "packages/sns-pipeline/src/prompts/script-generator-prompt.md",
 );
 
 /**
