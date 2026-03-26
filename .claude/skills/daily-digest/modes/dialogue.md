@@ -13,13 +13,13 @@
 
 - 役割: ニュース解説、考察、本音トーク
 - 発話比率: 60%
-- 詳細: @../shared/characters/satoru.md
+- 詳細: @../\_shared/characters/satoru.md
 
 ### まさお（リアクション）
 
 - 役割: 視聴者目線の質問、盛り上げ
 - 発話比率: 40%
-- 詳細: @../shared/characters/masao.md
+- 詳細: @../\_shared/characters/masao.md
 
 ## 対話パターン
 

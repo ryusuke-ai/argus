@@ -9,7 +9,7 @@ research.json を元に、動画とポッドキャストを **並列** で生成
 ## 入力
 
 - `research.json`（Phase 1 出力）
-- @../shared/characters/satoru.md + @../shared/characters/masao.md
+- @../\_shared/characters/satoru.md + @../\_shared/characters/masao.md
 
 ## 出力
 
@@ -25,12 +25,12 @@ research.json を元に、動画とポッドキャストを **並列** で生成
 1. **cwd**: `agent-output/video-{YYYYMMDD}-daily-news/`
 2. **input**: `work/reference.md`, `research.json`
 3. **output**: `output.mp4`
-4. **ref**: `../video-planner/` のフェーズドキュメント + @../shared/characters/satoru.md + @../shared/characters/masao.md
+4. **ref**: `../video-planner/` のフェーズドキュメント + @../\_shared/characters/satoru.md + @../\_shared/characters/masao.md
 5. **done**: output.mp4 が生成され、再生可能であること
 
 パラメータ:
 
-- キャラクター設定: @../shared/characters/satoru.md + @../shared/characters/masao.md
+- キャラクター設定: @../\_shared/characters/satoru.md + @../\_shared/characters/masao.md
 - モード: 掛け合い（dialogue）— @modes/dialogue.md 参照
 - トーン: news
 

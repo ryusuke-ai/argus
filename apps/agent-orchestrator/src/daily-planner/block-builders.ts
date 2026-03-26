@@ -9,6 +9,7 @@ import {
   MAX_EMAILS,
   MAX_TODOS,
   MAX_TASKS,
+  MAX_BLOCKS,
   TASK_STATUS_ORDER,
   classifyEmails,
   emailSummaryParts,
@@ -321,6 +322,21 @@ export function buildBlocks(data: DailyData): Record<string, unknown>[] {
         text: "予定・メール・タスクはありません。自由な1日です！",
       },
     });
+  }
+
+  // Slack Block Kit の上限は 50 ブロック。超過分を切り詰める。
+  if (blocks.length > MAX_BLOCKS) {
+    const truncated = blocks.slice(0, MAX_BLOCKS - 1);
+    truncated.push({
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `_表示上限のため ${blocks.length - MAX_BLOCKS + 1} 件省略_`,
+        },
+      ],
+    });
+    return truncated;
   }
 
   return blocks;

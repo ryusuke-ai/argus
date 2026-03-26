@@ -7,8 +7,14 @@ import type { PendingEmailSummary } from "./collectors.js";
 
 export const MAX_EVENTS = 8;
 export const MAX_EMAILS = 5;
-export const MAX_TASKS = 50;
+export const MAX_TASKS = 10;
 export const MAX_TODOS = 10;
+
+/**
+ * Slack Block Kit の上限は 50 ブロック。
+ * ヘッダー・divider・context 等の構造ブロックを考慮して余裕を持たせる。
+ */
+export const MAX_BLOCKS = 50;
 export const MAX_TEXT_LENGTH = 60;
 
 export const TASK_STATUS_ORDER: Record<string, number> = {

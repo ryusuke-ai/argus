@@ -1070,6 +1070,52 @@ describe("daily-planner", () => {
       expect(dividerCount).toBe(2);
     });
 
+    it("should enforce MAX_BLOCKS (50) limit for Slack compatibility", () => {
+      // Create data that would generate more than 50 blocks
+      const events = Array.from({ length: 8 }, (_, i) => ({
+        title: `Event ${i + 1}`,
+        start: `2026-02-08T${String(8 + i).padStart(2, "0")}:00:00+09:00`,
+        end: undefined,
+        location: undefined,
+      }));
+
+      const emails = Array.from({ length: 5 }, (_, i) => ({
+        id: `email-${i}`,
+        from: `sender${i}@example.com`,
+        subject: `Email ${i + 1}`,
+        classification: "needs_reply",
+        receivedAt: new Date("2026-02-08T10:00:00Z"),
+      }));
+
+      const todos = Array.from({ length: 10 }, (_, i) => ({
+        id: `todo-${i}`,
+        content: `Todo ${i + 1}`,
+        category: `Category ${i % 3}`,
+        createdAt: new Date("2026-02-08T09:00:00Z"),
+      }));
+
+      const tasks = Array.from({ length: 10 }, (_, i) => ({
+        id: `task-${i}`,
+        summary: `Task ${i + 1}`,
+        intent: "work",
+        status: "pending",
+        createdAt: new Date("2026-02-08T09:00:00Z"),
+      }));
+
+      const data: DailyData = {
+        date: "2026-02-08",
+        events,
+        pendingEmails: emails,
+        pendingTasks: tasks,
+        pendingTodos: todos,
+      };
+
+      const blocks = buildBlocks(data);
+
+      // Slack Block Kit hard limit is 50
+      expect(blocks.length).toBeLessThanOrEqual(50);
+    });
+
     it("should show task section when pending tasks exist", () => {
       const data: DailyData = {
         date: "2026-02-08",

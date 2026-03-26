@@ -367,7 +367,7 @@ export type NewSnsPost = typeof snsPosts.$inferInsert;
 // tiktok_tokens テーブル
 export const tiktokTokens = pgTable("tiktok_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
-  openId: varchar("open_id", { length: 255 }).notNull(),
+  openId: varchar("open_id", { length: 255 }).notNull().unique(),
   accessToken: text("access_token").notNull(),
   refreshToken: text("refresh_token").notNull(),
   tokenExpiry: timestamp("token_expiry", { withTimezone: true }).notNull(),
